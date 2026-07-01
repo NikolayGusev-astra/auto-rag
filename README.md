@@ -258,28 +258,89 @@ python3 run_golden.py
 
 MIT. Сделано для Autolycus Agent (Nous Research Hermes fork).
 
-## Структура llm-wiki (для агентов)
+## Скил: как агент создаёт и расширяет RAG
 
-Индексатор ищет `.md` файлы в директориях из `WIKI_PATHS`. На новой машине нужно создать:
+### Структура llm-wiki
+
+Индексатор ищет `.md` файлы в `WIKI_PATHS` (по умолчанию `~/wiki`). На новой машине:
 
 ```bash
-mkdir -p ~/wiki/{ford-club,concepts,adr,plans,manuals,raw,sessions}
+mkdir -p ~/wiki/{your-domain,concepts,manuals,sessions}
 mkdir -p ~/llm-wiki
 ```
 
-Агент может наполнять wiki через:
-```bash
-# Создать страницу
-cat > ~/wiki/ford-club/parts-explorer-ii.md << 'EOF'
-# Запчасти Ford Explorer II
-...
-EOF
+Агент наполняет wiki созданием `.md` файлов:
 
-# Переиндексировать
+```bash
+cat > ~/wiki/your-domain/your-topic.md << 'EOF'
+---
+title: Название
+tags: ["тег1", "тег2"]
+---
+# Content here
+EOF
 python3 rag_core/indexer.py --incremental
 ```
 
-Ссылки между страницами: `[[Название страницы]]`. Индексатор парсит frontmatter (title, tags).
+Ссылки между страницами: `[[Название страницы]]`. Индексатор парсит frontmatter (title, tags) и разбивает на чанки по ##/###.
+
+### Как создать новый домен
+
+**Шаг 1: Анализ данных.** Агент анализирует массив — Obsidian, Telegram, CRM, почту — и выделяет кластеры ключевых слов (TF-IDF, LDA, или просто top-N):
+
+```python
+# Упрощённо: агент собирает 5-10 ключевых слов домена
+keywords = {
+    "supports": ["техподдержка", "тикет", "инцидент", "sla"],
+    "sales": ["коммерческое", "предложение", "договор", "счёт"],
+}
+```
+
+**Шаг 2: Добавить в DCD роутер.** В `dcd_router.py` дописать домен в `DOMAIN_KEYWORDS`:
+
+```python
+"supports": {
+    "weight": 3,
+    "keywords": {"техподдержка": 4, "тикет": 3, "sla": 3},
+    "collections": {"supports": ["техподдержка", "тикет", "инцидент"]},
+}
+```
+
+**Шаг 3: Добавить путь в индексатор.** В `indexer.py` дописать `WIKI_PATHS`:
+
+```python
+WIKI_PATHS = [
+    "~/wiki",
+    "~/llm-wiki",
+    "~/projects/supports/docs",  # новый источник
+]
+```
+
+**Шаг 4: Добавить коллекцию в поиск (опционально).** Если нужна отдельная коллекция — в `rag_search.py`:
+
+```python
+self.zvec_supports = ZVecSearcher("supports")
+# в search(): chunks += self.zvec_supports.search(query, topk=k)
+```
+
+**Шаг 5: Golden set.** 5 тестовых запросов от пользователя → `rag_golden.json`.
+
+### Что делает агент автоматически
+
+1. Получает доступ к источникам (Obsidian, TG, CRM)
+2. Выгружает `.md` в `~/wiki/{domain}/`
+3. Добавляет DCD правила если новый паттерн
+4. Шепчет `python3 rag_core/indexer.py --incremental` (cron делает это каждый час)
+5. Прогоняет golden set, пишет recall
+
+### Интеграция источников
+
+- **Obsidian:** скопировать `.md` в `~/wiki/` или указать `WIKI_PATHS=/path/to/obsidian`
+- **Telegram:** выгрузить чат через TG-клиент → `~/wiki/sessions/`
+- **CRM/почта:** через MCP или прямой экспорт → `~/wiki/sales/`
+- **Web:** прикрутить скрапер → `~/wiki/research/`
+
+Индексатор всё подхватит. Категории определяются по первой папке пути. Если папка совпадает с именем домена — DCD может фильтровать.
 
 ## Ссылки
 
