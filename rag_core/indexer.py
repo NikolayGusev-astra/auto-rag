@@ -5,11 +5,11 @@ Usage: python3 indexer.py [--incremental] [--clear]
 """
 import os, sys, json, hashlib, time, re
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from rag_config import ZVEC_PATH, ZVEC_WIKI_COLLECTION, EMBEDDING_DIM, ensure_zvec_lock
+from rag_config import ZVEC_PATH, ZVEC_COLLECTION, EMBEDDING_DIM
 from rag_config import EMBEDDING_URL, EMBEDDING_MODEL
 
 # ── Config ────────────────────────────────────────────────────────
-COLL_PATH = os.path.join(ZVEC_PATH, ZVEC_WIKI_COLLECTION)
+COLL_PATH = os.path.join(ZVEC_PATH, ZVEC_COLLECTION)
 WIKI_PATHS = [
     os.path.expanduser("~/wiki"),
     os.path.expanduser("~/llm-wiki"),
@@ -161,6 +161,19 @@ def get_schema():
                         index_param=HnswIndexParam(metric_type=MetricType.COSINE)),
         ],
     )
+
+def ensure_zvec_lock(path: str) -> str:
+    """ZVec 0.5.1 LOCK workaround."""
+    import os as _os
+    lock_path = _os.path.join(path, "LOCK")
+    if _os.path.exists(path) and not _os.path.exists(lock_path):
+        try:
+            fd = _os.open(lock_path, _os.O_CREAT | _os.O_WRONLY, 0o644)
+            _os.close(fd)
+        except OSError:
+            pass
+    return lock_path
+
 
 # ── Main ──────────────────────────────────────────────────────────
 def index(incremental=False, clear=False):

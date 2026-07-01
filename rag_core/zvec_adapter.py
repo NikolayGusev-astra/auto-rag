@@ -13,7 +13,7 @@ import time
 from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from rag_config import ZVEC_PATH, ZVEC_WIKI_COLLECTION, ZVEC_SESSIONS_COLLECTION
+from rag_config import ZVEC_PATH, ZVEC_COLLECTION, ZVEC_SESSIONS_COLLECTION
 from rag_config import EMBEDDING_URL, EMBEDDING_MODEL, EMBEDDING_DIM
 from rag_config import ensure_zvec_lock
 
@@ -23,7 +23,7 @@ class ZVecSearcher:
 
     _instances: dict[str, tuple] = {}  # collection_path -> (collection, lock_path)
 
-    def __init__(self, collection: str = ZVEC_WIKI_COLLECTION):
+    def __init__(self, collection: str = ZVEC_COLLECTION):
         self.coll_path = os.path.join(ZVEC_PATH, collection)
         self._coll = None
         self._lock_path = None
@@ -39,7 +39,7 @@ class ZVecSearcher:
             try:
                 self._coll = zvec.open(self.coll_path)
             except Exception as e:
-                from rag_config import ZVEC_WIKI_COLLECTION as coll_name
+                from rag_config import ZVEC_COLLECTION as coll_name
                 from zvec import CollectionSchema, FieldSchema, VectorSchema, DataType
                 from zvec import FtsIndexParam, HnswIndexParam, InvertIndexParam, CollectionOption, MetricType
                 import shutil
