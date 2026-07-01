@@ -18,6 +18,13 @@ except ImportError:
         def begin(self, *a, **kw): pass
         def add_event(self, *a, **kw): pass
 
+# ── Trafilatura for full text extraction ──────────────────────────
+_TRAFILATURA_AVAILABLE = False
+try:
+    import trafilatura; _TRAFILATURA_AVAILABLE = True
+except ImportError:
+    pass
+
 _EXECUTOR = ThreadPoolExecutor(max_workers=6)
 
 # ── ZVec singleton (thread-safe) ───────────────────────────────────
@@ -98,13 +105,12 @@ def _blocking_mcp_single(name: str, query: str) -> list[dict]:
     return mc.query(name, cfg, query, 3)
 
 def _blocking_web(query: str, domain: str = "", collection: str = "") -> list[dict]:
-    """Web search with domain-based source selection."""
+    """Web search через SearXNG (Google engine + Yandex)."""
     import subprocess as _sp, urllib.parse
-    # Determine preferred source
     preferred = DCD_PREFERRED_WEB_SOURCE.get(domain, {}).get(collection) or \
                 DCD_PREFERRED_WEB_SOURCE.get(domain, {}).get("*")
     if preferred == "skip": return []
-    # Always try SearXNG first
+    # SearXNG: Google + Yandex engines
     encoded = urllib.parse.quote(query)
     try:
         r = _sp.run(["curl", "-s", "--max-time", "10", f"{SEARXNG_URL}/search?q={encoded}&format=json"],
@@ -115,13 +121,31 @@ def _blocking_web(query: str, domain: str = "", collection: str = "") -> list[di
             chunks = []
             for wr in results:
                 text = wr.get("content", "") or wr.get("snippet", "")
+                url = wr.get("url", "")
+                # Trafilatura: полный текст для топ-1
+                if text and len(chunks) < 1 and _TRAFILATURA_AVAILABLE and url:
+                    try:
+                        import urllib.request
+                        req = urllib.request.Request(url, headers={
+                            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"})
+                        resp = urllib.request.urlopen(req, timeout=8)
+                        html = resp.read().decode("utf-8", errors="replace")
+                        import trafilatura
+                        full = trafilatura.extract(html)
+                        if full and len(full) > len(text):
+                            text = full[:WEB_SEARCH_MAX_CHARS]
+                    except Exception:
+                        pass
                 if text:
-                    chunks.append({"text": text[:WEB_SEARCH_MAX_CHARS],
-                                  "title": wr.get("title", ""), "url": wr.get("url", ""),
-                                  "source": "web/searxng"})
+                    chunks.append({
+                        "text": text[:WEB_SEARCH_MAX_CHARS],
+                        "title": wr.get("title", ""), "url": url,
+                        "source": f"web/{wr.get('engine','searxng')}",
+                    })
             return chunks
-    except: pass
-    # Fallback: Bing search (работает на этом сервере, Google/DDG заблокированы)
+    except Exception:
+        pass
+    # Fallback: Bing (если SearXNG не сработал)
     return _blocking_bing(query)
 
 
