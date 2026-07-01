@@ -193,10 +193,16 @@ async def evaluate_one(
         rec["chunks_snippet"] = chunks_text[:500] if chunks_text else ""
         rec["chunks_full_len"] = len(chunks_text)
 
-        # Source routing accuracy — zvec+llm считается zvec
-        rec["source_ok"] = result.get("source") == q["expected_source"] or (
-            q["expected_source"] == "zvec" and result.get("source") == "zvec+llm"
-        )
+        # Source routing accuracy — zvec+llm считается zvec, empty=N/A для reject
+        expected = q["expected_source"]
+        actual = result.get("source")
+        if expected == "empty":
+            # Reject questions: source_ok = True если pipeline не нашёл релевантного источника
+            rec["source_ok"] = actual == "empty"
+        else:
+            rec["source_ok"] = actual == expected or (
+                expected == "zvec" and actual in ("zvec", "zvec+llm")
+            )
 
         # 3. Answer accuracy (key facts)
         answer_eval = eval_answer_match(chunks_text, q["key_facts"])

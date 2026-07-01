@@ -1,16 +1,14 @@
 {
   "meta": {
-    "version": "1.0",
-    "description": "Golden set for RAG accuracy evaluation — general domain",
+    "version": "1.1",
+    "description": "Golden set for RAG accuracy evaluation — multi-source routing",
     "created": "2026-07-01",
     "total_questions": 28,
     "eval_strategy": "LLM-as-judge: compare pipeline answer vs ground_truth using key_facts",
     "sources": {
-      "lodestone": "Confluence+Wiki+Sphinx docs",
-      "jira": "Jira issues (RCA, presale, security)",
-      "context7": "Code/docs (devops, software-dev)",
-      "zvec": "Local ZVec index (LLM wiki, sessions, concepts)",
-      "web": "SearXNG + DuckDuckGo fallback"
+      "zvec": "Local ZVec index (LLM wiki, skills, sessions, concepts)",
+      "web": "Bing search fallback (Google/DDG blocked in RF)",
+      "empty": "No relevant source available"
     },
     "expected_source": "zvec"
   },
@@ -20,7 +18,7 @@
       "query": "настройка postgresql streaming replication debian 12",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "streaming replication",
         "wal_level",
@@ -49,7 +47,7 @@
       "query": "развертывание kubernetes кластер на debian 12 k8s",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "kubernetes",
         "kubeadm",
@@ -78,7 +76,7 @@
       "query": "patroni ha postgresql кластер настройка etcd debian",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "Patroni",
         "HA",
@@ -92,7 +90,7 @@
       "query": "docker registry harbor хранение образов debian 12",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "Harbor",
         "docker registry",
@@ -105,7 +103,7 @@
       "query": "proxmox backup server настройка резервное копирование VM debian",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "Proxmox Backup",
         "резервное копирование",
@@ -130,7 +128,7 @@
       "id": "ford-01",
       "query": "шрус Ford Explorer II партномер полуось",
       "expected_domain": "ford-club",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "шрус Ford Explorer II партномер полуось"
       ],
@@ -141,7 +139,7 @@
       "id": "ford-02",
       "query": "VIN 1FMZU34E6WUD14705 двигатель 4.0 SOHC",
       "expected_domain": "ford-club",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "VIN 1FMZU34E6WUD14705 двигатель 4.0 SOHC"
       ],
@@ -152,7 +150,7 @@
       "id": "ford-03",
       "query": "шины 235/75 R15 зимние Ford Explorer",
       "expected_domain": "ford-club",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "шины 235/75 R15 зимние Ford Explorer"
       ],
@@ -163,7 +161,7 @@
       "id": "ford-04",
       "query": "F5TZ-3A427A пыльник шруса замена",
       "expected_domain": "ford-club",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "F5TZ-3A427A пыльник шруса замена"
       ],
@@ -174,7 +172,7 @@
       "id": "ford-05",
       "query": "carpc магнитола Ford Explorer II установка",
       "expected_domain": "ford-club",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "carpc магнитола Ford Explorer II установка"
       ],
@@ -185,7 +183,7 @@
       "id": "devops-01",
       "query": "настройка xray reality vless конфиг",
       "expected_domain": "devops",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "настройка xray reality vless конфиг"
       ],
@@ -196,7 +194,7 @@
       "id": "devops-02",
       "query": "nginx reverse proxy docker настройка",
       "expected_domain": "devops",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "nginx reverse proxy docker настройка"
       ],
@@ -207,7 +205,7 @@
       "id": "devops-03",
       "query": "openvpn сервер ubuntu iptables",
       "expected_domain": "devops",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "openvpn сервер ubuntu iptables"
       ],
@@ -229,7 +227,7 @@
       "id": "devops-05",
       "query": "postgresql debian 12 установка настройка бэкап",
       "expected_domain": "devops",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "postgresql debian 12 установка настройка бэкап"
       ],
@@ -284,7 +282,7 @@
       "id": "manuals-02",
       "query": "docker compose конфигурация пример",
       "expected_domain": "manuals",
-      "expected_source": "zvec",
+      "expected_source": "web",
       "key_facts": [
         "docker compose конфигурация пример"
       ],
@@ -328,7 +326,7 @@
       "id": "reject-01",
       "query": "рецепт блинов на кефире",
       "expected_domain": "ford-club",
-      "expected_source": "zvec",
+      "expected_source": "empty",
       "key_facts": [
         "рецепт блинов на кефире"
       ],
@@ -339,7 +337,7 @@
       "id": "reject-02",
       "query": "погода в екатеринбурге завтра",
       "expected_domain": "publishing",
-      "expected_source": "zvec",
+      "expected_source": "empty",
       "key_facts": [
         "погода в екатеринбурге завтра"
       ],

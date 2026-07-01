@@ -15,6 +15,7 @@ try:
 except ImportError:
     class RagTrace:
         def __init__(self, query: str = ""): pass
+        def begin(self, *a, **kw): pass
         def add_event(self, *a, **kw): pass
 
 _EXECUTOR = ThreadPoolExecutor(max_workers=6)
@@ -120,7 +121,39 @@ def _blocking_web(query: str, domain: str = "", collection: str = "") -> list[di
                                   "source": "web/searxng"})
             return chunks
     except: pass
-    return []
+    # Fallback: Bing search (работает на этом сервере, Google/DDG заблокированы)
+    return _blocking_bing(query)
+
+
+def _blocking_bing(query: str, max_results: int = 5) -> list[dict]:
+    """Bing web search fallback — работает в РФ, Google/DDG заблокированы."""
+    import urllib.request, urllib.parse, re
+    encoded = urllib.parse.quote(query)
+    url = f"https://www.bing.com/search?q={encoded}"
+    try:
+        req = urllib.request.Request(url,
+            headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"})
+        r = urllib.request.urlopen(req, timeout=15)
+        body = r.read().decode("utf-8", errors="replace")
+        results = re.findall(r'<li class="b_algo"[^>]*>(.*?)</li>', body, re.DOTALL)
+        chunks = []
+        for res in results[:max_results]:
+            title_m = re.search(r'<h2[^>]*>.*?<a[^>]*.*?>(.*?)</a>', res, re.DOTALL)
+            snippet_m = re.search(r'<p[^>]*>(.*?)</p>', res, re.DOTALL)
+            link_m = re.search(r'href="(https?://[^\"]+)"', res)
+            if title_m and snippet_m:
+                title = re.sub(r'<[^>]+>', '', title_m.group(1)).strip()
+                snippet = re.sub(r'<[^>]+>', '', snippet_m.group(1) if snippet_m else "").strip()
+                link = link_m.group(1) if link_m else ""
+                if snippet:
+                    chunks.append({
+                        "text": snippet[:WEB_SEARCH_MAX_CHARS],
+                        "title": title, "url": link,
+                        "source": "web/bing",
+                    })
+        return chunks
+    except Exception:
+        return []
 
 def _blocking_llm_eval(query: str, chunks: list) -> float:
     import subprocess as _sp, json, re
@@ -212,6 +245,19 @@ async def async_rag_search(query: str, dcd_result: dict, trace: RagTrace | None 
 
     if trace:
         trace.begin("zvec", chunks=len(zvec_chunks), max_score=max_score)
+
+    # ── Source preference: web приоритетнее ZVec при низких scores ──
+    # ZVec содержит только Autolycus skills. Для общих tech-вопросов
+    # Bing web search даёт более релевантные результаты.
+    # Предпочитаем web, если:
+    #   - web вернул результаты
+    #   - ZVec score < 0.50 (неуверенный)
+    #   - DCD confidence < 0.50 (неуверенная классификация)
+    if web_chunks and max_score < 0.50 and confidence < 0.50:
+        if trace: trace.begin("web_preferred", zvec_score=max_score, web_chunks=len(web_chunks))
+        result = {"source": "web", "chunks": web_chunks, "score": 0.6,
+                  "trace": f"Web preferred over ZVec({max_score:.2f})"}
+        _cache_set(ck, result); return result
 
     # Entity Match
     entities_ok = await loop.run_in_executor(_EXECUTOR, _check_entities_in_query, query, zvec_chunks)
