@@ -342,6 +342,56 @@ self.zvec_supports = ZVecSearcher("supports")
 
 Индексатор всё подхватит. Категории определяются по первой папке пути. Если папка совпадает с именем домена — DCD может фильтровать.
 
+### Корпоративный поиск через SearXNG (авторизация, приоритетные домены)
+
+SearXNG умеет искать по конкретным доменам и с авторизацией. Это полезно для корпоративных порталов, wiki, jira — доступных только внутри сети и/или по логину.
+
+**Вариант A: Приоритетные домены** (без авторизации, просто boost)
+В `settings.yml` SearXNG:
+```yaml
+search:
+  preferred_domains:
+    - corp-wiki.company.ru
+    - portal.company.ru
+  preferred_domain_boost: 10
+```
+
+**Вариант B: Кастомный JSON-движок с куками**
+```yaml
+engines:
+  - name: corp_search
+    engine: json_engine
+    search_url: https://corp-portal/api/search?q={query}
+    url: https://corp-portal{path}
+    weight: 100
+    headers:
+      Cookie: "session=ВАША_SESSION"
+      Authorization: "Bearer ВАШ_ТОКЕН"
+```
+
+**Вариант C: Авторизация через Trafilatura** (SearXNG ищет ссылки, Trafilatura дёргает с сессией)
+```python
+import requests, trafilatura
+session = requests.Session()
+# авторизация
+session.post("https://corp-portal/login", data={"login": "user", "password": "pass"})
+# дёрнуть каждый результат с сессией
+for url in searxng_results:
+    html = session.get(url).text
+    text = trafilatura.extract(html)
+```
+
+**Вариант D: SearXNG через корпоративный прокси**
+```yaml
+engines:
+  - name: corp_wiki
+    engine: http
+    proxies: http://corp-proxy:3128
+    search_url: https://internal-wiki/search?q={query}
+```
+
+SearXNG сам пароли не хранит — авторизация на уровне HTTP-запроса к движку (куки, токен, basic auth).
+
 ## Ссылки
 
 - ZVec: https://github.com/alibaba/zvec
