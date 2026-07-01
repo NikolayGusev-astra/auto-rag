@@ -1,0 +1,152 @@
+{
+  "_meta": {
+    "description": "Golden set для RAG v2 (Autolycus)",
+    "date": "2026-06-30",
+    "collections": "22566 docs, ZVec wiki",
+    "embedding": "bge-m3 (1024d), cosine",
+    "threshold_correct": 0.6,
+    "threshold_ambiguous": 0.4
+  },
+  "tests": [
+    {
+      "id": "ford-01",
+      "domain": "ford-club",
+      "query": "шрус Ford Explorer II партномер полуось",
+      "expected": {"source_contains": ["ford-club", "auto-diagnostics"], "min_score": 0.25},
+      "entities": ["шрус", "ford", "explorer", "партномер"]
+    },
+    {
+      "id": "ford-02",
+      "domain": "ford-club",
+      "query": "VIN 1FMZU34E6WUD14705 двигатель 4.0 SOHC",
+      "expected": {"source_contains": ["ford-club", "llm-wiki"], "min_score": 0.25},
+      "entities": ["vin", "ford", "explorer"]
+    },
+    {
+      "id": "ford-03",
+      "domain": "ford-club",
+      "query": "шины 235/75 R15 зимние Ford Explorer",
+      "expected": {"source_contains": ["ford-club", "explorer"], "min_score": 0.2},
+      "entities": ["ford", "explorer"]
+    },
+    {
+      "id": "ford-04",
+      "domain": "ford-club",
+      "query": "F5TZ-3A427A пыльник шруса замена",
+      "expected": {"source_contains": ["ford-club", "auto-diagnostics"], "min_score": 0.2},
+      "entities": ["ford", "шрус"]
+    },
+    {
+      "id": "ford-05",
+      "domain": "ford-club",
+      "query": "carpc магнитола Ford Explorer II установка",
+      "expected": {"source_contains": ["carpc", "ford-club"], "min_score": 0.2},
+      "entities": ["ford", "carpc"]
+    },
+    {
+      "id": "devops-01",
+      "domain": "devops",
+      "query": "настройка xray reality vless конфиг",
+      "expected": {"source_contains": ["xray", "devops"], "min_score": 0.2},
+      "entities": ["xray"]
+    },
+    {
+      "id": "devops-02",
+      "domain": "devops",
+      "query": "nginx reverse proxy docker настройка",
+      "expected": {"source_contains": ["nginx", "docker"], "min_score": 0.2},
+      "entities": ["nginx", "docker"]
+    },
+    {
+      "id": "devops-03",
+      "domain": "devops",
+      "query": "openvpn сервер ubuntu iptables",
+      "expected": {"source_contains": ["openvpn", "devops"], "min_score": 0.2},
+      "entities": ["openvpn"]
+    },
+    {
+      "id": "devops-04",
+      "domain": "devops",
+      "query": "systemd service автозапуск скрипта after network",
+      "expected": {"source_contains": ["systemd", "service"], "min_score": 0.2},
+      "entities": ["systemd"]
+    },
+    {
+      "id": "devops-05",
+      "domain": "devops",
+      "query": "postgresql debian 12 установка настройка бэкап",
+      "expected": {"source_contains": ["postgresql", "debian", "devops"], "min_score": 0.25},
+      "entities": ["postgresql"]
+    },
+    {
+      "id": "swdev-01",
+      "domain": "software-dev",
+      "query": "напиши ADR архитектурное решение",
+      "expected": {"source_contains": ["adr", "architecture"], "min_score": 0.2},
+      "entities": ["adr"]
+    },
+    {
+      "id": "swdev-02",
+      "domain": "software-dev",
+      "query": "code review PR github проверка кода",
+      "expected": {"source_contains": ["code-review", "software-dev"], "min_score": 0.2},
+      "entities": []
+    },
+    {
+      "id": "swdev-03",
+      "domain": "software-dev",
+      "query": "как настроить dcd router для нового домена",
+      "expected": {"source_contains": ["dcd", "router", "rag"], "min_score": 0.2},
+      "entities": ["dcd"]
+    },
+    {
+      "id": "manuals-01",
+      "domain": "manuals",
+      "query": "как установить trafilatura python",
+      "expected": {"source_contains": ["trafilatura", "rag"], "min_score": 0.15},
+      "entities": ["trafilatura"]
+    },
+    {
+      "id": "manuals-02",
+      "domain": "manuals",
+      "query": "docker compose конфигурация пример",
+      "expected": {"source_contains": ["docker", "compose"], "min_score": 0.2},
+      "entities": ["docker"]
+    },
+    {
+      "id": "manuals-03",
+      "domain": "manuals",
+      "query": "как настроить zvec LOCK workaround",
+      "expected": {"source_contains": ["zvec", "lock", "rag"], "min_score": 0.2},
+      "entities": ["zvec"]
+    },
+    {
+      "id": "infra-01",
+      "domain": "infrastructure",
+      "query": "xff kz8 ns7 hermes агент завис перезапуск",
+      "expected": {"source_contains": ["infrastructure"], "min_score": 0.15},
+      "entities": []
+    },
+    {
+      "id": "research-01",
+      "domain": "research",
+      "query": "qwen3-4b vs qwen2.5 сравнение производительность",
+      "expected": {"source_contains": ["qwen", "rag", "architecture"], "min_score": 0.15},
+      "entities": ["qwen"]
+    },
+    {
+      "id": "reject-01",
+      "domain": "ford-club",
+      "query": "рецепт блинов на кефире",
+      "expected": {"source_contains": [], "min_score": 0, "must_be_empty": true},
+      "entities": []
+    },
+    {
+      "id": "reject-02",
+      "domain": "publishing",
+      "query": "погода в екатеринбурге завтра",
+      "expected": {"source_contains": [], "min_score": 0, "must_be_empty": true},
+      "entities": []
+    }
+  ]
+}
