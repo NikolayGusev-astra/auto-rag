@@ -1,4 +1,7 @@
 zvec>=0.5.0
 trafilatura>=2.0
+# FastAPI (для zvec_server.py — обход ZVec LOCK бага через HTTP)
+# fastapi>=0.104.0
+# uvicorn>=0.24.0
 # Опционально (для CPU embedding без LM Studio):
 # sentence-transformers>=3.0

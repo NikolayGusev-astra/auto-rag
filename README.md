@@ -192,6 +192,23 @@ except ValueError:
 
 **Причина:** ZVec использует `topk`, не `top_k`.
 
+### 10. ZVec FastAPI сервер (альтернатива LOCK workaround)
+
+Вместо `ensure_zvec_lock()` можно запустить долгоживущий процесс, который держит коллекцию открытой. Клиенты шлют HTTP-запросы:
+
+```bash
+# Запуск сервера
+python3 rag_core/zvec_server.py  # порт 8765
+
+# Использование
+curl http://localhost:8765/search?q=Ford+Explorer+шрус&topk=5
+curl http://localhost:8765/stats
+curl http://localhost:8765/health
+```
+
+**Когда нужно:** На Windows (LOCK баг не чинится touch), при высокой нагрузке (много клиентов).
+**Когда не нужно:** Для одного пользователя на Linux — `ensure_zvec_lock()` проще.
+
 ## Работа без LM Studio (CPU только)
 
 1. Установить `sentence-transformers`:
@@ -240,6 +257,29 @@ python3 run_golden.py
 ## Лицензия
 
 MIT. Сделано для Autolycus Agent (Nous Research Hermes fork).
+
+## Структура llm-wiki (для агентов)
+
+Индексатор ищет `.md` файлы в директориях из `WIKI_PATHS`. На новой машине нужно создать:
+
+```bash
+mkdir -p ~/wiki/{ford-club,concepts,adr,plans,manuals,raw,sessions}
+mkdir -p ~/llm-wiki
+```
+
+Агент может наполнять wiki через:
+```bash
+# Создать страницу
+cat > ~/wiki/ford-club/parts-explorer-ii.md << 'EOF'
+# Запчасти Ford Explorer II
+...
+EOF
+
+# Переиндексировать
+python3 rag_core/indexer.py --incremental
+```
+
+Ссылки между страницами: `[[Название страницы]]`. Индексатор парсит frontmatter (title, tags).
 
 ## Ссылки
 
