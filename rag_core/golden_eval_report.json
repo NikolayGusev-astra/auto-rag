@@ -21,20 +21,19 @@
     "source_routing_accuracy": 0.0,
     "dcd_domain_accuracy": 0.6071,
     "dcd_collection_accuracy": 0.1786,
-    "answer_correct": 1,
-    "answer_partial": 4,
-    "answer_incorrect": 22,
-    "answer_accuracy": 0.0357,
-    "answer_accuracy_incl_partial": 0.1786,
+    "answer_correct": 0,
+    "answer_partial": 1,
+    "answer_incorrect": 26,
+    "answer_accuracy": 0.0,
+    "answer_accuracy_incl_partial": 0.0357,
     "source_breakdown": {
-      "web": 17,
-      "empty": 11
+      "empty": 28
     },
     "by_collection": {
       "devops": {
         "n": 13,
         "source_accuracy": 0.0,
-        "answer_ok_pct": 38.5
+        "answer_ok_pct": 7.7
       },
       "ford-club": {
         "n": 6,
@@ -67,8 +66,8 @@
         "answer_ok_pct": 0.0
       }
     },
-    "avg_latency_s": 1.14,
-    "max_latency_s": 3.02
+    "avg_latency_s": 0.78,
+    "max_latency_s": 3.03
   },
   "results": [
     {
@@ -82,30 +81,30 @@
       "dcd_confidence": 0.11,
       "dcd_domain_ok": true,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.019,
-      "actual_source": "web",
-      "trace": "DCD(conf=0.11<0.2)→Web",
-      "score": 0.6,
-      "latency": 3.02,
+      "dcd_latency_s": 0.025,
+      "actual_source": "empty",
+      "trace": "DCD(conf=0.11<0.2)→empty",
+      "score": 0.47040504217147827,
+      "latency": 3.03,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "Потоковая репликация (Streaming Replication). Это репликация, при которой от основного сервера PostgreSQL на реплики передается WAL. И каждая реплика затем ...\nЧтобы слоты репликации можно было использовать, нужно также установить в wal_level уровень replica или выше. wal_keep_size ( integer ) #. Задаёт минимальный ...\n21 мая 2025 г. · Я недавно настроил реплику чтения на PostgreSQL и был удивлён, насколько это было просто. Просто включив несколько настроек в ...\n4 мая 2019 г. · Пошаговая инстру",
-      "chunks_full_len": 789,
+      "n_chunks": 1,
+      "chunks_snippet": "terminal(command=\"claude mcp add -s local postgres -- npx @anthropic-ai/server-postgres --connection-string postgresql://localhost/mydb\", timeout=30)",
+      "chunks_full_len": 149,
       "source_ok": false,
-      "answer_verdict": "partial",
+      "answer_verdict": "incorrect",
       "answer_key_facts": {
         "key_facts_total": 4,
-        "key_facts_found": 2,
-        "key_facts_ratio": 0.5,
+        "key_facts_found": 0,
+        "key_facts_ratio": 0.0,
         "details": [
           {
             "fact": "streaming replication",
-            "found": true
+            "found": false
           },
           {
             "fact": "wal_level",
-            "found": true
+            "found": false
           },
           {
             "fact": "primary_conninfo",
@@ -116,9 +115,9 @@
             "found": false
           }
         ],
-        "verdict": "partial"
+        "verdict": "incorrect"
       },
-      "total_latency_s": 3.04
+      "total_latency_s": 3.05
     },
     {
       "id": "terraform-s3-backend",
@@ -131,11 +130,11 @@
       "dcd_confidence": 0.0,
       "dcd_domain_ok": false,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.024,
+      "dcd_latency_s": 0.02,
       "actual_source": "empty",
       "trace": "DCD(conf=0.00<0.2)→empty",
       "score": 0.5045120716094971,
-      "latency": 0.3,
+      "latency": 0.46,
       "_trace_stages": [],
       "_trace_summary": "",
       "n_chunks": 1,
@@ -171,7 +170,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.33
+      "total_latency_s": 0.48
     },
     {
       "id": "kubernetes-deploy-deb12",
@@ -184,26 +183,26 @@
       "dcd_confidence": 0.11,
       "dcd_domain_ok": true,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.02,
-      "actual_source": "web",
-      "trace": "ZVec(0.50)→EntityMismatch→Web",
-      "score": 0.6,
-      "latency": 0.57,
+      "dcd_latency_s": 0.028,
+      "actual_source": "empty",
+      "trace": "DCD(conf=0.11<0.2)→empty",
+      "score": 0.49564599990844727,
+      "latency": 0.47,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "5 окт. 2023 г. · Развертывание кластера Kubernetes. После того как все необходимые настройки были выполнены, можно приступать к запуску кластера Kubernetes.\n20 июл. 2022 г. · Далее устанавливаем сам k8s. Эти действия надо воспроизвести на всех нодах. Устанавливаем curl и добавляем ключ Kubernetes.\nВ данной статье мы рассмотрим пошагово, как развернуть кластер Kubernetes (K8S) на сервере с операционной системой Ubuntu.\nДля развёртывания и управления кластерами провайдер использует Container Servi",
-      "chunks_full_len": 740,
+      "n_chunks": 1,
+      "chunks_snippet": "curl -s \"http://127.0.0.1:8188/object_info/KSampler\"",
+      "chunks_full_len": 52,
       "source_ok": false,
-      "answer_verdict": "weak",
+      "answer_verdict": "incorrect",
       "answer_key_facts": {
         "key_facts_total": 4,
-        "key_facts_found": 1,
-        "key_facts_ratio": 0.25,
+        "key_facts_found": 0,
+        "key_facts_ratio": 0.0,
         "details": [
           {
             "fact": "kubernetes",
-            "found": true
+            "found": false
           },
           {
             "fact": "kubeadm",
@@ -218,9 +217,9 @@
             "found": false
           }
         ],
-        "verdict": "weak"
+        "verdict": "incorrect"
       },
-      "total_latency_s": 0.59
+      "total_latency_s": 0.5
     },
     {
       "id": "docker-compose-prod",
@@ -233,22 +232,22 @@
       "dcd_confidence": 0.29,
       "dcd_domain_ok": true,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.035,
-      "actual_source": "web",
-      "trace": "ZVec→MCP→Web",
-      "score": 0.6,
-      "latency": 0.65,
+      "dcd_latency_s": 0.029,
+      "actual_source": "empty",
+      "trace": "ZVec→MCP→Web→empty",
+      "score": 0.3897392749786377,
+      "latency": 0.69,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "11 мая 2026 г. · n8n self-hosted в production: docker-compose, nginx, ретраи и три грабли n8n запускается одной командой docker run и через пять минут вы ...\n25 окт. 2025 г. · Статья описывает процесс развёртывания компонентов системы, включая PostgreSQL, Redis и RabbitMQ, на одной виртуальной машине, ...\n4 апр. 2026 г. · Docker Compose для разработки позволяет за 10 минут собрать полное окружение с PostgreSQL, Redis и RabbitMQ. Разбираем настройку сервисов ...\n25 авг. 2024 г. · Настройте файл d",
-      "chunks_full_len": 783,
+      "n_chunks": 1,
+      "chunks_snippet": "cd /root/autolycus/repo\nHERMES_UID=$(id -u) HERMES_GID=$(id -g) docker compose build",
+      "chunks_full_len": 84,
       "source_ok": false,
-      "answer_verdict": "correct",
+      "answer_verdict": "weak",
       "answer_key_facts": {
         "key_facts_total": 5,
-        "key_facts_found": 5,
-        "key_facts_ratio": 1.0,
+        "key_facts_found": 1,
+        "key_facts_ratio": 0.2,
         "details": [
           {
             "fact": "docker compose",
@@ -256,24 +255,24 @@
           },
           {
             "fact": "nginx",
-            "found": true
+            "found": false
           },
           {
             "fact": "PostgreSQL",
-            "found": true
+            "found": false
           },
           {
             "fact": "Redis",
-            "found": true
+            "found": false
           },
           {
             "fact": "production",
-            "found": true
+            "found": false
           }
         ],
-        "verdict": "correct"
+        "verdict": "weak"
       },
-      "total_latency_s": 0.68
+      "total_latency_s": 0.72
     },
     {
       "id": "patroni-etcd-ha",
@@ -287,25 +286,25 @@
       "dcd_domain_ok": true,
       "dcd_collection_ok": false,
       "dcd_latency_s": 0.027,
-      "actual_source": "web",
-      "trace": "ZVec(0.48)→EntityMismatch→Web",
-      "score": 0.6,
-      "latency": 0.48,
+      "actual_source": "empty",
+      "trace": "DCD(conf=0.10<0.2)→empty",
+      "score": 0.4845372438430786,
+      "latency": 0.63,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "1 авг. 2023 г. · Устанавливаем необходимые пакеты. ... Создаем файл конфигурации для кластера Patroni /etc/patroni.yml. Конфигурационный файл необходимо создать на ...Настраиваем службу ETCD · Установка Patroni\n3 окт. 2024 г. · Patroni — это инструмент для управления высокодоступными кластерами PostgreSQL. Он упрощает настройку и управление репликацией благодаря ...\nУстановка состоит из нескольких этапов: Подготовка нод (серверов). Подготовка кластера etcd. Установка PostgreSQL. Настройка Postgr",
-      "chunks_full_len": 842,
+      "n_chunks": 1,
+      "chunks_snippet": "```\n/goal Пойди поль CI, если упал — почини\n```",
+      "chunks_full_len": 47,
       "source_ok": false,
-      "answer_verdict": "partial",
+      "answer_verdict": "incorrect",
       "answer_key_facts": {
         "key_facts_total": 4,
-        "key_facts_found": 3,
-        "key_facts_ratio": 0.75,
+        "key_facts_found": 0,
+        "key_facts_ratio": 0.0,
         "details": [
           {
             "fact": "Patroni",
-            "found": true
+            "found": false
           },
           {
             "fact": "HA",
@@ -313,16 +312,16 @@
           },
           {
             "fact": "etcd",
-            "found": true
+            "found": false
           },
           {
             "fact": "PostgreSQL",
-            "found": true
+            "found": false
           }
         ],
-        "verdict": "partial"
+        "verdict": "incorrect"
       },
-      "total_latency_s": 0.51
+      "total_latency_s": 0.65
     },
     {
       "id": "harbor-registry",
@@ -335,11 +334,11 @@
       "dcd_confidence": 0.24,
       "dcd_domain_ok": true,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.035,
+      "dcd_latency_s": 0.026,
       "actual_source": "empty",
       "trace": "ZVec→MCP→Web→empty",
       "score": 0.4742182493209839,
-      "latency": 0.73,
+      "latency": 0.48,
       "_trace_stages": [],
       "_trace_summary": "",
       "n_chunks": 1,
@@ -367,7 +366,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.77
+      "total_latency_s": 0.51
     },
     {
       "id": "proxmox-backup-pbs",
@@ -380,39 +379,39 @@
       "dcd_confidence": 0.12,
       "dcd_domain_ok": false,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.032,
-      "actual_source": "web",
-      "trace": "DCD(conf=0.12<0.2)→Web",
-      "score": 0.6,
-      "latency": 0.53,
+      "dcd_latency_s": 0.027,
+      "actual_source": "empty",
+      "trace": "DCD(conf=0.12<0.2)→empty",
+      "score": 0.44479572772979736,
+      "latency": 0.68,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "14 мар. 2022 г. · Proxmox Backup Server — это решение на основе Debian, которое делает резервное копирование простым. С его помощью вы можете бэкапить ...\n15 янв. 2026 г. · Установка и базовая настройка; Подключение к Proxmox VE; Организация резервного копирования; Оптимизация хранения; Восстановление данных ...\n16 нояб. 2020 г. · Заходим в раздел Administration — Storage / Disks. Выбираем нужный диск и инициализируем его нажатием кнопки Initialize Disk with GPT. Теперь ...\nРезервное копирование",
-      "chunks_full_len": 774,
+      "n_chunks": 1,
+      "chunks_snippet": "Нет истории. Ок, давай сделаем план:\n\n**Задача:** Создать Debian-based live ISO (~500 МБ) с astrofix-сервисом для восстановления ноутбуков.\n\n**План:**\n1. Установить `live-build` на сервере\n2. Создать конфигурацию: Debian 12 (bookworm), systemd, базовые утилиты + наш astrofix.sh\n3. Собрать ISO\n4. Положить на iso.autolycus-agent.ru\n\nХочешь чтобы я начал делать? Или сначала обсудим что именно должно быть в ISO (какие пакеты, какой флоу восстановления)?",
+      "chunks_full_len": 453,
       "source_ok": false,
-      "answer_verdict": "partial",
+      "answer_verdict": "incorrect",
       "answer_key_facts": {
         "key_facts_total": 3,
-        "key_facts_found": 2,
-        "key_facts_ratio": 0.6666666666666666,
+        "key_facts_found": 0,
+        "key_facts_ratio": 0.0,
         "details": [
           {
             "fact": "Proxmox Backup",
-            "found": true
+            "found": false
           },
           {
             "fact": "резервное копирование",
-            "found": true
+            "found": false
           },
           {
             "fact": "PBS",
             "found": false
           }
         ],
-        "verdict": "partial"
+        "verdict": "incorrect"
       },
-      "total_latency_s": 0.57
+      "total_latency_s": 0.71
     },
     {
       "id": "nginx-api-gateway",
@@ -429,7 +428,7 @@
       "actual_source": "empty",
       "trace": "DCD(conf=0.19<0.2)→empty",
       "score": 0.4244581460952759,
-      "latency": 0.44,
+      "latency": 0.71,
       "_trace_stages": [],
       "_trace_summary": "",
       "n_chunks": 1,
@@ -457,7 +456,7 @@
         ],
         "verdict": "partial"
       },
-      "total_latency_s": 0.48
+      "total_latency_s": 0.74
     },
     {
       "id": "ford-01",
@@ -470,16 +469,16 @@
       "dcd_confidence": 1.0,
       "dcd_domain_ok": true,
       "dcd_collection_ok": true,
-      "dcd_latency_s": 0.018,
-      "actual_source": "web",
-      "trace": "ZVec→MCP→Web",
-      "score": 0.6,
-      "latency": 1.05,
+      "dcd_latency_s": 0.019,
+      "actual_source": "empty",
+      "trace": "ZVec→MCP→Web→empty",
+      "score": 0.2915223240852356,
+      "latency": 0.52,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "Оценка 4,5(4 275)Шрус ford/форд Explorer 2010-2017 / Volvo XC90. 2 850 ₽. Гарантия производителя ... Артикул товара №32224 Полуось задняя (приводной вал, ШРУС) Ford Explorer ...\nОценка 4,7(26 682)Шрус представляет собой сочленение двух полуосей, состоящее из шарнира и муфты. Шарнир позволяет колесу поворачивать вокруг вертикальной оси, а муфта позволяет ...\nОценка 4,9(28 232)Привод, полуось; ШРУС подвески Ford Explorer. ШРУС подвески Ford Explorer в ... (Гарантия ДО 2-Х ЛЕТ) Febest '2110Explr. F",
-      "chunks_full_len": 858,
+      "n_chunks": 1,
+      "chunks_snippet": "шрус передний Ford Explorer II 1998",
+      "chunks_full_len": 35,
       "source_ok": false,
       "answer_verdict": "incorrect",
       "answer_key_facts": {
@@ -494,7 +493,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 1.07
+      "total_latency_s": 0.54
     },
     {
       "id": "ford-02",
@@ -508,15 +507,15 @@
       "dcd_domain_ok": true,
       "dcd_collection_ok": true,
       "dcd_latency_s": 0.016,
-      "actual_source": "web",
-      "trace": "ZVec→MCP→Web",
-      "score": 0.6,
-      "latency": 3.02,
+      "actual_source": "empty",
+      "trace": "ZVec→MCP→Web→empty",
+      "score": 0.3002655506134033,
+      "latency": 0.49,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "13 апр. 2010 г. · По данным Carfax у меня SOHC. В VIN присутствует буква \"X\" что соответствует OHV двиглу. Как точно определить какой стоит у меня? (Вариант ...\nОценка 4,9(47 820)Двигатель б/у контрактный FORD 99X, 4.0 OHV 12v 160hp/118kw горл. R, засл. мех. (4AT) Explorer II 96 UN105/150 (б/генер. /ГУР/конд. /кат. /засл ...\nОценка 4,8(337)Двигатель для Ford Explorer 4.0 sohc V6. 460 000 ₽. Москва. ДВС Ford Explorer 4 Cologne V6 SOHC (4.0L V6 8L2Z 6007 F; 8L2Z 6006 CRM; 8S 962 AB в наличии на ..",
-      "chunks_full_len": 763,
+      "n_chunks": 1,
+      "chunks_snippet": "| Параметр | Значение |\n|----------|----------|\n| **VIN** | 1FMZU34E6WUD14705 |\n| **Год** | 1998 |\n| **Привод** | AWD (полный, раздатка) |\n| **Двигатель** | 4.0L V6 SOHC, 205 л.с. |\n| **Кузов** | 4-дверный XL |\n| **КПП** | 5-ступ МКПП |",
+      "chunks_full_len": 236,
       "source_ok": false,
       "answer_verdict": "incorrect",
       "answer_key_facts": {
@@ -531,7 +530,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 3.04
+      "total_latency_s": 0.5
     },
     {
       "id": "ford-03",
@@ -544,16 +543,16 @@
       "dcd_confidence": 0.4,
       "dcd_domain_ok": true,
       "dcd_collection_ok": true,
-      "dcd_latency_s": 0.024,
-      "actual_source": "web",
-      "trace": "ZVec→MCP→Web",
-      "score": 0.6,
+      "dcd_latency_s": 0.017,
+      "actual_source": "empty",
+      "trace": "ZVec→MCP→Web→empty",
+      "score": 0.3413041830062866,
       "latency": 3.02,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "Оценка 4,6(111)Шины 235/75 R15 на Ford Explorer 1999 5.0 111 ; Roadcruza RA1100 P235/75 R15 105T (RWL) · 7 920 ₽. Roadcruza RA1100 P235/75 R15 105T (RWL). 4.9. 8270 ; Roadcruza ...\nКупить автомобильные шины 235/75 R15 для Ford Explorer 5 2002 в Москве. Широкий ассортимент резины 235/75 R15 для Ford Explorer от известных производителей.\nШины R15 на Ford Explorer ; Код товара: 59204. Cordiant. Cordiant All Terrain 235/75 R15 109T · Cordiant · Шины Cordiant All Terrain 235/75 R15 109T для Ford ...\n",
-      "chunks_full_len": 812,
+      "n_chunks": 1,
+      "chunks_snippet": "```\n**Зимние шины Ford Explorer II 1998 (AWD)**\n\nРазмер завода: 235/75R15 или 255/70R16\n\n| Модель | Размер | Цена | Где |\n|--------|--------|------|-----|\n| Nokian Hakkapeliitta R5 | 235/75R15 | 5 200₽ | [Drom](link) |\n| Cordiant Snow Cross | 235/75R15 | 3 400₽ | [Avito](link) |\n...\n```",
+      "chunks_full_len": 287,
       "source_ok": false,
       "answer_verdict": "incorrect",
       "answer_key_facts": {
@@ -568,7 +567,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 3.05
+      "total_latency_s": 3.04
     },
     {
       "id": "ford-04",
@@ -581,16 +580,16 @@
       "dcd_confidence": 1.0,
       "dcd_domain_ok": true,
       "dcd_collection_ok": true,
-      "dcd_latency_s": 0.015,
-      "actual_source": "web",
-      "trace": "ZVec→MCP→Web",
-      "score": 0.6,
-      "latency": 0.84,
+      "dcd_latency_s": 0.013,
+      "actual_source": "empty",
+      "trace": "ZVec→MCP→Web→empty",
+      "score": 0.4088415503501892,
+      "latency": 0.51,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "11 нояб. 2013 г. · если менять пыльник внутренний левого шруса надо откручивать ступечную гайку и снимать поворотный кулак или можно обойтись откручиванием части ...\n24 авг. 2016 г. · Есть 3 пути замены внешнего пыльника. 1) Вытащить весь привод, снять пыльник с трипойда, отмыть трипойд, снять стопорное кольцо, при помощи ...\n9 июл. 2023 г. · Расскажу как поменять пыльник внутреннего ШРУС на примере своего автомобиля ... Универсальная инструкция по замене пыльника ШРУС. 274 views · 2 ...\nЗамена ",
-      "chunks_full_len": 817,
+      "n_chunks": 1,
+      "chunks_snippet": "| Позиция | Артикул | Кол-во | Примечание |\n|---------|---------|--------|------------|\n| Линк стабилизатора | F5TZ-5A468-A | 2 | Уточнить какие нужны |\n| Пыльник ШРУСа | Febest 2117PEXP / EMPI 862324D | 1 | Если меняешь ШРУС |",
+      "chunks_full_len": 227,
       "source_ok": false,
       "answer_verdict": "incorrect",
       "answer_key_facts": {
@@ -605,7 +604,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.86
+      "total_latency_s": 0.52
     },
     {
       "id": "ford-05",
@@ -618,16 +617,16 @@
       "dcd_confidence": 0.27,
       "dcd_domain_ok": true,
       "dcd_collection_ok": true,
-      "dcd_latency_s": 0.019,
-      "actual_source": "web",
-      "trace": "ZVec→MCP→Web",
-      "score": 0.6,
-      "latency": 0.48,
+      "dcd_latency_s": 0.018,
+      "actual_source": "empty",
+      "trace": "ZVec→MCP→Web→empty",
+      "score": 0.3864707946777344,
+      "latency": 0.4,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "10 июл. 2024 г. · Подробная видеоинструкция как установить и настроить магнитолу Teyes Lux One на автомобиль Ford Explorer 5( 2011-2019) Заказать оригинальную ...\n7 сент. 2023 г. · Цена 35000₽ установка нештатная, в сервисе. Почесал репу. Нештатная? Мы так тоже умеем. Нахожу магнитолу за смешные 3000₽ для экспериментов, по ...\n27 февр. 2025 г. · Обзор установки головного устройства Canbox M-Line 7812-0066 для Форд Эксплорер 5 поколения. Подходит для: Ford Explorer 5 (2010-2019) ...\n30 июл. 2021 ",
-      "chunks_full_len": 804,
+      "n_chunks": 1,
+      "chunks_snippet": "**Замена штатных колонок в Ford Explorer II (1998, 4‑дв.)**  ",
+      "chunks_full_len": 61,
       "source_ok": false,
       "answer_verdict": "incorrect",
       "answer_key_facts": {
@@ -642,7 +641,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.5
+      "total_latency_s": 0.42
     },
     {
       "id": "devops-01",
@@ -656,15 +655,15 @@
       "dcd_domain_ok": true,
       "dcd_collection_ok": false,
       "dcd_latency_s": 0.024,
-      "actual_source": "web",
-      "trace": "ZVec→MCP→Web",
-      "score": 0.6,
-      "latency": 0.67,
+      "actual_source": "empty",
+      "trace": "ZVec→MCP→Web→empty",
+      "score": 0.4014735221862793,
+      "latency": 0.83,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "В данном руководстве мы с Вами подробно рассмотрим настройку VLESS TCP REALITY + FLOW + uTLS, а так же рассмотрим детально механизмы их работы.\n24 дек. 2024 г. · В статье рассмотрим 3 способа настройки VPN-подключения с VLESS и Reality. VLESS — это современный протокол передачи данных, ...\n21 июн. 2025 г. · В этом видео я расскажу, как создать собственный VPN Vless Reality на голом ядре X-Ray Core без использования графических панелей управления ...\n23 мар. 2025 г. · Если вы уже установили xray ",
-      "chunks_full_len": 778,
+      "n_chunks": 1,
+      "chunks_snippet": "```\n\n**ВНИМАНИЕ:** В xray 26.3+ поле `password` в `realitySettings` — это публичный ключ. Если оно не заполнено — Reality inbound НЕ РАБОТАЕТ (порт слушает, но клиенты не подключаются). При создании конфига вручную — обязательно добавлять:\n\n```json\n\"realitySettings\": {\n  \"privateKey\": \"...\",\n  \"password\": \"...\",  // ← публичный ключ, ОБЯЗАТЕЛЬНО\n  \"shortIds\": [...]\n}\n```\n\nВ sub_server.py публичный ключ должен быть константой, захардкоженной при настройке сервера.",
+      "chunks_full_len": 467,
       "source_ok": false,
       "answer_verdict": "incorrect",
       "answer_key_facts": {
@@ -679,7 +678,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.69
+      "total_latency_s": 0.85
     },
     {
       "id": "devops-02",
@@ -692,16 +691,16 @@
       "dcd_confidence": 0.4,
       "dcd_domain_ok": true,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.021,
-      "actual_source": "web",
-      "trace": "ZVec→MCP→Web",
-      "score": 0.6,
-      "latency": 3.02,
+      "dcd_latency_s": 0.017,
+      "actual_source": "empty",
+      "trace": "ZVec→MCP→Web→empty",
+      "score": 0.35996341705322266,
+      "latency": 0.5,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "21 мар. 2025 г. · Для работы с Nginx Proxy Manager нам потребуются Docker и Docker Compose, которые мы установим из официального репозитория Docker. Для этого ...\n16 янв. 2026 г. · Nginx Proxy Manager (NPM) — это бесплатный open-source инструмент с веб-интерфейсом, который упрощает настройку обратного прокси на базе Nginx.\n30 янв. 2023 г. · Заведи запись nextcloud.docker в hosts на локалхост и ходи по нему через браузер. И в server_name nginx конфиг возможно стоит добавить.\n5 сент. 2022 г. · Уст",
-      "chunks_full_len": 786,
+      "n_chunks": 1,
+      "chunks_snippet": "- After any `kill` of docker-proxy processes, verify all containers still have their proxies\n- Monitor port availability from the host (not just container health)\n- If using nginx as reverse proxy to Docker containers, consider using container IP directly (`proxy_pass http://172.18.0.x:8008`) instead of going through docker-proxy + 127.0.0.1, which eliminates the extra failure point",
+      "chunks_full_len": 385,
       "source_ok": false,
       "answer_verdict": "incorrect",
       "answer_key_facts": {
@@ -716,7 +715,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 3.04
+      "total_latency_s": 0.52
     },
     {
       "id": "devops-03",
@@ -729,16 +728,16 @@
       "dcd_confidence": 0.92,
       "dcd_domain_ok": true,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.019,
-      "actual_source": "web",
-      "trace": "ZVec→MCP→Web",
-      "score": 0.6,
-      "latency": 0.8,
+      "dcd_latency_s": 0.018,
+      "actual_source": "empty",
+      "trace": "ZVec→MCP→Web→empty",
+      "score": 0.3425107002258301,
+      "latency": 1.02,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "27 янв. 2016 г. · В предыдущей части мы наконец-то сервер запустили. Но достучаться до него возможности нет поскольку iptables все еще не настроены и блокируют ...\n10 февр. 2017 г. · 1-я точка: OpenVPN сервер на базе Ubuntu 16.04 (в сети №1 с белым IP-адресом) 2-я точка: сервер 1С (в сети №2) . 3-я точка: пул клиентов в ...\n10 февр. 2017 г. · 1. Для того что бы правила фаервола срабатывали в vpn сети OpenVPN сервера, в конфигурации этого сервера исключаем опцию client-to-client. · 2.В ...\n16 дек",
-      "chunks_full_len": 829,
+      "n_chunks": 1,
+      "chunks_snippet": "curl wget openssh-client openssh-server openssh-sftp-server autossh\niputils-ping iproute2 dnsutils iptables nftables network-manager",
+      "chunks_full_len": 132,
       "source_ok": false,
       "answer_verdict": "incorrect",
       "answer_key_facts": {
@@ -753,7 +752,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.82
+      "total_latency_s": 1.04
     },
     {
       "id": "devops-04",
@@ -766,16 +765,16 @@
       "dcd_confidence": 0.28,
       "dcd_domain_ok": true,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.023,
-      "actual_source": "web",
-      "trace": "ZVec→MCP→Web",
-      "score": 0.6,
-      "latency": 3.02,
+      "dcd_latency_s": 0.018,
+      "actual_source": "empty",
+      "trace": "ZVec→MCP→Web→empty",
+      "score": 0.4340805411338806,
+      "latency": 0.62,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "18 сент. 2025 г. · Всё достаточно просто, надо написать текстовый файл с расширением .service Ну, например my_daemon.service с примерно таким содержимым:\n29 июн. 2023 г. · Задержка в скрипте не нужна, правильнее будет в файле .service прописать, что ему нужно - всякие After=network.target или After=mnt-storage.\n5 дек. 2019 г. · Самое главное — выбрать final.target — target, к которому система должна придти при запуске. В процессе запуска systemd пройдёт по зависимостям ...\nЗадача: запускать скри",
-      "chunks_full_len": 797,
+      "n_chunks": 1,
+      "chunks_snippet": "systemctl is-active <service.name>\nsystemctl is-enabled <service.name>  # auto-restart on reboot?",
+      "chunks_full_len": 97,
       "source_ok": false,
       "answer_verdict": "incorrect",
       "answer_key_facts": {
@@ -790,7 +789,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 3.04
+      "total_latency_s": 0.63
     },
     {
       "id": "devops-05",
@@ -803,16 +802,16 @@
       "dcd_confidence": 0.22,
       "dcd_domain_ok": false,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.02,
-      "actual_source": "web",
-      "trace": "ZVec→MCP→Web",
-      "score": 0.6,
-      "latency": 0.58,
+      "dcd_latency_s": 0.022,
+      "actual_source": "empty",
+      "trace": "ZVec→MCP→Web→empty",
+      "score": 0.4590930938720703,
+      "latency": 0.51,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "Для резервного копирования баз PostgreSQL нужно установить агент Кибер Бэкап для операционной системы, которую вы используете (агент Windows или агент ...\n... Установка и настройка сервера 1С v8.3.xx на ОС Astra Linux. Особенностью установки данном случае является назначение пароля служебному пользователю postgresql ...\n9 сент. 2021 г. · ... postgresql/12/main/pg_hba.conf 2) Находим строку: local all ... Установка PostgreSQL на Linux: https://neosystems.ru/... Настройка ...\n18 нояб. 2024 г. · Та",
-      "chunks_full_len": 807,
+      "n_chunks": 1,
+      "chunks_snippet": "docker run -d -v pgdata:/var/lib/postgresql/data --name db postgres:16",
+      "chunks_full_len": 70,
       "source_ok": false,
       "answer_verdict": "incorrect",
       "answer_key_facts": {
@@ -827,7 +826,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.6
+      "total_latency_s": 0.53
     },
     {
       "id": "swdev-01",
@@ -840,11 +839,11 @@
       "dcd_confidence": 0.33,
       "dcd_domain_ok": true,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.014,
+      "dcd_latency_s": 0.013,
       "actual_source": "empty",
       "trace": "ZVec→MCP→Web→empty",
       "score": 0.3850076198577881,
-      "latency": 0.24,
+      "latency": 0.26,
       "_trace_stages": [],
       "_trace_summary": "",
       "n_chunks": 1,
@@ -864,7 +863,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.25
+      "total_latency_s": 0.28
     },
     {
       "id": "swdev-02",
@@ -881,7 +880,7 @@
       "actual_source": "empty",
       "trace": "ZVec→MCP→Web→empty",
       "score": 0.3304169774055481,
-      "latency": 0.21,
+      "latency": 0.25,
       "_trace_stages": [],
       "_trace_summary": "",
       "n_chunks": 1,
@@ -901,7 +900,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.23
+      "total_latency_s": 0.27
     },
     {
       "id": "swdev-03",
@@ -914,16 +913,16 @@
       "dcd_confidence": 0.11,
       "dcd_domain_ok": false,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.026,
-      "actual_source": "web",
-      "trace": "DCD(conf=0.11<0.2)→Web",
-      "score": 0.6,
-      "latency": 0.75,
+      "dcd_latency_s": 0.017,
+      "actual_source": "empty",
+      "trace": "DCD(conf=0.11<0.2)→empty",
+      "score": 0.399578332901001,
+      "latency": 0.58,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "13 дек. 2017 г. · В общем я на новом серваке установил 2016 сервер, поднял домен, DHCP, DNS, выход в инет через роутер, то есть у сервака один сетевой интерфейс.\n16 дек. 2021 г. · Привет! Я хочу настроить локальные домены для некоторых своих серверов на Raspberry Pi, и заметил, что некоторые пользовательские программы, ...\n7 июн. 2015 г. · Настройка контроллеров домена для работы в разных подсетях. Первым делом устанавливаем контроллер домена в новом лесу на первом сервере xs- ...\n7 февр. 2011 г",
-      "chunks_full_len": 804,
+      "n_chunks": 1,
+      "chunks_snippet": "> Полная документация: `references/dcd-rag-domain-filter.md`\n> Паттерн: indexer → domain metadata → search `where={\"domain\": ...}` → plugin hook → router",
+      "chunks_full_len": 153,
       "source_ok": false,
       "answer_verdict": "incorrect",
       "answer_key_facts": {
@@ -938,7 +937,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.78
+      "total_latency_s": 0.59
     },
     {
       "id": "manuals-01",
@@ -951,11 +950,11 @@
       "dcd_confidence": 0.22,
       "dcd_domain_ok": false,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.018,
+      "dcd_latency_s": 0.01,
       "actual_source": "empty",
       "trace": "ZVec→MCP→Web→empty",
       "score": 0.38280439376831055,
-      "latency": 0.27,
+      "latency": 0.31,
       "_trace_stages": [],
       "_trace_summary": "",
       "n_chunks": 1,
@@ -975,7 +974,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.29
+      "total_latency_s": 0.32
     },
     {
       "id": "manuals-02",
@@ -988,16 +987,16 @@
       "dcd_confidence": 0.25,
       "dcd_domain_ok": false,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.013,
-      "actual_source": "web",
-      "trace": "ZVec→MCP→Web",
-      "score": 0.6,
+      "dcd_latency_s": 0.018,
+      "actual_source": "empty",
+      "trace": "ZVec→MCP→Web→empty",
+      "score": 0.3951070308685303,
       "latency": 3.02,
       "_trace_stages": [],
       "_trace_summary": "",
-      "n_chunks": 5,
-      "chunks_snippet": "Например, с помощью Docker Compose можно одной командой запустить весь проект, включая веб-сервер, базу данных и приложение, а также настроить сеть между ними.Что такое YAML · Создание проекта для...\n24 апр. 2025 г. · Ниже разберём, как сделать Docker Compose файл для реального проекта: шаг за шагом, с примерами и пояснениями. Шаг 1. Создайте файл docker- ...\n2 мая 2019 г. · ·1. Создание проекта · Файл docker-compose.yml . Это файл Docker Compose, который будет содержать инструкции, необходимые ",
-      "chunks_full_len": 846,
+      "n_chunks": 1,
+      "chunks_snippet": "docker compose config                  # validate and view resolved config\n```\n\n**Minimal compose.yml example:**\n\n```yaml\nservices:\n  api:\n    build: .\n    ports:\n      - \"3000:3000\"\n    environment:\n      - DATABASE_URL=postgres://user:pass@db:5432/mydb\n    depends_on:\n      db:\n        condition: service_healthy\n\n  db:\n    image: postgres:16-alpine\n    environment:\n      POSTGRES_USER: user\n      POSTGRES_PASSWORD: pass\n      POSTGRES_DB: mydb\n    volumes:\n      - pgdata:/var/lib/postgresql/da",
+      "chunks_full_len": 500,
       "source_ok": false,
       "answer_verdict": "incorrect",
       "answer_key_facts": {
@@ -1012,7 +1011,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 3.03
+      "total_latency_s": 3.04
     },
     {
       "id": "manuals-03",
@@ -1025,11 +1024,11 @@
       "dcd_confidence": 0.17,
       "dcd_domain_ok": false,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.022,
+      "dcd_latency_s": 0.015,
       "actual_source": "empty",
       "trace": "DCD(conf=0.17<0.2)→empty",
       "score": 0.323727011680603,
-      "latency": 0.41,
+      "latency": 0.53,
       "_trace_stages": [],
       "_trace_summary": "",
       "n_chunks": 1,
@@ -1049,7 +1048,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.43
+      "total_latency_s": 0.54
     },
     {
       "id": "infra-01",
@@ -1062,11 +1061,11 @@
       "dcd_confidence": 0.0,
       "dcd_domain_ok": false,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.023,
+      "dcd_latency_s": 0.018,
       "actual_source": "empty",
       "trace": "DCD(conf=0.00<0.2)→empty",
       "score": 0.37046492099761963,
-      "latency": 0.25,
+      "latency": 0.3,
       "_trace_stages": [],
       "_trace_summary": "",
       "n_chunks": 1,
@@ -1086,7 +1085,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.27
+      "total_latency_s": 0.32
     },
     {
       "id": "research-01",
@@ -1099,11 +1098,11 @@
       "dcd_confidence": 0.33,
       "dcd_domain_ok": false,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.016,
+      "dcd_latency_s": 0.019,
       "actual_source": "empty",
       "trace": "ZVec→MCP→Web→empty",
       "score": 0.4942760467529297,
-      "latency": 3.02,
+      "latency": 0.53,
       "_trace_stages": [],
       "_trace_summary": "",
       "n_chunks": 1,
@@ -1123,7 +1122,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 3.04
+      "total_latency_s": 0.55
     },
     {
       "id": "reject-01",
@@ -1136,11 +1135,11 @@
       "dcd_confidence": 0.0,
       "dcd_domain_ok": false,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.017,
+      "dcd_latency_s": 0.01,
       "actual_source": "empty",
       "trace": "DCD(conf=0.00<0.2)→empty",
       "score": 0.5901025533676147,
-      "latency": 0.34,
+      "latency": 0.22,
       "_trace_stages": [],
       "_trace_summary": "",
       "n_chunks": 1,
@@ -1160,7 +1159,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.35
+      "total_latency_s": 0.23
     },
     {
       "id": "reject-02",
@@ -1173,11 +1172,11 @@
       "dcd_confidence": 0.0,
       "dcd_domain_ok": false,
       "dcd_collection_ok": false,
-      "dcd_latency_s": 0.01,
+      "dcd_latency_s": 0.009,
       "actual_source": "empty",
       "trace": "DCD(conf=0.00<0.2)→empty",
       "score": 0.4809075593948364,
-      "latency": 0.21,
+      "latency": 0.25,
       "_trace_stages": [],
       "_trace_summary": "",
       "n_chunks": 1,
@@ -1197,7 +1196,7 @@
         ],
         "verdict": "incorrect"
       },
-      "total_latency_s": 0.23
+      "total_latency_s": 0.26
     }
   ]
 }

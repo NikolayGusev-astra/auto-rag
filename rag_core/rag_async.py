@@ -38,8 +38,8 @@ def _cache_set(key: str, result: dict):
         _CACHE.popitem(last=False)
 
 # ── Thresholds ───────────────────────────────────────────────────
-LLM_EVAL_HIGH_THRESHOLD = COSINE_THRESHOLDS.get("factual", 0.6)
-LLM_EVAL_LOW_THRESHOLD = COSINE_THRESHOLDS.get("default", 0.4)
+LLM_EVAL_HIGH_THRESHOLD = COSINE_THRESHOLDS.get("factual", 0.35)
+LLM_EVAL_LOW_THRESHOLD = COSINE_THRESHOLDS.get("default", 0.25)
 
 # ── Embedding via curl (requests fails on localhost:1234) ─────────
 def _embed(text: str) -> list[float]:
