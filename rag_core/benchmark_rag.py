@@ -32,7 +32,7 @@ def run_v0(query):
     r = dcd(query)
     traces.append('DCD({:.2f}s)'.format(time.time()-t1))
     
-    zpath = r'C:\Users\USER\.cache\zvec\wiki'
+    zpath = r'C:\Users\n.gusev\.cache\zvec\wiki'
     with open(zpath + r'\LOCK', 'w') as f: f.write('')
     
     t1 = time.time()
