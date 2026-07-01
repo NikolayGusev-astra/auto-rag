@@ -83,7 +83,7 @@ WEB_SEARCH_ENABLED = os.getenv("RAG_WEB_SEARCH", "true").lower() == "true"
 WEB_SEARCH_MAX_RESULTS = int(os.getenv("RAG_WEB_SEARCH_RESULTS", "5"))
 WEB_SEARCH_TIMEOUT = int(os.getenv("RAG_WEB_SEARCH_TIMEOUT", "15"))
 WEB_SEARCH_MAX_CHARS = int(os.getenv("RAG_WEB_SEARCH_MAX_CHARS", "3000"))
-SEARXNG_URL = os.getenv("RAG_SEARXNG_URL", "http://localhost:8888")
+SEARXNG_URL = os.getenv("RAG_SEARXNG_URL", "http://localhost:8080")
 SEARXNG_ENABLED = os.getenv("RAG_SEARXNG", "true").lower() == "true"
 
 # MCP servers (CRAG fallback chain) — all via env vars

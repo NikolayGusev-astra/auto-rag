@@ -25,8 +25,6 @@ from pathlib import Path
 #        2 = средний (часто встречается в домене)
 #        1 = слабый (может пересекаться с другими доменами)
 DOMAIN_KEYWORDS = {
-    
-    },
     "software-dev": {
         "weight": 3,
         "anti_keywords": ["лог", "сервер", "деплой", "docker", "nginx",
