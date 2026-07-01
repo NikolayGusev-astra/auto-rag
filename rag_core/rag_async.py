@@ -84,12 +84,25 @@ def _embed(text: str) -> list[float]:
     return [0.0] * EMBEDDING_DIM
 
 # ── Blocking helpers (thread pool) ───────────────────────────────
-def _blocking_zvec(query: str) -> dict:
+def _blocking_zvec(query: str, domain: str = "") -> dict:
     emb = _embed(query)
     from zvec import Query as ZQ
     coll = _get_zvec_collection()
-    doclist = coll.query(queries=[ZQ(field_name="embedding", vector=emb)], topk=5,
-                         output_fields=["source", "heading", "category", "node", "content", "title"])
+    # Фильтр по категории: skills замусоривают выдачу, их используем только для software-dev
+    filter_expr = None
+    if domain in ("ford-club", "infrastructure", "manuals", "research"):
+        filter_expr = "category = 'wiki'"
+    elif domain in ("devops", "publishing", "analysis", "automation", "personal", "creative"):
+        filter_expr = "category = 'wiki'"
+    elif domain == "software-dev":
+        filter_expr = None  # и wiki, и skills
+    query_kwargs = dict(
+        queries=[ZQ(field_name="embedding", vector=emb)], topk=5,
+        output_fields=["source", "heading", "category", "node", "content", "title"]
+    )
+    if filter_expr:
+        query_kwargs["filter"] = filter_expr
+    doclist = coll.query(**query_kwargs)
     chunks = []
     for d in doclist:
         txt = (d.fields or {}).get("content", "") or (d.fields or {}).get("text", "")
@@ -260,7 +273,7 @@ async def async_rag_search(query: str, dcd_result: dict, trace: RagTrace | None 
 
     loop = asyncio.get_running_loop()
 
-    zvec_task = loop.run_in_executor(_EXECUTOR, _blocking_zvec, query)
+    zvec_task = loop.run_in_executor(_EXECUTOR, _blocking_zvec, query, domain)
     web_task = loop.run_in_executor(_EXECUTOR, _blocking_web, query, domain, collection)
 
     zvec_result, web_chunks = await asyncio.gather(zvec_task, web_task)
