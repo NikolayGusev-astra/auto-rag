@@ -9,7 +9,13 @@ from concurrent.futures import ThreadPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from rag_config import *
 from rag_mcp_client import MCPClient
-from rag_trace import RagTrace
+
+try:
+    from rag_trace import RagTrace
+except ImportError:
+    class RagTrace:
+        def __init__(self, query: str = ""): pass
+        def add_event(self, *a, **kw): pass
 
 _EXECUTOR = ThreadPoolExecutor(max_workers=6)
 
@@ -31,7 +37,7 @@ def _cache_set(key: str, result: dict):
     while len(_CACHE) > _CACHE_MAX:
         _CACHE.popitem(last=False)
 
-# ── Thresholds from rag_config ───────────────────────────────────
+# ── Thresholds ───────────────────────────────────────────────────
 LLM_EVAL_HIGH_THRESHOLD = COSINE_THRESHOLDS.get("factual", 0.6)
 LLM_EVAL_LOW_THRESHOLD = COSINE_THRESHOLDS.get("default", 0.4)
 
@@ -55,7 +61,7 @@ def _blocking_zvec(query: str) -> dict:
     import zvec
     from zvec import Query as ZQ
     from rag_config import ensure_zvec_lock
-    zpath = os.path.join(ZVEC_PATH, ZVEC_WIKI_COLLECTION)
+    zpath = os.path.join(ZVEC_PATH, ZVEC_COLLECTION)
     ensure_zvec_lock(zpath)
     coll = zvec.open(zpath)
     doclist = coll.query(queries=[ZQ(field_name="embedding", vector=emb)], topk=5,
@@ -74,73 +80,31 @@ def _blocking_mcp_single(name: str, query: str) -> list[dict]:
     mc = MCPClient(timeout=15)
     return mc.query(name, cfg, query, 3)
 
-def _blocking_mcp(query: str, domain: str, collection: str) -> dict:
-    dm = DCD_COLLECTION_MCP_MAP.get(domain, {})
-    primary = dm.get(collection) or dm.get("*")
-    sources = []
-    if primary and primary in MCP_SERVERS:
-        sources.append(primary)
-    all_results = {}
-    for src in sources:
-        chunks = _blocking_mcp_single(src, query)
-        if chunks: all_results[src] = chunks
-    if all_results:
-        best_src = max(all_results, key=lambda s: len(all_results[s]))
-        return {"source": best_src, "chunks": all_results[best_src]}
-    return {"source": None, "chunks": []}
-
 def _blocking_web(query: str, domain: str = "", collection: str = "") -> list[dict]:
-    """Web search with DCD-preferred source selection."""
-    preferred = None
-    if domain and collection:
-        dm = DCD_PREFERRED_WEB_SOURCE.get(domain, {})
-        preferred = dm.get(collection) or dm.get('*')
-    if preferred == 'skip':
-        return []
-
-    import subprocess as _sp, urllib.parse, json as _json
-    def searxng(q):
-        encoded = urllib.parse.quote(q)
-        try:
-            r = _sp.run(['curl', '-s', '--max-time', '10', f'{SEARXNG_URL}/search?q={encoded}&format=json'],
-                        capture_output=True, text=True, timeout=15)
-            if r.returncode != 0 or not r.stdout: return []
-            data = _json.loads(r.stdout)
-            results = data.get('results', [])[:WEB_SEARCH_MAX_RESULTS]
+    """Web search with domain-based source selection."""
+    import subprocess as _sp, urllib.parse
+    # Determine preferred source
+    preferred = DCD_PREFERRED_WEB_SOURCE.get(domain, {}).get(collection) or \
+                DCD_PREFERRED_WEB_SOURCE.get(domain, {}).get("*")
+    if preferred == "skip": return []
+    # Always try SearXNG first
+    encoded = urllib.parse.quote(query)
+    try:
+        r = _sp.run(["curl", "-s", "--max-time", "10", f"{SEARXNG_URL}/search?q={encoded}&format=json"],
+                    capture_output=True, text=True, timeout=15)
+        if r.returncode == 0 and r.stdout:
+            data = json.loads(r.stdout)
+            results = data.get("results", [])[:WEB_SEARCH_MAX_RESULTS]
             chunks = []
             for wr in results:
-                text = wr.get('content', '') or wr.get('snippet', '')
+                text = wr.get("content", "") or wr.get("snippet", "")
                 if text:
-                    chunks.append({'text': text[:WEB_SEARCH_MAX_CHARS],
-                                  'title': wr.get('title', ''), 'url': wr.get('url', ''),
-                                  'source': 'web/searxng'})
+                    chunks.append({"text": text[:WEB_SEARCH_MAX_CHARS],
+                                  "title": wr.get("title", ""), "url": wr.get("url", ""),
+                                  "source": "web/searxng"})
             return chunks
-        except: return []
-    
-    def ddg(q):
-        import re
-        encoded = urllib.parse.quote(q[:200])
-        try:
-            r = _sp.run(['curl', '-s', '--max-time', '10',
-                        f'https://html.duckduckgo.com/html/?q={encoded}'],
-                       capture_output=True, text=True, timeout=15)
-            if r.returncode != 0 or not r.stdout: return []
-            chunks = []
-            for block in re.findall(r'<a[^>]+class="result__a"[^>]*href="([^"]+)"[^>]*>([^<]+)</a>.*?<a[^>]+class="result__snippet"[^>]*>([^<]*)</a>', r.stdout, re.DOTALL):
-                url, title, snippet = block
-                text = (snippet or '').strip()
-                if text:
-                    chunks.append({'text': text, 'title': title.strip(), 'url': url, 'source': 'web/ddg'})
-            return chunks[:5]
-        except: return []
-
-    if preferred == 'ddg':
-        return ddg(query)
-    chunks = searxng(query)
-    if not chunks:
-        chunks = ddg(query)
-    return chunks
-
+    except: pass
+    return []
 
 def _blocking_llm_eval(query: str, chunks: list) -> float:
     import subprocess as _sp, json, re
@@ -150,12 +114,15 @@ def _blocking_llm_eval(query: str, chunks: list) -> float:
         payload = json.dumps({
             "model": LLM_REWRITE_MODEL,
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.0, "max_tokens": 20,
+            "temperature": 0.0, "max_tokens": 200,
         })
         r = _sp.run(["curl", "-s", "--max-time", "15", LM_STUDIO_CHAT_URL, "-d", payload,
                      "-H", "Content-Type: application/json"], capture_output=True, text=True, timeout=20)
         if r.returncode == 0 and r.stdout:
-            content = json.loads(r.stdout)["choices"][0]["message"]["content"].strip()
+            data = json.loads(r.stdout)
+            content = data["choices"][0]["message"].get("content", "") or ""
+            if not content:
+                content = data["choices"][0]["message"].get("reasoning_content", "") or ""
             nums = re.findall(r"0\.\d+|1\.0", content)
             if nums: return float(nums[0])
     except: pass
@@ -169,7 +136,6 @@ def _extract_entities(query: str) -> set[str]:
     if key in _ENTITY_CACHE: return _ENTITY_CACHE[key]
     entities = set()
     ql = query.lower()
-    # URLs
     urls = re.findall(r"https?://[^\s]+", query)
     entities.update(urls)
     for u in urls:
@@ -179,7 +145,6 @@ def _extract_entities(query: str) -> set[str]:
             parts = domain[0].split(".")
             if len(parts) >= 2: entities.add(parts[-2])
             if len(parts) >= 3: entities.add(parts[0])
-    # Products & technologies (Autolycus)
     known = [
         "terraform", "ansible", "docker", "kubernetes", "postgresql",
         "postgres", "redis", "nginx", "xray", "openvpn", "systemd",
@@ -190,15 +155,8 @@ def _extract_entities(query: str) -> set[str]:
     ]
     for prod in known:
         if prod in ql: entities.add(prod)
-    # OEM part numbers (F5TZ-3A427A)
     for m in re.finditer(r"\b[A-Z0-9]{3,5}-\d{3,6}[A-Z]?\b", query.upper()):
         entities.add(m.group())
-    # Capitalized words (product names, ADR numbers)
-    caps = re.findall(r"\b[A-Z][a-zA-Z0-9_-]{2,}\b", query)
-    for c in caps:
-        low = c.lower()
-        if low not in ("the","this","that","what","how","why","not","for","and","with","from","into","about"):
-            entities.add(low)
     _ENTITY_CACHE[key] = entities
     return entities
 
@@ -214,10 +172,14 @@ def _check_entities_in_query(query: str, chunks: list[dict]) -> bool | None:
     return False if missing_ratio >= 0.5 else True
 
 # ── Main async pipeline ───────────────────────────────────────────
-async def async_rag_search(query: str, dcd_result: dict) -> dict:
+async def async_rag_search(query: str, dcd_result: dict, trace: RagTrace | None = None) -> dict:
     domain = dcd_result.get("domain", "")
     collection = dcd_result.get("collection", "")
     confidence = dcd_result.get("confidence", 0)
+
+    if trace:
+        trace.begin("start", domain=domain, collection=collection, confidence=confidence)
+
     ck = _cache_key(query, domain)
 
     cached = _cache_get(ck)
@@ -225,7 +187,6 @@ async def async_rag_search(query: str, dcd_result: dict) -> dict:
 
     loop = asyncio.get_running_loop()
 
-    # Parallel ZVec + Web
     zvec_task = loop.run_in_executor(_EXECUTOR, _blocking_zvec, query)
     web_task = loop.run_in_executor(_EXECUTOR, _blocking_web, query, domain, collection)
 
@@ -233,11 +194,14 @@ async def async_rag_search(query: str, dcd_result: dict) -> dict:
     zvec_chunks = zvec_result["chunks"]
     max_score = zvec_result["max_score"]
 
+    if trace:
+        trace.begin("zvec", chunks=len(zvec_chunks), max_score=max_score)
+
     # Entity Match
     entities_ok = await loop.run_in_executor(_EXECUTOR, _check_entities_in_query, query, zvec_chunks)
 
     if entities_ok is False:
-        # ZVec false positive → MCP/web
+        if trace: trace.begin("entity_mismatch")
         result = await _fallback_to_mcp_web(query, domain, collection, loop)
         if result["chunks"]:
             _cache_set(ck, result); return result
@@ -245,14 +209,13 @@ async def async_rag_search(query: str, dcd_result: dict) -> dict:
             result = {"source": "web", "chunks": web_chunks, "score": 0.6,
                       "trace": f"ZVec({max_score:.2f})→EntityMismatch→Web"}
             _cache_set(ck, result); return result
-    elif entities_ok is True:
-        if max_score >= LLM_EVAL_HIGH_THRESHOLD:
-            result = {"source": "zvec", "chunks": zvec_chunks, "score": max_score,
-                      "trace": f"ZVec(score={max_score:.2f}✓entities)"}
-            _cache_set(ck, result); return result
+    elif entities_ok is True and max_score >= LLM_EVAL_HIGH_THRESHOLD:
+        result = {"source": "zvec", "chunks": zvec_chunks, "score": max_score,
+                  "trace": f"ZVec(score={max_score:.2f}✓entities)"}
+        _cache_set(ck, result); return result
 
-    # Low DCD confidence → MCP/web
     if confidence < 0.20:
+        if trace: trace.begin("low_confidence", confidence=confidence)
         result = await _fallback_to_mcp_web(query, domain, collection, loop)
         if result["chunks"]:
             _cache_set(ck, result); return result
@@ -264,7 +227,6 @@ async def async_rag_search(query: str, dcd_result: dict) -> dict:
                   "trace": f"DCD(conf={confidence:.2f}<0.2)→empty"}
         _cache_set(ck, result); return result
 
-    # Tiered eval
     if max_score >= LLM_EVAL_HIGH_THRESHOLD:
         result = {"source": "zvec", "chunks": zvec_chunks, "score": max_score,
                   "trace": f"ZVec(score={max_score:.2f}≥{LLM_EVAL_HIGH_THRESHOLD})"}
@@ -277,13 +239,12 @@ async def async_rag_search(query: str, dcd_result: dict) -> dict:
                       "trace": f"ZVec({max_score:.2f})→Qwen({llm_score:.2f})"}
             _cache_set(ck, result); return result
 
-    # ZVec not confident → MCP → web
     result = await _fallback_to_mcp_web(query, domain, collection, loop)
     if result["chunks"]:
         _cache_set(ck, result); return result
     if web_chunks:
         result = {"source": "web", "chunks": web_chunks, "score": 0.6,
-                  "trace": "ZVec→MCP→empty→Web"}
+                  "trace": "ZVec→MCP→Web"}
         _cache_set(ck, result); return result
 
     result = {"source": "empty", "chunks": zvec_chunks[:1], "score": max_score,
