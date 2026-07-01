@@ -27,6 +27,27 @@ from rag_config import *
 from rag_mcp_client import MCPClient
 from rag_trace import RagTrace
 
+# ── Routing log ──
+_ROUTING_LOG = os.path.join(os.path.dirname(__file__), "routing_log.jsonl")
+_LAST_DCD = None  # set by async_rag_search for logging
+def _log_routing(query: str, dcd: dict, result: dict):
+    """Записать маршрутизацию запроса для DCD Learner."""
+    try:
+        entry = {
+            "query": query[:200],
+            "dcd_domain": dcd.get("domain", ""),
+            "dcd_collection": dcd.get("collection", ""),
+            "dcd_confidence": dcd.get("confidence", 0),
+            "actual_source": result.get("source", "?"),
+            "has_content": len(result.get("chunks", [])) > 0,
+            "chunks_count": len(result.get("chunks", [])),
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        }
+        with open(_ROUTING_LOG, "a") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
 _EXECUTOR = ThreadPoolExecutor(max_workers=6)
 
 # ── LRU cache ──────────────────────────────────────
@@ -45,10 +66,23 @@ def _cache_get(key: str) -> dict | None:
     return None
 
 
-def _cache_set(key: str, result: dict):
+def _cache_set(key: str, result: dict, dcd: dict | None = None):
     _CACHE[key] = result
     while len(_CACHE) > _CACHE_MAX:
         _CACHE.popitem(last=False)
+    # Log routing
+    d = dcd or _LAST_DCD
+    if d is not None:
+        # Extract query from _trace if available
+        query = ""
+        trace_val = result.get("_trace", "")
+        if isinstance(trace_val, str) and trace_val.startswith("{"):
+            try:
+                td = json.loads(trace_val)
+                query = td.get("query", "")
+            except:
+                pass
+        _log_routing(query[:200] if query else key[:30], d, result)
 
 
 # ── Embedding ──────────────────────────────────────
@@ -71,23 +105,31 @@ def _blocking_zvec(query: str) -> dict:
     import zvec
     from zvec import Query as ZQ
     emb = _embed(query)
-    coll = _get_zvec_collection()
-    # Все категории — wiki, .autolycus, llm-wiki — все нужны для контекста
-    # Но wiki приоритетнее: +0.10 к score, llm-wiki: +0.05
-    doclist = coll.query(queries=[ZQ(field_name="embedding", vector=emb)], topk=10,
-                         output_fields=["source", "heading", "category", "node", "content", "title"])
+    zpath = os.path.expanduser('~/.cache/zvec/wiki')
+    lock = zpath + '/LOCK'
+    try:
+        with open(lock, 'w') as f:
+            f.write('')
+    except OSError:
+        pass
+    coll = zvec.open(zpath)
+    # Фильтр: ищем только в wiki/llm-wiki контенте, не в skills
+    try:
+        doclist = coll.query(
+            queries=[ZQ(field_name='embedding', vector=emb)],
+            topk=5,
+            filter="category = \"wiki\" OR category = \"llm-wiki\"",
+            output_fields=["source", "heading", "content", "title"],
+        )
+    except Exception:
+        # fallback: без фильтра
+        doclist = coll.query(queries=[ZQ(field_name='embedding', vector=emb)], topk=5)
     chunks = []
     for d in doclist:
         txt = d.fields.get('text', '') or d.fields.get('content', '')
         if txt:
-            cat = (d.fields or {}).get("category", "")
-            boost = 0.10 if cat == "wiki" else (0.05 if cat == "llm-wiki" else 0.0)
-            score = min(d.score + boost, 1.0)
-            chunks.append({"text": txt[:500], "score": score,
-                          "source": (d.fields or {}).get("source", "zvec/wiki"),
-                          "category": cat})
-    chunks.sort(key=lambda c: c["score"], reverse=True)
-    return {"chunks": chunks[:5], "max_score": max((c["score"] for c in chunks), default=0)}
+            chunks.append({'text': txt, 'score': d.score, 'source': 'zvec/wiki'})
+    return {'chunks': chunks, 'max_score': max([c['score'] for c in chunks], default=0)}
 
 
 # ── MCP ────────────────────────────────────────────
@@ -335,12 +377,12 @@ async def _fallback_to_mcp_web(
     sources = []
     if primary and primary in MCP_SERVERS:
         sources.append(primary)
-    if domain == 'internal' and 'confluence' in MCP_SERVERS \
+    if domain == 'rusbitech' and 'confluence' in MCP_SERVERS \
             and 'confluence' not in sources:
         sources.append('confluence')
     if primary != 'lodestone' and 'lodestone' in MCP_SERVERS:
         sources.append('lodestone')
-    if primary != 'jira' and 'jira' in MCP_SERVERS and domain == 'internal':
+    if primary != 'jira' and 'jira' in MCP_SERVERS and domain == 'rusbitech':
         sources.append('jira')
 
     if trace:
@@ -388,6 +430,8 @@ async def async_rag_search(
     query: str, dcd_result: dict,
     trace: RagTrace | None = None,
 ) -> dict:
+    global _LAST_DCD
+    _LAST_DCD = dcd_result
     domain = dcd_result.get('domain', '')
     collection = dcd_result.get('collection', '')
     confidence = dcd_result.get('confidence', 0)
@@ -416,7 +460,7 @@ async def async_rag_search(
     # PATH A: rusbitech — ZVec + Lodestone + MCP + Web
     # ZVec включён, но с фильтром category="wiki"
     # ═══════════════════════════════════════════════
-    if domain == 'internal':
+    if domain == 'rusbitech':
         trace.event("rusbitech_path",
                      note="ZVec + Lodestone + MCP for rusbitech")
 
@@ -479,77 +523,24 @@ async def async_rag_search(
                     status="ok" if confluence_chunks else "empty")
         trace.event("web_result", chunks=len(web_chunks))
 
-        # Приоритет: Lodestone > Confluence > ZVec > Web
-        best_source = None
-        best_chunks = None
-
-        # 1. Lodestone — всегда лучший (Confluence docs)
-        if lodestone_chunks:
-            with trace.stage("llm_verify_lodestone"):
-                verified = await loop.run_in_executor(
-                    _EXECUTOR, _llm_verify, query, lodestone_chunks)
-                trace.event("llm_verify_result", source="lodestone",
-                            verified=verified)
-            if verified >= 0.3:
-                best_source = 'lodestone'
-                best_chunks = lodestone_chunks
-                trace.decision("source_selection", choice="lodestone",
-                               reason=f"lodestone + LLM score={verified:.2f}")
-
-        # 2. Confluence — если Lodestone пуст
-        if best_source is None and confluence_chunks:
-            with trace.stage("llm_verify_confluence"):
-                verified = await loop.run_in_executor(
-                    _EXECUTOR, _llm_verify, query, confluence_chunks)
-                trace.event("llm_verify_result", source="confluence",
-                            verified=verified)
-            if verified >= 0.3:
-                best_source = 'confluence'
-                best_chunks = confluence_chunks
-                trace.decision("source_selection", choice="confluence",
-                               reason=f"confluence + LLM score={verified:.2f}")
-
-        # 3. ZVec (wiki) — если Confluence не подошёл
-        if best_source is None and zvec_chunks:
-            # Для wiki-контента порог ниже (0.35 вместо 0.75)
-            # bge-m3 даёт 0.30-0.45 для коротких wiki-документов
-            if max_score >= 0.35:
-                with trace.stage("llm_verify_zvec"):
-                    verified = await loop.run_in_executor(
-                        _EXECUTOR, _llm_verify, query, zvec_chunks)
-                    trace.event("llm_verify_result", source="zvec",
-                                verified=verified, score=round(max_score, 2))
-                if verified >= 0.3:
-                    best_source = 'zvec'
-                    best_chunks = zvec_chunks
-                    trace.decision("source_selection", choice="zvec",
-                                   reason=f"zvec score={max_score:.2f} + LLM score={verified:.2f}")
-            else:
-                trace.event("zvec_low_score", score=round(max_score, 3),
-                            note="below 0.35 threshold for wiki")
-
-        # 4. Web — если ZVec не подошёл
-        if best_source is None and web_chunks:
-            with trace.stage("llm_verify_web"):
-                verified = await loop.run_in_executor(
-                    _EXECUTOR, _llm_verify, query, web_chunks)
-                trace.event("llm_verify_result", source="web",
-                            verified=verified)
-            if verified >= 0.3:
-                best_source = 'web'
-                best_chunks = web_chunks
-                trace.decision("source_selection", choice="web",
-                               reason=f"web + LLM score={verified:.2f}")
-
-        if best_source:
-            result = {'source': best_source, 'chunks': best_chunks,
-                      'score': 0.7, '_trace': trace.json()}
-            _cache_set(ck, result)
-            return result
-
-        result = {'source': 'empty', 'chunks': [], 'score': 0,
-                  'trace': 'ZVec+Lodestone+Web→no_valid_answer',
-                  '_trace': trace.json()}
+        # Возвращаем ВСЕ чанки из всех источников (main model решает)
+        all_sources = {
+            'lodestone': lodestone_chunks,
+            'confluence': confluence_chunks,
+            'zvec': zvec_chunks,
+            'web': web_chunks,
+        }
+        # primary = первый источник с данными (для обратной совместимости)
+        primary = next((s for s, c in all_sources.items() if c), 'empty')
+        
+        trace.decision("source_selection", choice=primary,
+                       reason="all sources returned, main model decides")
+        result = {
+            'source': primary,
+            'sources': all_sources,
+            'chunks': all_sources.get(primary, []),
+            'score': 0.7,
+            '_trace': trace.json()}
         _cache_set(ck, result)
         return result
 
@@ -608,25 +599,16 @@ async def async_rag_search(
             _cache_set(ck, result)
             return result
 
-    # High score ZVec → LLM verify
+    # ZVec score >= threshold → return (no LLM gate)
     if max_score >= LLM_EVAL_HIGH_THRESHOLD and _zvec_entities_match is not False:
-        with trace.stage("llm_verify_zvec"):
-            verified = await loop.run_in_executor(
-                _EXECUTOR, _llm_verify, query, zvec_chunks)
-            trace.event("llm_verify_result", verified=verified,
-                        score=round(max_score, 2))
-        if verified >= 0.3:
-            trace.decision("source_selection", choice="zvec",
-                           reason=f"zvec score {max_score:.2f} + LLM score={verified:.2f}")
-            result = {'source': 'zvec', 'chunks': zvec_chunks,
-                      'score': max_score,
-                      'trace': f'ZVec({max_score:.2f}→LLM{verified:.2f})',
-                      '_trace': trace.json()}
-            _cache_set(ck, result)
-            return result
-        else:
-            trace.event("zvec_llm_rejected",
-                        note=f"LLM rejected zvec score={max_score:.2f}")
+        trace.decision("source_selection", choice="zvec",
+                       reason=f"zvec score {max_score:.2f} >= threshold (no LLM gate)")
+        result = {'source': 'zvec', 'chunks': zvec_chunks,
+                  'score': max_score,
+                  'trace': f'ZVec({max_score:.2f})',
+                  '_trace': trace.json()}
+        _cache_set(ck, result)
+        return result
 
     # Low DCD confidence → MCP/Web
     if confidence < 0.20:
@@ -652,23 +634,7 @@ async def async_rag_search(
         _cache_set(ck, result)
         return result
 
-    # LLM eval for borderline scores
-    if max_score >= LLM_EVAL_LOW_THRESHOLD:
-        with trace.stage("llm_eval"):
-            llm_score = await loop.run_in_executor(
-                _EXECUTOR, _blocking_llm_eval, query, zvec_chunks)
-            trace.event("llm_eval_result", score=llm_score)
-            if llm_score >= 0.5:
-                trace.decision("source_selection", choice="zvec+llm",
-                               reason=f"llm_score {llm_score:.2f} ≥ 0.5")
-                result = {'source': 'zvec+llm', 'chunks': zvec_chunks,
-                          'score': llm_score,
-                          'trace': f'ZVec({max_score:.2f})→Qwen({llm_score:.2f})',
-                          '_trace': trace.json()}
-                _cache_set(ck, result)
-                return result
-
-    # Final MCP
+    # Final MCP fallback (no LLM gate)
     with trace.stage("final_mcp"):
         result = await _fallback_to_mcp_web(
             query, domain, collection, loop, trace)

@@ -1,0 +1,180 @@
+{
+  "meta": {
+    "title": "Lodestone Golden Set",
+    "version": "1.1",
+    "created": "2026-07-02",
+    "description": "Golden set для оценки качества RAG поиска Lodestone.",
+    "principle": "Вопросы составлены на основе известного содержимого индексированных источников: aa-confluence (Life), aa-docs (Sphinx), tech-wiki. Каждый вопрос проверяем на существование ответа через прямой поиск в Confluence REST API.",
+    "total_questions": 25,
+    "eval_method": "LLM-as-judge (qwen2.5-7b): оценить релевантность ответа по key_facts",
+    "expected_source": "lodestone",
+    "notes": "Для запуска нужен MCP токен. eval_lodestone.py подключит его автоматически из ~/.hermes/config.yaml"
+  },
+  "questions": [
+    {
+      "id": "aldpro-domain-join",
+      "query": "Как ввести компьютер под управлением Astra Linux в домен ALD Pro",
+      "key_facts": ["ALD Pro", "ввод в домен", "SSSD", "ast Linux", "клиент"],
+      "verified_in_confluence": true,
+      "expected_source": "aa-confluence"
+    },
+    {
+      "id": "aldpro-trust-relations",
+      "query": "Настройка доверительных отношений между доменом ALD Pro и Microsoft Active Directory",
+      "key_facts": ["доверительные отношения", "ALD Pro", "MS AD", "cross-realm", "Kerberos"],
+      "verified_in_confluence": true,
+      "expected_source": "aa-confluence"
+    },
+    {
+      "id": "sssd-krb5-timeout",
+      "query": "Настройка параметров Kerberos таймаутов SSSD для ускорения аутентификации",
+      "key_facts": ["SSSD", "krb5_auth_timeout", "ldap_deref_threshold", "sssd.conf", "Kerberos"],
+      "verified_in_confluence": true,
+      "expected_source": "aa-confluence"
+    },
+    {
+      "id": "aldpro-replication",
+      "query": "Как настроить репликацию между контроллерами домена ALD Pro",
+      "key_facts": ["репликация", "контроллер домена", "ALD Pro", "SYSVOL", "DFS"],
+      "verified_in_confluence": true,
+      "expected_source": "aa-confluence"
+    },
+    {
+      "id": "aldpro-dns-srv",
+      "query": "Настройка DNS сервера и SRV записей для контроллера домена ALD Pro",
+      "key_facts": ["DNS", "SRV записи", "BIND", "_ldap", "_kerberos", "ALD Pro"],
+      "verified_in_confluence": true,
+      "expected_source": "aa-confluence"
+    },
+    {
+      "id": "rupost-postfix-config",
+      "query": "Базовая настройка Postfix в составе RuPost для приёма почты",
+      "key_facts": ["RuPost", "Postfix", "MTA", "настройка", "почтовый сервер"],
+      "verified_in_confluence": true,
+      "expected_source": "aa-confluence"
+    },
+    {
+      "id": "rupost-dovecot-imap",
+      "query": "Настройка IMAP/POP3 доступа в RuPost через Dovecot",
+      "key_facts": ["RuPost", "Dovecot", "IMAP", "POP3", "почтовый ящик"],
+      "verified_in_confluence": true,
+      "expected_source": "aa-confluence"
+    },
+    {
+      "id": "workspad-mobile",
+      "query": "Подключение мобильных устройств к WorksPad для удаленной работы",
+      "key_facts": ["WorksPad", "мобильное устройство", "удаленный доступ", "Android", "iOS"],
+      "verified_in_confluence": true,
+      "expected_source": "aa-confluence"
+    },
+    {
+      "id": "termidesk-publish-app",
+      "query": "Публикация приложений через Termidesk для удаленных пользователей",
+      "key_facts": ["Termidesk", "публикация", "приложение", "VDI", "удаленный рабочий стол"],
+      "verified_in_confluence": true,
+      "expected_source": "aa-confluence"
+    },
+    {
+      "id": "astra-fstek-cert-level",
+      "query": "Классы защищенности Astra Linux Special Edition по требованиям ФСТЭК",
+      "key_facts": ["ФСТЭК", "класс защищенности", "Astra Linux Special Edition", "сертификация", "СВТ"],
+      "expected_source": "aa-docs"
+    },
+    {
+      "id": "astra-smo-mode",
+      "query": "Включение режима замкнутой среды (SMO) в Astra Linux Special Edition",
+      "key_facts": ["SMO", "замкнутая среда", "мандатный доступ", "ALSP", "безопасность"],
+      "expected_source": "aa-docs"
+    },
+    {
+      "id": "astra-ip-config",
+      "query": "Настройка сетевых интерфейсов в Astra Linux через /etc/network/interfaces",
+      "key_facts": ["network interfaces", "interfaces", "DHCP", "статический IP", "настройка сети"],
+      "expected_source": "aa-docs"
+    },
+    {
+      "id": "astra-apt-repo",
+      "query": "Настройка репозиториев пакетов в Astra Linux через apt",
+      "key_facts": ["apt", "репозиторий", "sources.list", "Astra Linux", "обновление"],
+      "expected_source": "aa-docs"
+    },
+    {
+      "id": "astra-grub-config",
+      "query": "Настройка загрузчика GRUB в Astra Linux для выбора режима загрузки",
+      "key_facts": ["GRUB", "загрузчик", "Astra Linux", "kernel", "загрузка"],
+      "expected_source": "aa-docs"
+    },
+    {
+      "id": "astra-sshd-config",
+      "query": "Настройка SSH сервера в Astra Linux для безопасного удаленного доступа",
+      "key_facts": ["SSH", "sshd", "OpenSSH", "аутентификация", "ключи"],
+      "expected_source": "aa-docs"
+    },
+    {
+      "id": "aldpro-kerberos-time",
+      "query": "Почему в ALD Pro возникает ошибка синхронизации времени Kerberos",
+      "key_facts": ["Kerberos", "синхронизация времени", "chrony", "NTP", "skew"],
+      "verified_in_confluence": true,
+      "expected_source": "aa-confluence"
+    },
+    {
+      "id": "samba-ad-sysvol",
+      "query": "Настройка репликации SYSVOL на контроллере домена Samba AD",
+      "key_facts": ["SYSVOL", "Samba AD", "репликация", "rsync", "dfs"],
+      "verified_in_confluence": true,
+      "expected_source": "aa-confluence"
+    },
+    {
+      "id": "postgresql-logical-replication",
+      "query": "Настройка логической репликации PostgreSQL между серверами Astra Linux",
+      "key_facts": ["PostgreSQL", "логическая репликация", "publication", "subscription"],
+      "expected_source": "aa-docs"
+    },
+    {
+      "id": "nfsv4-krb5-mount",
+      "query": "Монтирование NFSv4 шары с аутентификацией Kerberos в Astra Linux",
+      "key_facts": ["NFSv4", "Kerberos", "mount", "sec=krb5", "экспорт"],
+      "expected_source": "aa-docs"
+    },
+    {
+      "id": "docker-astra-se",
+      "query": "Установка Docker Engine на Astra Linux Special Edition",
+      "key_facts": ["Docker", "Astra Linux Special Edition", "контейнеры", "установка"],
+      "expected_source": "aa-confluence"
+    },
+    {
+      "id": "pxe-network-install-astra",
+      "query": "Автоматическая установка Astra Linux по сети через PXE",
+      "key_facts": ["PXE", "сетевая установка", "DHCP", "TFTP", "автоматическая установка"],
+      "expected_source": "aa-docs"
+    },
+    {
+      "id": "ansible-astra-automation",
+      "query": "Автоматизация настройки Astra Linux через Ansible",
+      "key_facts": ["Ansible", "автоматизация", "Astra Linux", "playbook"],
+      "expected_source": "aa-confluence"
+    },
+    {
+      "id": "openldap-slapd-config",
+      "query": "Настройка OpenLDAP slapd на Astra Linux для централизованной аутентификации",
+      "key_facts": ["OpenLDAP", "slapd", "LDAP", "аутентификация", "схема"],
+      "expected_source": "aa-docs"
+    },
+    {
+      "id": "auditd-astra-config",
+      "query": "Настройка auditd для аудита событий безопасности в Astra Linux",
+      "key_facts": ["auditd", "audit", "аудит", "правила", "журнал"],
+      "expected_source": "aa-docs"
+    },
+    {
+      "id": "iptables-astra-firewall",
+      "query": "Настройка межсетевого экрана iptables/nftables в Astra Linux",
+      "key_facts": ["iptables", "nftables", "firewall", "Astra Linux", "правила"],
+      "expected_source": "aa-docs"
+    }
+  ],
+  "usage": {
+    "eval_script": "python eval_lodestone.py",
+    "eval_method": "LLM-as-judge (qwen2.5-7b) оценивает полноту ответа по key_facts"
+  }
+}
