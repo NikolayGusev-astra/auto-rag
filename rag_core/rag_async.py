@@ -88,28 +88,22 @@ def _blocking_zvec(query: str, domain: str = "") -> dict:
     emb = _embed(query)
     from zvec import Query as ZQ
     coll = _get_zvec_collection()
-    # Фильтр по категории: skills замусоривают выдачу, их используем только для software-dev
-    filter_expr = None
-    if domain in ("ford-club", "infrastructure", "manuals", "research"):
-        filter_expr = "category = 'wiki'"
-    elif domain in ("devops", "publishing", "analysis", "automation", "personal", "creative"):
-        filter_expr = "category = 'wiki'"
-    elif domain == "software-dev":
-        filter_expr = None  # и wiki, и skills
-    query_kwargs = dict(
-        queries=[ZQ(field_name="embedding", vector=emb)], topk=5,
-        output_fields=["source", "heading", "category", "node", "content", "title"]
-    )
-    if filter_expr:
-        query_kwargs["filter"] = filter_expr
-    doclist = coll.query(**query_kwargs)
+    # Все категории — wiki, .autolycus, llm-wiki — все нужны для контекста
+    # Но wiki приоритетнее: +0.10 к score, llm-wiki: +0.05
+    doclist = coll.query(queries=[ZQ(field_name="embedding", vector=emb)], topk=10,
+                         output_fields=["source", "heading", "category", "node", "content", "title"])
     chunks = []
     for d in doclist:
         txt = (d.fields or {}).get("content", "") or (d.fields or {}).get("text", "")
         if txt:
-            chunks.append({"text": txt[:500], "score": d.score,
-                          "source": (d.fields or {}).get("source", "zvec/wiki")})
-    return {"chunks": chunks, "max_score": max((c["score"] for c in chunks), default=0)}
+            cat = (d.fields or {}).get("category", "")
+            boost = 0.10 if cat == "wiki" else (0.05 if cat == "llm-wiki" else 0.0)
+            score = min(d.score + boost, 1.0)
+            chunks.append({"text": txt[:500], "score": score,
+                          "source": (d.fields or {}).get("source", "zvec/wiki"),
+                          "category": cat})
+    chunks.sort(key=lambda c: c["score"], reverse=True)
+    return {"chunks": chunks[:5], "max_score": max((c["score"] for c in chunks), default=0)}
 
 def _blocking_mcp_single(name: str, query: str) -> list[dict]:
     cfg = MCP_SERVERS.get(name)
