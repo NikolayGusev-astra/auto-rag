@@ -11,7 +11,8 @@
       "context7": "Code/docs (devops, software-dev)",
       "zvec": "Local ZVec index (LLM wiki, sessions, concepts)",
       "web": "SearXNG + DuckDuckGo fallback"
-    }
+    },
+    "expected_source": "zvec"
   },
   "questions": [
     {
@@ -19,7 +20,7 @@
       "query": "настройка postgresql streaming replication debian 12",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "context7",
+      "expected_source": "zvec",
       "key_facts": [
         "streaming replication",
         "wal_level",
@@ -33,7 +34,7 @@
       "query": "terraform aws backend s3 state locking dynamodb",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "context7",
+      "expected_source": "zvec",
       "key_facts": [
         "terraform",
         "s3",
@@ -48,7 +49,7 @@
       "query": "развертывание kubernetes кластер на debian 12 k8s",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "context7",
+      "expected_source": "zvec",
       "key_facts": [
         "kubernetes",
         "kubeadm",
@@ -62,7 +63,7 @@
       "query": "docker compose настройка nginx postgres redis production",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "context7",
+      "expected_source": "zvec",
       "key_facts": [
         "docker compose",
         "nginx",
@@ -77,7 +78,7 @@
       "query": "patroni ha postgresql кластер настройка etcd debian",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "context7",
+      "expected_source": "zvec",
       "key_facts": [
         "Patroni",
         "HA",
@@ -91,7 +92,7 @@
       "query": "docker registry harbor хранение образов debian 12",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "context7",
+      "expected_source": "zvec",
       "key_facts": [
         "Harbor",
         "docker registry",
@@ -104,7 +105,7 @@
       "query": "proxmox backup server настройка резервное копирование VM debian",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "context7",
+      "expected_source": "zvec",
       "key_facts": [
         "Proxmox Backup",
         "резервное копирование",
@@ -117,7 +118,7 @@
       "query": "nginx reverse proxy api gateway postgresql debian 12 настройка",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "context7",
+      "expected_source": "zvec",
       "key_facts": [
         "nginx",
         "reverse proxy",
@@ -133,7 +134,8 @@
       "key_facts": [
         "шрус Ford Explorer II партномер полуось"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "ford-club"
     },
     {
       "id": "ford-02",
@@ -143,7 +145,8 @@
       "key_facts": [
         "VIN 1FMZU34E6WUD14705 двигатель 4.0 SOHC"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "ford-club"
     },
     {
       "id": "ford-03",
@@ -153,7 +156,8 @@
       "key_facts": [
         "шины 235/75 R15 зимние Ford Explorer"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "ford-club"
     },
     {
       "id": "ford-04",
@@ -163,7 +167,8 @@
       "key_facts": [
         "F5TZ-3A427A пыльник шруса замена"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "ford-club"
     },
     {
       "id": "ford-05",
@@ -173,7 +178,8 @@
       "key_facts": [
         "carpc магнитола Ford Explorer II установка"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "ford-club"
     },
     {
       "id": "devops-01",
@@ -183,7 +189,8 @@
       "key_facts": [
         "настройка xray reality vless конфиг"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "devops"
     },
     {
       "id": "devops-02",
@@ -193,7 +200,8 @@
       "key_facts": [
         "nginx reverse proxy docker настройка"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "devops"
     },
     {
       "id": "devops-03",
@@ -203,7 +211,8 @@
       "key_facts": [
         "openvpn сервер ubuntu iptables"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "devops"
     },
     {
       "id": "devops-04",
@@ -213,7 +222,8 @@
       "key_facts": [
         "systemd service автозапуск скрипта after network"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "devops"
     },
     {
       "id": "devops-05",
@@ -223,7 +233,8 @@
       "key_facts": [
         "postgresql debian 12 установка настройка бэкап"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "devops"
     },
     {
       "id": "swdev-01",
@@ -233,7 +244,8 @@
       "key_facts": [
         "напиши ADR архитектурное решение"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "software-dev"
     },
     {
       "id": "swdev-02",
@@ -243,7 +255,8 @@
       "key_facts": [
         "code review PR github проверка кода"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "software-dev"
     },
     {
       "id": "swdev-03",
@@ -253,7 +266,8 @@
       "key_facts": [
         "как настроить dcd router для нового домена"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "software-dev"
     },
     {
       "id": "manuals-01",
@@ -263,7 +277,8 @@
       "key_facts": [
         "как установить trafilatura python"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "manuals"
     },
     {
       "id": "manuals-02",
@@ -273,7 +288,8 @@
       "key_facts": [
         "docker compose конфигурация пример"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "manuals"
     },
     {
       "id": "manuals-03",
@@ -283,7 +299,8 @@
       "key_facts": [
         "как настроить zvec LOCK workaround"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "manuals"
     },
     {
       "id": "infra-01",
@@ -293,7 +310,8 @@
       "key_facts": [
         "xff kz8 ns7 hermes агент завис перезапуск"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "infrastructure"
     },
     {
       "id": "research-01",
@@ -303,7 +321,8 @@
       "key_facts": [
         "qwen3-4b vs qwen2.5 сравнение производительность"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "research"
     },
     {
       "id": "reject-01",
@@ -313,7 +332,8 @@
       "key_facts": [
         "рецепт блинов на кефире"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "ford-club"
     },
     {
       "id": "reject-02",
@@ -323,7 +343,8 @@
       "key_facts": [
         "погода в екатеринбурге завтра"
       ],
-      "eval_criteria": "keyword_match"
+      "eval_criteria": "keyword_match",
+      "expected_collection": "publishing"
     }
   ]
 }
