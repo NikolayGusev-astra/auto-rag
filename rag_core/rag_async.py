@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from rag_config import *
 from rag_mcp_client import MCPClient
+from rag_trace import RagTrace
 
 _EXECUTOR = ThreadPoolExecutor(max_workers=6)
 
@@ -88,25 +89,58 @@ def _blocking_mcp(query: str, domain: str, collection: str) -> dict:
         return {"source": best_src, "chunks": all_results[best_src]}
     return {"source": None, "chunks": []}
 
-def _blocking_web(query: str) -> list[dict]:
-    import subprocess as _sp, urllib.parse
-    encoded = urllib.parse.quote(query)
-    try:
-        r = _sp.run(["curl", "-s", "--max-time", "10", f"{SEARXNG_URL}/search?q={encoded}&format=json"],
-                    capture_output=True, text=True, timeout=15)
-        if r.returncode != 0 or not r.stdout: return []
-        data = json.loads(r.stdout)
-        results = data.get("results", [])[:WEB_SEARCH_MAX_RESULTS]
-        chunks = []
-        for wr in results:
-            text = wr.get("content", "") or wr.get("snippet", "")
-            if text:
-                chunks.append({"text": text[:WEB_SEARCH_MAX_CHARS],
-                              "title": wr.get("title", ""), "url": wr.get("url", ""),
-                              "source": "web/searxng"})
-        return chunks
-    except: pass
-    return []
+def _blocking_web(query: str, domain: str = "", collection: str = "") -> list[dict]:
+    """Web search with DCD-preferred source selection."""
+    preferred = None
+    if domain and collection:
+        dm = DCD_PREFERRED_WEB_SOURCE.get(domain, {})
+        preferred = dm.get(collection) or dm.get('*')
+    if preferred == 'skip':
+        return []
+
+    import subprocess as _sp, urllib.parse, json as _json
+    def searxng(q):
+        encoded = urllib.parse.quote(q)
+        try:
+            r = _sp.run(['curl', '-s', '--max-time', '10', f'{SEARXNG_URL}/search?q={encoded}&format=json'],
+                        capture_output=True, text=True, timeout=15)
+            if r.returncode != 0 or not r.stdout: return []
+            data = _json.loads(r.stdout)
+            results = data.get('results', [])[:WEB_SEARCH_MAX_RESULTS]
+            chunks = []
+            for wr in results:
+                text = wr.get('content', '') or wr.get('snippet', '')
+                if text:
+                    chunks.append({'text': text[:WEB_SEARCH_MAX_CHARS],
+                                  'title': wr.get('title', ''), 'url': wr.get('url', ''),
+                                  'source': 'web/searxng'})
+            return chunks
+        except: return []
+    
+    def ddg(q):
+        import re
+        encoded = urllib.parse.quote(q[:200])
+        try:
+            r = _sp.run(['curl', '-s', '--max-time', '10',
+                        f'https://html.duckduckgo.com/html/?q={encoded}'],
+                       capture_output=True, text=True, timeout=15)
+            if r.returncode != 0 or not r.stdout: return []
+            chunks = []
+            for block in re.findall(r'<a[^>]+class="result__a"[^>]*href="([^"]+)"[^>]*>([^<]+)</a>.*?<a[^>]+class="result__snippet"[^>]*>([^<]*)</a>', r.stdout, re.DOTALL):
+                url, title, snippet = block
+                text = (snippet or '').strip()
+                if text:
+                    chunks.append({'text': text, 'title': title.strip(), 'url': url, 'source': 'web/ddg'})
+            return chunks[:5]
+        except: return []
+
+    if preferred == 'ddg':
+        return ddg(query)
+    chunks = searxng(query)
+    if not chunks:
+        chunks = ddg(query)
+    return chunks
+
 
 def _blocking_llm_eval(query: str, chunks: list) -> float:
     import subprocess as _sp, json, re
@@ -193,7 +227,7 @@ async def async_rag_search(query: str, dcd_result: dict) -> dict:
 
     # Parallel ZVec + Web
     zvec_task = loop.run_in_executor(_EXECUTOR, _blocking_zvec, query)
-    web_task = loop.run_in_executor(_EXECUTOR, _blocking_web, query)
+    web_task = loop.run_in_executor(_EXECUTOR, _blocking_web, query, domain, collection)
 
     zvec_result, web_chunks = await asyncio.gather(zvec_task, web_task)
     zvec_chunks = zvec_result["chunks"]

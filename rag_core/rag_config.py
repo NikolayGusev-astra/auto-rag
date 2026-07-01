@@ -79,3 +79,18 @@ def ensure_zvec_lock(path: str) -> str:
         except OSError:
             pass
     return lock_path
+
+# ── DCD -> preferred web search source ────────────────────────────
+# Определяет какой web поиск использовать при fallback для каждого домена/коллекции
+# "searxng" — SearXNG (245 движков, общий поиск)
+# "ddg" — DuckDuckGo (без API ключа, быстрый)
+# "skip" — не делать web fallback
+# None — дефолт (SearXNG, если доступен)
+DCD_PREFERRED_WEB_SOURCE = {
+    "ford-club": {"*": "searxng"},
+    "devops": {"*": "searxng"},
+    "software-dev": {"*": "skip"},
+    "manuals": {"*": "searxng"},
+    "infrastructure": {"*": "ddg"},
+    "publishing": {"*": "skip"},
+}
