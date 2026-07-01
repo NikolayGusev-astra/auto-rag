@@ -2,7 +2,7 @@
 Async RAG pipeline — parallel ZVec, MCP, SearXNG via asyncio.gather().
 Adapted for Autolycus: curl for embeddings, qwen3-4b, no lodestone/jira.
 """
-import asyncio, hashlib, json, os, sys, time, re
+import asyncio, hashlib, json, os, sys, time, re, threading
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 
@@ -18,6 +18,26 @@ except ImportError:
         def add_event(self, *a, **kw): pass
 
 _EXECUTOR = ThreadPoolExecutor(max_workers=6)
+
+# ── ZVec singleton (thread-safe) ───────────────────────────────────
+# ZVec 0.5.1 cannot reopen a collection in the same process.
+# Open once at module level, reuse across thread pool calls.
+_ZVEC_COLLECTION = None
+_ZVEC_COLLECTION_LOCK = threading.Lock()
+
+def _get_zvec_collection():
+    global _ZVEC_COLLECTION
+    if _ZVEC_COLLECTION is not None:
+        return _ZVEC_COLLECTION
+    with _ZVEC_COLLECTION_LOCK:
+        if _ZVEC_COLLECTION is not None:
+            return _ZVEC_COLLECTION
+        import zvec
+        from rag_config import ensure_zvec_lock
+        zpath = os.path.join(ZVEC_PATH, ZVEC_COLLECTION)
+        ensure_zvec_lock(zpath)
+        _ZVEC_COLLECTION = zvec.open(zpath)
+        return _ZVEC_COLLECTION
 
 # ── LRU cache: 100 last queries ──────────────────────────────────
 _CACHE = OrderedDict()
@@ -58,12 +78,8 @@ def _embed(text: str) -> list[float]:
 # ── Blocking helpers (thread pool) ───────────────────────────────
 def _blocking_zvec(query: str) -> dict:
     emb = _embed(query)
-    import zvec
     from zvec import Query as ZQ
-    from rag_config import ensure_zvec_lock
-    zpath = os.path.join(ZVEC_PATH, ZVEC_COLLECTION)
-    ensure_zvec_lock(zpath)
-    coll = zvec.open(zpath)
+    coll = _get_zvec_collection()
     doclist = coll.query(queries=[ZQ(field_name="embedding", vector=emb)], topk=5,
                          output_fields=["source", "heading", "category", "node", "content", "title"])
     chunks = []
@@ -223,7 +239,12 @@ async def async_rag_search(query: str, dcd_result: dict, trace: RagTrace | None 
             result = {"source": "web", "chunks": web_chunks, "score": 0.6,
                       "trace": f"DCD(conf={confidence:.2f}<0.2)→Web"}
             _cache_set(ck, result); return result
-        result = {"source": "empty", "chunks": zvec_chunks[:1], "score": max_score,
+        # ZVec поиск независим от DCD — возвращаем результаты, если они есть
+        if zvec_chunks:
+            result = {"source": "zvec", "chunks": zvec_chunks, "score": max_score,
+                      "trace": f"DCD(conf={confidence:.2f}<0.2)→ZVec({max_score:.2f})"}
+            _cache_set(ck, result); return result
+        result = {"source": "empty", "chunks": [], "score": 0,
                   "trace": f"DCD(conf={confidence:.2f}<0.2)→empty"}
         _cache_set(ck, result); return result
 

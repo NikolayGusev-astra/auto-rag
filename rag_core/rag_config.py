@@ -58,7 +58,7 @@ MCP_FALLBACK_CHAIN = list(MCP_SERVERS.keys())
 DCD_COLLECTION_MCP_MAP = {"software-dev": {"*": "context7"}, "devops": {"*": "context7"}}
 
 # ── Thresholds ────────────────────────────────────────────────────
-COSINE_THRESHOLDS = {"factual": 0.60, "analytical": 0.50, "synthesis": 0.45, "default": 0.50}
+COSINE_THRESHOLDS = {"factual": 0.35, "analytical": 0.30, "synthesis": 0.25, "default": 0.25}
 MIN_RELEVANT_RATIO = 0.2
 MIN_RELEVANT_COUNT = 1
 AMBIGUOUS_RATIO = 0.5

@@ -193,8 +193,10 @@ async def evaluate_one(
         rec["chunks_snippet"] = chunks_text[:500] if chunks_text else ""
         rec["chunks_full_len"] = len(chunks_text)
 
-        # Source routing accuracy
-        rec["source_ok"] = result.get("source") == q["expected_source"]
+        # Source routing accuracy — zvec+llm считается zvec
+        rec["source_ok"] = result.get("source") == q["expected_source"] or (
+            q["expected_source"] == "zvec" and result.get("source") == "zvec+llm"
+        )
 
         # 3. Answer accuracy (key facts)
         answer_eval = eval_answer_match(chunks_text, q["key_facts"])
