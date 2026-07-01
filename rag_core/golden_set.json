@@ -1,9 +1,9 @@
 {
   "meta": {
     "version": "1.0",
-    "description": "Golden set for RAG accuracy evaluation — Astra Linux/rusbitech domain",
+    "description": "Golden set for RAG accuracy evaluation — general domain",
     "created": "2026-07-01",
-    "total_questions": 33,
+    "total_questions": 28,
     "eval_strategy": "LLM-as-judge: compare pipeline answer vs ground_truth using key_facts",
     "sources": {
       "lodestone": "Confluence+Wiki+Sphinx docs",
@@ -15,30 +15,17 @@
   },
   "questions": [
     {
-      "id": "aldpro-ip-change",
-      "query": "ALD Pro 3.2.1 смена IP адресов серверной группировки после развертывания",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-deployment",
-      "expected_source": "lodestone",
-      "key_facts": ["ALD Pro", "IP адресов", "серверной группировки", "DNS"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "sssd-krb5-timeout",
-      "query": "SSSD krb5_auth_timeout ldap_deref_threshold ALD Pro доверительные отношения MSAD",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-products",
-      "expected_source": "lodestone",
-      "key_facts": ["krb5_auth_timeout", "ldap_deref_threshold", "MSAD", "доверительные"],
-      "eval_criteria": "keyword_match"
-    },
-    {
       "id": "postgresql-streaming-rep",
       "query": "настройка postgresql streaming replication debian 12",
       "expected_domain": "devops",
       "expected_collection": "devops",
       "expected_source": "context7",
-      "key_facts": ["streaming replication", "wal_level", "primary_conninfo", "standby"],
+      "key_facts": [
+        "streaming replication",
+        "wal_level",
+        "primary_conninfo",
+        "standby"
+      ],
       "eval_criteria": "keyword_match"
     },
     {
@@ -47,52 +34,13 @@
       "expected_domain": "devops",
       "expected_collection": "devops",
       "expected_source": "context7",
-      "key_facts": ["terraform", "s3", "backend", "dynamodb", "lock"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "alabuga-implementation",
-      "query": "ООО АЛАБУГА МАШИНЕРИ внедрение ALD Pro VMmanager Termidesk RuPost WorksPad",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-customers",
-      "expected_source": "lodestone",
-      "key_facts": ["АЛАБУГА", "внедрение", "ALD Pro", "Termidesk"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "tatneft-presale",
-      "query": "пресейл Татнефть инфраструктура ALD Pro терминальный доступ",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-presale",
-      "expected_source": "jira",
-      "key_facts": ["Татнефть", "пресейл", "терминальный"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "rusgidro-incident",
-      "query": "инцидент Русгидро падение сервера postgresql patroni отказ",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-rca",
-      "expected_source": "jira",
-      "key_facts": ["Русгидро", "инцидент", "RCA", "Patroni"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "cve-security",
-      "query": "CVE уязвимость astra linux sbl мандатный доступ безопасность",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-security",
-      "expected_source": "jira",
-      "key_facts": ["CVE", "SBL", "безопасность", "мандатный"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "nova-product-desc",
-      "query": "nova astra linux дистрибутив сертификация фичи",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-products",
-      "expected_source": "lodestone",
-      "key_facts": ["Nova", "Astra Linux", "сертификация"],
+      "key_facts": [
+        "terraform",
+        "s3",
+        "backend",
+        "dynamodb",
+        "lock"
+      ],
       "eval_criteria": "keyword_match"
     },
     {
@@ -101,25 +49,12 @@
       "expected_domain": "devops",
       "expected_collection": "devops",
       "expected_source": "context7",
-      "key_facts": ["kubernetes", "kubeadm", "containerd", "Debian"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "architecture-hld-ald",
-      "query": "архитектура HLD высоконагруженный ALD Pro кластер контроллер домена",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-architecture",
-      "expected_source": "lodestone",
-      "key_facts": ["HLD", "архитектура", "ALD Pro", "кластер"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "rupost-config-postfix",
-      "query": "настройка rupost postfix dovecot почтовый сервер astra linux",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-products",
-      "expected_source": "lodestone",
-      "key_facts": ["RuPost", "Postfix", "Dovecot", "почтовый"],
+      "key_facts": [
+        "kubernetes",
+        "kubeadm",
+        "containerd",
+        "Debian"
+      ],
       "eval_criteria": "keyword_match"
     },
     {
@@ -128,106 +63,13 @@
       "expected_domain": "devops",
       "expected_collection": "devops",
       "expected_source": "context7",
-      "key_facts": ["docker compose", "nginx", "PostgreSQL", "Redis", "production"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "gazprom-deployment",
-      "query": "Газпром развертывание ALD Pro Termidesk RuPost миграция",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-deployment",
-      "expected_source": "lodestone",
-      "key_facts": ["Газпром", "ALD Pro", "Termidesk"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "novatek-presale",
-      "query": "Новатэк консультация пресейл импортозамещение ИТ инфраструктура",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-presale",
-      "expected_source": "jira",
-      "key_facts": ["Новатэк", "пресейл", "импортозамещение"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "keycloak-sso-oidc",
-      "query": "keycloak sso oidc astra linux аутентификация ldap",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-products",
-      "expected_source": "lodestone",
-      "key_facts": ["Keycloak", "SSO", "OIDC", "LDAP"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "ansible-playbook-ald",
-      "query": "ansible автоматизация развертывания ald pro домен контроллер playbook",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-deployment",
-      "expected_source": "lodestone",
-      "key_facts": ["Ansible", "ALD Pro", "playbook", "автоматизация"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "acs-pki-certificates",
-      "query": "ACS сертификат PKI центр сертификации astra linux",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-products",
-      "expected_source": "lodestone",
-      "key_facts": ["ACM", "ACS", "PKI", "центр сертификации"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "rosneft-cve-kernel",
-      "query": "Роснефть уязвимость CVE ядро astra linux патч обновление",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-vulnerability",
-      "expected_source": "jira",
-      "key_facts": ["Роснефть", "CVE", "ядро", "патч"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "encryption-aes-gost",
-      "query": "шифрование aes gcm pki astra linux gost сертификаты",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-security",
-      "expected_source": "jira",
-      "key_facts": ["AES", "GCM", "ГОСТ", "PKI"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "adr-patroni-ha",
-      "query": "ADR архитектурное решение выбор postgresql patroni HA кластер",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-architecture",
-      "expected_source": "lodestone",
-      "key_facts": ["ADR", "Patroni", "HA", "архитектурное решение"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "rosseti-migration-windows",
-      "query": "Россети миграция windows server astra linux ald pro samba",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-deployment",
-      "expected_source": "lodestone",
-      "key_facts": ["Россети", "миграция", "Windows", "Samba"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "uvz-security-audit",
-      "query": "УВЗ Уралвагонзавод аудит безопасности astra linux SE мандатный доступ",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-security",
-      "expected_source": "jira",
-      "key_facts": ["УВЗ", "SBL", "мандатный доступ", "аудит"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "workspad-mobile-setup",
-      "query": "workspad мобильное рабочее место astra linux настройка интеграция",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-products",
-      "expected_source": "lodestone",
-      "key_facts": ["WorksPad", "мобильное", "интеграция"],
+      "key_facts": [
+        "docker compose",
+        "nginx",
+        "PostgreSQL",
+        "Redis",
+        "production"
+      ],
       "eval_criteria": "keyword_match"
     },
     {
@@ -236,16 +78,12 @@
       "expected_domain": "devops",
       "expected_collection": "devops",
       "expected_source": "context7",
-      "key_facts": ["Patroni", "HA", "etcd", "PostgreSQL"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "mvd-sbl-certification",
-      "query": "МВД astra linux SE SBL сертификация замкнутая среда требования",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-security",
-      "expected_source": "jira",
-      "key_facts": ["МВД", "SBL", "сертификация", "замкнутая среда"],
+      "key_facts": [
+        "Patroni",
+        "HA",
+        "etcd",
+        "PostgreSQL"
+      ],
       "eval_criteria": "keyword_match"
     },
     {
@@ -254,25 +92,11 @@
       "expected_domain": "devops",
       "expected_collection": "devops",
       "expected_source": "context7",
-      "key_facts": ["Harbor", "docker registry", "хранение образов"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "terraform-proxmox-ald",
-      "query": "terraform proxmox ald pro развертывание VM автоматизация",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-deployment",
-      "expected_source": "lodestone",
-      "key_facts": ["Terraform", "Proxmox", "ALD Pro", "VM"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "rupost-antivirus-clamav",
-      "query": "postfix dovecot антивирус антиспам rupost настройка фильтрация",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-products",
-      "expected_source": "lodestone",
-      "key_facts": ["антивирус", "антиспам", "Postfix", "фильтрация"],
+      "key_facts": [
+        "Harbor",
+        "docker registry",
+        "хранение образов"
+      ],
       "eval_criteria": "keyword_match"
     },
     {
@@ -281,16 +105,11 @@
       "expected_domain": "devops",
       "expected_collection": "devops",
       "expected_source": "context7",
-      "key_facts": ["Proxmox Backup", "резервное копирование", "PBS"],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "termidesk-vdi-pool",
-      "query": "termidesk VDI пул рабочих столов настройка алд про авторизация",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-products",
-      "expected_source": "lodestone",
-      "key_facts": ["Termidesk", "VDI", "пул", "ALD Pro", "авторизация"],
+      "key_facts": [
+        "Proxmox Backup",
+        "резервное копирование",
+        "PBS"
+      ],
       "eval_criteria": "keyword_match"
     },
     {
@@ -299,16 +118,211 @@
       "expected_domain": "devops",
       "expected_collection": "devops",
       "expected_source": "context7",
-      "key_facts": ["nginx", "reverse proxy", "API gateway"],
+      "key_facts": [
+        "nginx",
+        "reverse proxy",
+        "API gateway"
+      ],
       "eval_criteria": "keyword_match"
     },
     {
-      "id": "lodestone-search",
-      "query": "lodestone поиск документация Confluence Wiki техническая документация возможности",
-      "expected_domain": "rusbitech",
-      "expected_collection": "rusbitech-products",
-      "expected_source": "lodestone",
-      "key_facts": ["Lodestone", "поиск", "Confluence", "Wiki", "документация"],
+      "id": "ford-01",
+      "query": "шрус Ford Explorer II партномер полуось",
+      "expected_domain": "ford-club",
+      "expected_source": "zvec",
+      "key_facts": [
+        "шрус Ford Explorer II партномер полуось"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "ford-02",
+      "query": "VIN 1FMZU34E6WUD14705 двигатель 4.0 SOHC",
+      "expected_domain": "ford-club",
+      "expected_source": "zvec",
+      "key_facts": [
+        "VIN 1FMZU34E6WUD14705 двигатель 4.0 SOHC"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "ford-03",
+      "query": "шины 235/75 R15 зимние Ford Explorer",
+      "expected_domain": "ford-club",
+      "expected_source": "zvec",
+      "key_facts": [
+        "шины 235/75 R15 зимние Ford Explorer"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "ford-04",
+      "query": "F5TZ-3A427A пыльник шруса замена",
+      "expected_domain": "ford-club",
+      "expected_source": "zvec",
+      "key_facts": [
+        "F5TZ-3A427A пыльник шруса замена"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "ford-05",
+      "query": "carpc магнитола Ford Explorer II установка",
+      "expected_domain": "ford-club",
+      "expected_source": "zvec",
+      "key_facts": [
+        "carpc магнитола Ford Explorer II установка"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "devops-01",
+      "query": "настройка xray reality vless конфиг",
+      "expected_domain": "devops",
+      "expected_source": "zvec",
+      "key_facts": [
+        "настройка xray reality vless конфиг"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "devops-02",
+      "query": "nginx reverse proxy docker настройка",
+      "expected_domain": "devops",
+      "expected_source": "zvec",
+      "key_facts": [
+        "nginx reverse proxy docker настройка"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "devops-03",
+      "query": "openvpn сервер ubuntu iptables",
+      "expected_domain": "devops",
+      "expected_source": "zvec",
+      "key_facts": [
+        "openvpn сервер ubuntu iptables"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "devops-04",
+      "query": "systemd service автозапуск скрипта after network",
+      "expected_domain": "devops",
+      "expected_source": "zvec",
+      "key_facts": [
+        "systemd service автозапуск скрипта after network"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "devops-05",
+      "query": "postgresql debian 12 установка настройка бэкап",
+      "expected_domain": "devops",
+      "expected_source": "zvec",
+      "key_facts": [
+        "postgresql debian 12 установка настройка бэкап"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "swdev-01",
+      "query": "напиши ADR архитектурное решение",
+      "expected_domain": "software-dev",
+      "expected_source": "zvec",
+      "key_facts": [
+        "напиши ADR архитектурное решение"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "swdev-02",
+      "query": "code review PR github проверка кода",
+      "expected_domain": "software-dev",
+      "expected_source": "zvec",
+      "key_facts": [
+        "code review PR github проверка кода"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "swdev-03",
+      "query": "как настроить dcd router для нового домена",
+      "expected_domain": "software-dev",
+      "expected_source": "zvec",
+      "key_facts": [
+        "как настроить dcd router для нового домена"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "manuals-01",
+      "query": "как установить trafilatura python",
+      "expected_domain": "manuals",
+      "expected_source": "zvec",
+      "key_facts": [
+        "как установить trafilatura python"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "manuals-02",
+      "query": "docker compose конфигурация пример",
+      "expected_domain": "manuals",
+      "expected_source": "zvec",
+      "key_facts": [
+        "docker compose конфигурация пример"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "manuals-03",
+      "query": "как настроить zvec LOCK workaround",
+      "expected_domain": "manuals",
+      "expected_source": "zvec",
+      "key_facts": [
+        "как настроить zvec LOCK workaround"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "infra-01",
+      "query": "xff kz8 ns7 hermes агент завис перезапуск",
+      "expected_domain": "infrastructure",
+      "expected_source": "zvec",
+      "key_facts": [
+        "xff kz8 ns7 hermes агент завис перезапуск"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "research-01",
+      "query": "qwen3-4b vs qwen2.5 сравнение производительность",
+      "expected_domain": "research",
+      "expected_source": "zvec",
+      "key_facts": [
+        "qwen3-4b vs qwen2.5 сравнение производительность"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "reject-01",
+      "query": "рецепт блинов на кефире",
+      "expected_domain": "ford-club",
+      "expected_source": "zvec",
+      "key_facts": [
+        "рецепт блинов на кефире"
+      ],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "reject-02",
+      "query": "погода в екатеринбурге завтра",
+      "expected_domain": "publishing",
+      "expected_source": "zvec",
+      "key_facts": [
+        "погода в екатеринбурге завтра"
+      ],
       "eval_criteria": "keyword_match"
     }
   ]
