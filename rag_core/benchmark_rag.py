@@ -1,109 +1,112 @@
 #!/usr/bin/env python3
-"""Benchmark: ZVec speed + bge-reranker vs qwen3-4b eval. 10 queries."""
-import json, os, sys, time, subprocess
+"""Benchmark: сравнение скорости RAG pipeline v0 vs v2."""
+import asyncio
+import json
+import sys
+import time
+import os
+from urllib.parse import quote
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from dcd_router import classify as dcd
 from rag_config import *
-from dcd_router import classify
 
-# ── Helpers ───────────────────────────────────────────────────────
-def embed(text):
-    p = subprocess.run(["curl","-s","--max-time","10",EMBEDDING_URL,
-        "-d",json.dumps({"model":EMBEDDING_MODEL,"input":[text]}),
-        "-H","Content-Type: application/json"],
-        capture_output=True,text=True,timeout=15)
-    return json.loads(p.stdout)["data"][0]["embedding"] if p.returncode==0 and p.stdout else None
-
-def zvec_search(emb, topk=5):
-    import zvec; zvec.init()
-    from zvec import Query
-    lock = os.path.join(ZVEC_PATH, ZVEC_WIKI_COLLECTION, "LOCK")
-    if not os.path.exists(lock):
-        fd = os.open(lock, os.O_CREAT|os.O_WRONLY, 0o644); os.close(fd)
-    coll = zvec.open(os.path.join(ZVEC_PATH, ZVEC_WIKI_COLLECTION))
-    t0 = time.time()
-    res = coll.query(queries=[Query(field_name="embedding", vector=emb)], topk=topk,
-                     output_fields=["source","content"])
-    return time.time()-t0, res
-
-def rerank(query, chunks):
-    """bge-reranker via LM Studio — embed query+passage pairs and compare."""
-    if not chunks or not RERANK_ENABLED: return chunks
-    import zvec
-    from zvec import Query
-    # Embed query
-    q_emb = embed(query)
-    if not q_emb: return chunks
-    # Score each chunk by cosine similarity to query
-    for c in chunks:
-        c_content = (c.fields or {}).get("content", "")
-        if not c_content: continue
-        c_emb = embed(c_content[:500])
-        if c_emb:
-            dot = sum(a*b for a,b in zip(q_emb, c_emb))
-            nq = sum(a*a for a in q_emb)**0.5
-            nc = sum(b*b for b in c_emb)**0.5
-            c.score = dot / (nq * nc) if nq*nc else 0
-    chunks.sort(key=lambda x: x.score, reverse=True)
-    return chunks[:RERANK_FINAL_K]
-
-def qwen_eval(query, chunks):
-    p = subprocess.run(["curl","-s","--max-time","30",LM_STUDIO_CHAT_URL,
-        "-d",json.dumps({"model":LLM_REWRITE_MODEL,"messages":[
-            {"role":"user","content":f"Rate relevance 0.0-1.0. Reply ONLY a number.\nQuery: {query[:200]}\nDocs:\n"+'\n'.join([f'[{i}] {c["content"][:200]}' for i,c in enumerate(chunks[:3])])
-        }],"temperature":0.0,"max_tokens":200}),
-        "-H","Content-Type: application/json"],
-        capture_output=True,text=True,timeout=35)
-    if p.returncode==0 and p.stdout:
-        data = json.loads(p.stdout)
-        content = data["choices"][0]["message"].get("content","") or ""
-        # qwen3-4b thinking model puts answer in reasoning_content
-        if not content:
-            content = data["choices"][0]["message"].get("reasoning_content","") or ""
-        import re
-        nums = re.findall(r"0\.\d+|1\.0", content)
-        if nums: return float(nums[0])
-    return 0.0
-
-# ── Test queries ──────────────────────────────────────────────────
-queries = [
-    # ford-club
-    "Ford Explorer II 1998 шрус полуось ремонт",
-    "VIN 1FMZU34E6WUD14705 замена масла двигатель",
-    "carpc установка в Ford Explorer магнитола",
-    "зимние шины 235/75 R15 для Ford Explorer",
-    "партномер F5TZ-3A427A пыльник шруса",
-    # devops
-    "настройка nginx reverse proxy docker",
-    "postgresql debian установка настройка бэкап",
-    "openvpn server setup ubuntu конфиг",
-    "xray reality vless config tls",
-    "systemd service автозапуск скрипта",
+TEST_CASES = [
+    {'id': 'ald-pro-ip', 'query': 'ALD Pro 3.2.1 смена IP адресов серверной группировки после развертывания'},
+    {'id': 'sssd-krb5', 'query': 'SSSD krb5_auth_timeout ldap_deref_threshold ALD Pro доверительные отношения MSAD'},
+    {'id': 'postgresql', 'query': 'настройка postgresql streaming replication debian 12'},
+    {'id': 'terraform', 'query': 'terraform aws backend s3 state locking dynamodb'},
+    {'id': 'алабуга', 'query': 'ООО АЛАБУГА МАШИНЕРИ внедрение ALD Pro VMmanager Termidesk RuPost WorksPad'},
 ]
 
-print(f"{'Query':<35} {'Domain':<18} {'Emb':>6} {'ZVec':>6} {'Qwen':>6} {'TopScore':>8} {'QwenScore':>9}")
-print("-"*95)
-
-for q in queries:
-    dcd = classify(q)
-    dom = dcd["domain"]
-
+def run_v0(query):
+    """v0 — последовательная, без кеша."""
+    import zvec
+    from zvec import Query as ZQ
+    import requests as rq
+    
+    traces = []
     t0 = time.time()
-    emb = embed(q)
-    t_emb = time.time()-t0
-    if not emb: continue
+    
+    t1 = time.time()
+    r = dcd(query)
+    traces.append('DCD({:.2f}s)'.format(time.time()-t1))
+    
+    zpath = r'C:\Users\USER\.cache\zvec\wiki'
+    with open(zpath + r'\LOCK', 'w') as f: f.write('')
+    
+    t1 = time.time()
+    emb = rq.post(EMBEDDING_URL, json={'model': EMBEDDING_MODEL, 'input': [query[:2000]]}, timeout=30)
+    emb = emb.json()['data'][0]['embedding']
+    doclist = zvec.open(zpath).query(queries=[ZQ(field_name='embedding', vector=emb)], topk=5)
+    zt = time.time()-t1
+    traces.append('ZVec({}ch {:.2f}s)'.format(len(doclist), zt))
+    
+    t1 = time.time()
+    web_r = rq.get('http://localhost:8888/search?q={}&format=json'.format(quote(query)),
+                    headers={'User-Agent':'HermesRAG/1.0'}, timeout=10)
+    wd = web_r.json() if web_r.status_code == 200 else {'results':[]}
+    wt = time.time()-t1
+    traces.append('Web({}res {:.2f}s)'.format(len(wd.get('results',[])), wt))
+    
+    total = time.time()-t0
+    return total, traces
 
-    t_vec, results = zvec_search(emb, topk=5)
-    top_score = results[0].score if results else 0
+async def run_v2(query):
+    """v2 — asyncio.gather + cache."""
+    from rag_async import async_rag_search
+    t0 = time.time()
+    r = dcd(query)
+    result = await async_rag_search(query, r)
+    total = time.time()-t0
+    result['total'] = total
+    result['domain'] = r['domain']
+    return result
 
-    # Qwen eval
-    qwen_score = 0.0
-    t_qwen = 0.0
-    if results:
-        chunks = [{"content":(c.fields or {}).get("content","")} for c in results[:3]]
-        t0 = time.time()
-        qwen_score = qwen_eval(q, chunks)
-        t_qwen = time.time()-t0
+print('=' * 70)
+print('BENCHMARK: sync(v0) vs async(v2)')
+print('=' * 70)
 
-    print(f"{q[:34]:<35} {dom:<18} {t_emb:>5.2f}s {t_vec:>5.2f}s {t_qwen:>5.2f}s {top_score:>7.4f} {qwen_score:>8.4f}")
+results = []
+for tc in TEST_CASES:
+    q = tc['query']
+    qid = tc['id']
+    print('\n--- {} ---'.format(qid))
+    print('Query: {}...'.format(q[:60]))
+    
+    v0_total, v0_traces = run_v0(q)
+    
+    v2 = asyncio.run(run_v2(q))
+    v2_total = v2['total']
+    
+    speedup = v0_total / max(v2_total, 0.01)
+    
+    print('  v0(sync) : {:.1f}s  {}'.format(v0_total, ' -> '.join(v0_traces)))
+    print('  v2(async): {:.1f}s  source={} trace={}'.format(
+        v2_total, v2.get('source','?'), v2.get('trace','?')))
+    print('  speedup  : {:.1f}x'.format(speedup))
+    
+    results.append({
+        'id': qid,
+        'v0': round(v0_total, 1),
+        'v2': round(v2_total, 1),
+        'speedup': round(speedup, 1),
+        'v0_trace': ' -> '.join(v0_traces),
+        'v2_trace': v2.get('trace', '?'),
+    })
 
-print("\nDone.")
+print()
+print('=' * 70)
+print('SUMMARY')
+print('=' * 70)
+header = '{:25s} {:>8s} {:>8s} {:>8s}  {}'.format('Test', 'v0(s)', 'v2(s)', 'SpdUp', 'v2 source')
+print(header)
+print('-' * 70)
+for r in results:
+    line = '{:25s} {:7.1f}s {:7.1f}s {:6.1f}x  {}'.format(
+        r['id'], r['v0'], r['v2'], r['speedup'], r['v2_trace'][:40])
+    print(line)
+
+avg = sum(r['speedup'] for r in results) / len(results)
+print('-' * 70)
+print('Average speedup: {:.1f}x'.format(avg))

@@ -57,6 +57,6 @@ print(f"Avg time: {sum(r['time'] for r in results)/total:.2f}s")
 print(f"Entity Match pass rate: {sum(1 for r in results if r['em_pass']==True)}/{total}")
 
 # Save detailed results
-with open('/root/rag-deploy-v2/rag_benchmark_result.json', 'w') as f:
+with open('~/rag-deploy/rag_benchmark_result.json', 'w') as f:
     json.dump(results, f, ensure_ascii=False, indent=2)
 print(f"\nDetailed results saved to rag_benchmark_result.json")

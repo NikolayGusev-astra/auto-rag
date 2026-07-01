@@ -15,6 +15,9 @@ import requests
 class MCPClient:
     """Client for querying MCP servers in the CRAG fallback chain."""
 
+    _session_cache: dict[str, dict] = {}  # server_name -> {sid, url, headers, ts}
+    _lib_cache: dict[str, str] = {}       # library_name -> library_id
+
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
         self.last_error = None
@@ -37,28 +40,57 @@ class MCPClient:
             self.last_error = f"{server_name}: {e}"
             return []
 
+    # ── Cache helpers ──────────────────────────────────────────────
+    @classmethod
+    def _get_cached_session(cls, name: str, url: str) -> str | None:
+        """Get cached MCP session-id if still fresh (<5 min)."""
+        entry = cls._session_cache.get(name)
+        if entry and entry.get("url") == url and time.time() - entry.get("ts", 0) < 300:
+            return entry.get("sid")
+        return None
+
+    @classmethod
+    def _set_cached_session(cls, name: str, url: str, sid: str):
+        cls._session_cache[name] = {"sid": sid, "url": url, "ts": time.time()}
+
+    @classmethod
+    def _get_cached_lib_id(cls, lib_name: str) -> str | None:
+        return cls._lib_cache.get(lib_name.lower())
+
+    @classmethod
+    def _set_cached_lib_id(cls, lib_name: str, lib_id: str):
+        cls._lib_cache[lib_name.lower()] = lib_id
+
     def _query_context7(self, name: str, cfg: dict, query: str, max_results: int) -> list[dict]:
         """Two-step Context7 query: resolve library -> query docs."""
         url = cfg["url"]
         headers = dict(cfg.get("headers", {}))
         headers.setdefault("Accept", "application/json, text/event-stream")
 
-        # Init SSE session
-        sid, ok = self._http_mcp_init(url, headers)
-        if not ok:
-            self.last_error = f"{name}: init failed"
-            return []
-        h2 = dict(headers)
-        h2["mcp-session-id"] = sid
-
-        # Notify
-        self._http_mcp_send(url, {"jsonrpc":"2.0","method":"notifications/initialized","params":{}}, h2)
+        # Init SSE session (cached)
+        sid = self._get_cached_session(name, url)
+        if not sid:
+            sid, ok = self._http_mcp_init(url, headers)
+            if not ok:
+                self.last_error = f"{name}: init failed"
+                return []
+            self._set_cached_session(name, url, sid)
+            h2 = dict(headers)
+            h2["mcp-session-id"] = sid
+            self._http_mcp_send(url, {"jsonrpc":"2.0","method":"notifications/initialized","params":{}}, h2)
+        else:
+            h2 = dict(headers)
+            h2["mcp-session-id"] = sid
 
         # Step 1: Extract library name from query and resolve
         lib_id = None
-        # Common library names to search for
         lib_candidates = self._extract_library_names(query)
         for lib in lib_candidates[:3]:
+            # Check cache first
+            cached = self._get_cached_lib_id(lib)
+            if cached:
+                lib_id = cached
+                break
             result = self._http_mcp_call(url, h2, "resolve-library-id",
                 {"query": query[:200], "libraryName": lib})
             if result:
@@ -71,22 +103,29 @@ class MCPClient:
                         lib_id = rid
                         break
                 if lib_id:
+                    self._set_cached_lib_id(lib, lib_id)
                     break
 
         if not lib_id:
             # Fallback: try with first keyword
             first_word = query.split()[0] if query.split() else ""
             if first_word and len(first_word) > 2:
-                result = self._http_mcp_call(url, h2, "resolve-library-id",
-                    {"query": query[:200], "libraryName": first_word})
-                if result:
-                    import re
-                    ids = re.findall(r'/[a-zA-Z0-9_/-]+', str(result))
-                    for rid in ids:
-                        rid = rid.strip().strip('.')
-                        if len(rid) > 5:
-                            lib_id = rid
-                            break
+                cached = self._get_cached_lib_id(first_word)
+                if cached:
+                    lib_id = cached
+                else:
+                    result = self._http_mcp_call(url, h2, "resolve-library-id",
+                        {"query": query[:200], "libraryName": first_word})
+                    if result:
+                        import re
+                        ids = re.findall(r'/[a-zA-Z0-9_/-]+', str(result))
+                        for rid in ids:
+                            rid = rid.strip().strip('.')
+                            if len(rid) > 5:
+                                lib_id = rid
+                                break
+                        if lib_id:
+                            self._set_cached_lib_id(first_word, lib_id)
 
         if not lib_id:
             self.last_error = f"{name}: could not resolve library from query"
@@ -281,15 +320,18 @@ class MCPClient:
         headers.setdefault("Accept", "application/json, text/event-stream")
         tool = cfg.get("query_tool", "")
 
-        # Step 1: Initialize via SSE
-        init_payload = {
-            "jsonrpc": "2.0", "id": 1, "method": "initialize",
-            "params": {"protocolVersion": "2024-11-05", "capabilities": {},
-                       "clientInfo": {"name": "rag-mcp", "version": "1.0"}},
-        }
-        session_id = None
+        # Use cached session if available
+        session_id = self._get_cached_session(name, url)
         tools_data = []
-        init_ok = False
+        init_ok = bool(session_id)
+
+        if not session_id:
+            # Step 1: Initialize via SSE
+            init_payload = {
+                "jsonrpc": "2.0", "id": 1, "method": "initialize",
+                "params": {"protocolVersion": "2024-11-05", "capabilities": {},
+                           "clientInfo": {"name": "rag-mcp", "version": "1.0"}},
+            }
 
         try:
             resp = requests.post(url, json=init_payload, headers=headers, timeout=self.timeout, stream=True)
@@ -323,6 +365,9 @@ class MCPClient:
         if not init_ok:
             self.last_error = f"{name}: init failed"
             return []
+
+        if session_id:
+            self._set_cached_session(name, url, session_id)
 
         # Step 1b: Notify initialized + tools/list
         call_headers = dict(headers)
@@ -413,17 +458,38 @@ class MCPClient:
         base_url = cfg["base_url"]
         headers = cfg.get("headers", {})
         rest_template = cfg.get("rest_query", "/rest/api/2/search?jql=text~\"{query}\"+ORDER+BY+created+DESC&maxResults={max}")
-        url = base_url + rest_template.format(query=quote_plus(query), max=max_results)
+        # Поддержка {query_and3} — первые 3 значимых слова с AND вместо фразы
+        query_and3 = query_first3 = query
+        if "{query_and3}" in rest_template:
+            words = [w for w in query.split() if len(w) > 2][:3]
+            if words:
+                # JQL требует AND с пробелами, encode как %20AND%20
+                query_and3 = "%20AND%20".join(f'text~"{w}"' for w in words)
+        elif "{query_first3}" in rest_template:
+            words = [w for w in query.split() if len(w) > 2][:3]
+            query_first3 = " ".join(words) if words else query[:50]
+        else:
+            query_first3 = query
+        url = base_url + rest_template.format(query=quote_plus(query), query_first3=quote_plus(query_first3), query_and3=query_and3, max=max_results)
         try:
             resp = requests.get(url, headers=headers, timeout=self.timeout)
             resp.raise_for_status()
             data = resp.json()
             chunks = []
-            for issue in data.get("issues", [])[:max_results]:
-                key = issue.get("key", "")
-                summary = issue.get("fields", {}).get("summary", "")
-                desc = issue.get("fields", {}).get("description", "") or ""
-                text = f"[{key}] {summary}\n{desc[:500]}"
+            items = data.get("issues", data.get("results", []))
+            for item in items[:max_results]:
+                if "fields" in item:
+                    # Jira format
+                    key = item.get("key", "")
+                    summary = item.get("fields", {}).get("summary", "")
+                    desc = item.get("fields", {}).get("description", "") or ""
+                    text = f"[{key}] {summary}\n{desc[:500]}"
+                else:
+                    # Confluence format
+                    title = item.get("title", "")
+                    excerpt = item.get("excerpt", "") or item.get("body", {}).get("storage", {}).get("value", "")
+                    space = item.get("space", {}).get("key", "")
+                    text = f"[{space}] {title}\n{excerpt[:500]}"
                 chunks.append(self._chunk(name, text, query))
             return chunks
         except Exception as e:

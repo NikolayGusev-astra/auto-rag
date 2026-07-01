@@ -19,6 +19,8 @@ import sys
 import time
 from pathlib import Path
 
+import requests
+
 sys.path.insert(0, str(Path(__file__).parent))
 from dcd_router import classify as dcd_classify
 from rag_async import async_rag_search
@@ -49,8 +51,58 @@ def check_key_facts(text: str, key_facts: list[str]) -> dict:
     }
 
 
-def eval_answer_match(chunks_text: str, key_facts: list[str]) -> dict:
-    """Evaluate answer accuracy via key facts."""
+def llm_judge(query: str, chunks_text: str, key_facts: list[str]) -> dict:
+    """LLM-as-judge: оценивает, отвечают ли чанки на запрос.
+    Возвращает verdict (correct/partial/incorrect) + пояснение.
+    Использует qwen2.5-7b-instruct (non-thinking, 3-5s).
+    """
+    if not chunks_text.strip():
+        return {"verdict": "incorrect", "reason": "empty chunks", "score": 0.0}
+
+    prompt = (
+        f"Оцени, содержит ли приведённый ниже контекст ответ на вопрос пользователя.\n\n"
+        f"Вопрос: {query[:200]}\n\n"
+        f"Контекст:\n{chunks_text[:2000]}\n\n"
+        f"Ожидаемые ключевые факты: {', '.join(key_facts)}\n\n"
+        f"Ответь ТОЛЬКО одним числом от 0.0 до 1.0:\n"
+        f"1.0 = контекст полностью отвечает на вопрос, есть все ключевые факты\n"
+        f"0.7 = контекст отвечает, но не хватает деталей\n"
+        f"0.5 = частично отвечает, есть часть фактов\n"
+        f"0.3 = слабо связан, но есть релевантные термины\n"
+        f"0.0 = контекст не отвечает на вопрос"
+    )
+    try:
+        r = requests.post("http://localhost:1234/v1/chat/completions", json={
+            "model": "qwen2.5-7b-instruct",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.0, "max_tokens": 10,
+        }, timeout=15)
+        answer = r.json()["choices"][0]["message"]["content"].strip()
+        nums = re.findall(r'0\.\d+|1\.0', answer)
+        score = float(nums[0]) if nums else 0.0
+    except Exception:
+        score = 0.0
+
+    if score >= 0.7:
+        verdict = "correct"
+    elif score >= 0.5:
+        verdict = "partial"
+    elif score >= 0.3:
+        verdict = "weak"
+    else:
+        verdict = "incorrect"
+    return {"verdict": verdict, "score": round(score, 2), "reason": f"LLM score={score:.2f}"}
+
+
+def eval_answer_match(chunks_text: str, key_facts: list[str], query: str = "") -> dict:
+    """Evaluate answer accuracy — LLM-as-judge с fallback на keyword match."""
+    # Приоритет: LLM judge
+    if query:
+        llm_result = llm_judge(query, chunks_text, key_facts)
+        if llm_result["verdict"] != "incorrect" or not chunks_text.strip():
+            return llm_result
+
+    # Fallback: keyword match (если LLM не справился)
     result = check_key_facts(chunks_text, key_facts)
     ratio = result["key_facts_ratio"]
     if ratio >= 0.8:
@@ -193,19 +245,11 @@ async def evaluate_one(
         rec["chunks_snippet"] = chunks_text[:500] if chunks_text else ""
         rec["chunks_full_len"] = len(chunks_text)
 
-        # Source routing accuracy — zvec+llm считается zvec, empty=N/A для reject
-        expected = q["expected_source"]
-        actual = result.get("source")
-        if expected == "empty":
-            # Reject questions: source_ok = True если pipeline не нашёл релевантного источника
-            rec["source_ok"] = actual == "empty"
-        else:
-            rec["source_ok"] = actual == expected or (
-                expected == "zvec" and actual in ("zvec", "zvec+llm")
-            )
+        # Source routing accuracy
+        rec["source_ok"] = result.get("source") == q["expected_source"]
 
-        # 3. Answer accuracy (key facts)
-        answer_eval = eval_answer_match(chunks_text, q["key_facts"])
+        # 3. Answer accuracy (LLM judge)
+        answer_eval = eval_answer_match(chunks_text, q["key_facts"], query=q["query"])
         rec["answer_verdict"] = answer_eval["verdict"]
         rec["answer_key_facts"] = answer_eval
         rec["total_latency_s"] = round(latency + dcd_time, 2)

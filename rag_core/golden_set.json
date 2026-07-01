@@ -1,348 +1,91 @@
 {
   "meta": {
     "version": "1.1",
-    "description": "Golden set for RAG accuracy evaluation — multi-source routing",
+    "description": "Golden set template for RAG accuracy evaluation — generic multi-source routing",
     "created": "2026-07-01",
-    "total_questions": 28,
+    "total_questions": 8,
     "eval_strategy": "LLM-as-judge: compare pipeline answer vs ground_truth using key_facts",
     "sources": {
-      "zvec": "Local ZVec index (LLM wiki, skills, sessions, concepts)",
-      "web": "Bing search fallback (Google/DDG blocked in RF)",
-      "empty": "No relevant source available"
-    },
-    "expected_source": "zvec"
+      "mcp_confluence": "Corporate Confluence/Wiki",
+      "mcp_jira": "Jira issues (RCA, presale, security)",
+      "mcp_lodestone": "Documentation search (Confluence+Wiki+Sphinx)",
+      "mcp_context7": "Code/docs for devops/software-dev",
+      "zvec": "Local ZVec index (wiki, sessions, concepts)",
+      "web": "SearXNG + DuckDuckGo fallback"
+    }
   },
   "questions": [
     {
       "id": "postgresql-streaming-rep",
-      "query": "настройка postgresql streaming replication debian 12",
+      "query": "postgresql streaming replication setup debian 12",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "web",
-      "key_facts": [
-        "streaming replication",
-        "wal_level",
-        "primary_conninfo",
-        "standby"
-      ],
+      "expected_source": "mcp_context7",
+      "key_facts": ["streaming replication", "wal_level", "primary_conninfo", "replication slot"],
       "eval_criteria": "keyword_match"
     },
     {
       "id": "terraform-s3-backend",
-      "query": "terraform aws backend s3 state locking dynamodb",
+      "query": "terraform aws s3 backend state locking dynamodb",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "zvec",
-      "key_facts": [
-        "terraform",
-        "s3",
-        "backend",
-        "dynamodb",
-        "lock"
-      ],
+      "expected_source": "mcp_context7",
+      "key_facts": ["terraform", "s3 backend", "dynamodb", "state locking"],
       "eval_criteria": "keyword_match"
     },
     {
-      "id": "kubernetes-deploy-deb12",
-      "query": "развертывание kubernetes кластер на debian 12 k8s",
+      "id": "kubernetes-deployment",
+      "query": "kubernetes deployment rolling update strategy maxSurge maxUnavailable",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "web",
-      "key_facts": [
-        "kubernetes",
-        "kubeadm",
-        "containerd",
-        "Debian"
-      ],
+      "expected_source": "mcp_context7",
+      "key_facts": ["rolling update", "maxSurge", "maxUnavailable", "strategy"],
       "eval_criteria": "keyword_match"
     },
     {
       "id": "docker-compose-prod",
-      "query": "docker compose настройка nginx postgres redis production",
+      "query": "docker compose production best practices healthcheck restart policies",
       "expected_domain": "devops",
       "expected_collection": "devops",
-      "expected_source": "zvec",
-      "key_facts": [
-        "docker compose",
-        "nginx",
-        "PostgreSQL",
-        "Redis",
-        "production"
-      ],
+      "expected_source": "mcp_context7",
+      "key_facts": ["docker compose", "healthcheck", "restart", "production"],
       "eval_criteria": "keyword_match"
     },
     {
-      "id": "patroni-etcd-ha",
-      "query": "patroni ha postgresql кластер настройка etcd debian",
-      "expected_domain": "devops",
-      "expected_collection": "devops",
-      "expected_source": "web",
-      "key_facts": [
-        "Patroni",
-        "HA",
-        "etcd",
-        "PostgreSQL"
-      ],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "harbor-registry",
-      "query": "docker registry harbor хранение образов debian 12",
-      "expected_domain": "devops",
-      "expected_collection": "devops",
-      "expected_source": "web",
-      "key_facts": [
-        "Harbor",
-        "docker registry",
-        "хранение образов"
-      ],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "proxmox-backup-pbs",
-      "query": "proxmox backup server настройка резервное копирование VM debian",
-      "expected_domain": "devops",
-      "expected_collection": "devops",
-      "expected_source": "web",
-      "key_facts": [
-        "Proxmox Backup",
-        "резервное копирование",
-        "PBS"
-      ],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "nginx-api-gateway",
-      "query": "nginx reverse proxy api gateway postgresql debian 12 настройка",
-      "expected_domain": "devops",
-      "expected_collection": "devops",
-      "expected_source": "zvec",
-      "key_facts": [
-        "nginx",
-        "reverse proxy",
-        "API gateway"
-      ],
-      "eval_criteria": "keyword_match"
-    },
-    {
-      "id": "ford-01",
-      "query": "шрус Ford Explorer II партномер полуось",
-      "expected_domain": "ford-club",
-      "expected_source": "web",
-      "key_facts": [
-        "шрус Ford Explorer II партномер полуось"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "ford-club"
-    },
-    {
-      "id": "ford-02",
-      "query": "VIN 1FMZU34E6WUD14705 двигатель 4.0 SOHC",
-      "expected_domain": "ford-club",
-      "expected_source": "web",
-      "key_facts": [
-        "VIN 1FMZU34E6WUD14705 двигатель 4.0 SOHC"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "ford-club"
-    },
-    {
-      "id": "ford-03",
-      "query": "шины 235/75 R15 зимние Ford Explorer",
-      "expected_domain": "ford-club",
-      "expected_source": "web",
-      "key_facts": [
-        "шины 235/75 R15 зимние Ford Explorer"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "ford-club"
-    },
-    {
-      "id": "ford-04",
-      "query": "F5TZ-3A427A пыльник шруса замена",
-      "expected_domain": "ford-club",
-      "expected_source": "web",
-      "key_facts": [
-        "F5TZ-3A427A пыльник шруса замена"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "ford-club"
-    },
-    {
-      "id": "ford-05",
-      "query": "carpc магнитола Ford Explorer II установка",
-      "expected_domain": "ford-club",
-      "expected_source": "web",
-      "key_facts": [
-        "carpc магнитола Ford Explorer II установка"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "ford-club"
-    },
-    {
-      "id": "devops-01",
-      "query": "настройка xray reality vless конфиг",
-      "expected_domain": "devops",
-      "expected_source": "web",
-      "key_facts": [
-        "настройка xray reality vless конфиг"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "devops"
-    },
-    {
-      "id": "devops-02",
-      "query": "nginx reverse proxy docker настройка",
-      "expected_domain": "devops",
-      "expected_source": "web",
-      "key_facts": [
-        "nginx reverse proxy docker настройка"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "devops"
-    },
-    {
-      "id": "devops-03",
-      "query": "openvpn сервер ubuntu iptables",
-      "expected_domain": "devops",
-      "expected_source": "web",
-      "key_facts": [
-        "openvpn сервер ubuntu iptables"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "devops"
-    },
-    {
-      "id": "devops-04",
-      "query": "systemd service автозапуск скрипта after network",
-      "expected_domain": "devops",
-      "expected_source": "zvec",
-      "key_facts": [
-        "systemd service автозапуск скрипта after network"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "devops"
-    },
-    {
-      "id": "devops-05",
-      "query": "postgresql debian 12 установка настройка бэкап",
-      "expected_domain": "devops",
-      "expected_source": "web",
-      "key_facts": [
-        "postgresql debian 12 установка настройка бэкап"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "devops"
-    },
-    {
-      "id": "swdev-01",
-      "query": "напиши ADR архитектурное решение",
+      "id": "software-design-pattern",
+      "query": "clean architecture dependency rule use case entity boundary",
       "expected_domain": "software-dev",
-      "expected_source": "zvec",
-      "key_facts": [
-        "напиши ADR архитектурное решение"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "software-dev"
+      "expected_collection": "software-dev",
+      "expected_source": "mcp_context7",
+      "key_facts": ["clean architecture", "dependency rule", "use case", "entity"],
+      "eval_criteria": "keyword_match"
     },
     {
-      "id": "swdev-02",
-      "query": "code review PR github проверка кода",
+      "id": "async-programming-patterns",
+      "query": "asyncio gather wait timeout exception handling python",
       "expected_domain": "software-dev",
-      "expected_source": "zvec",
-      "key_facts": [
-        "code review PR github проверка кода"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "software-dev"
+      "expected_collection": "software-dev",
+      "expected_source": "mcp_context7",
+      "key_facts": ["asyncio", "gather", "wait", "timeout", "exception"],
+      "eval_criteria": "keyword_match"
     },
     {
-      "id": "swdev-03",
-      "query": "как настроить dcd router для нового домена",
+      "id": "rust-ownership-borrowing",
+      "query": "rust ownership borrowing lifetimes reference counting arc mutex",
       "expected_domain": "software-dev",
-      "expected_source": "zvec",
-      "key_facts": [
-        "как настроить dcd router для нового домена"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "software-dev"
+      "expected_collection": "software-dev",
+      "expected_source": "mcp_context7",
+      "key_facts": ["ownership", "borrowing", "lifetimes", "Arc", "Mutex"],
+      "eval_criteria": "keyword_match"
     },
     {
-      "id": "manuals-01",
-      "query": "как установить trafilatura python",
-      "expected_domain": "manuals",
-      "expected_source": "zvec",
-      "key_facts": [
-        "как установить trafilatura python"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "manuals"
-    },
-    {
-      "id": "manuals-02",
-      "query": "docker compose конфигурация пример",
-      "expected_domain": "manuals",
-      "expected_source": "web",
-      "key_facts": [
-        "docker compose конфигурация пример"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "manuals"
-    },
-    {
-      "id": "manuals-03",
-      "query": "как настроить zvec LOCK workaround",
-      "expected_domain": "manuals",
-      "expected_source": "zvec",
-      "key_facts": [
-        "как настроить zvec LOCK workaround"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "manuals"
-    },
-    {
-      "id": "infra-01",
-      "query": "xff kz8 ns7 hermes агент завис перезапуск",
-      "expected_domain": "infrastructure",
-      "expected_source": "zvec",
-      "key_facts": [
-        "xff kz8 ns7 hermes агент завис перезапуск"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "infrastructure"
-    },
-    {
-      "id": "research-01",
-      "query": "qwen3-4b vs qwen2.5 сравнение производительность",
+      "id": "local-wiki-lookup",
+      "query": "project architecture decision record template adr",
       "expected_domain": "research",
+      "expected_collection": "research",
       "expected_source": "zvec",
-      "key_facts": [
-        "qwen3-4b vs qwen2.5 сравнение производительность"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "research"
-    },
-    {
-      "id": "reject-01",
-      "query": "рецепт блинов на кефире",
-      "expected_domain": "ford-club",
-      "expected_source": "empty",
-      "key_facts": [
-        "рецепт блинов на кефире"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "ford-club"
-    },
-    {
-      "id": "reject-02",
-      "query": "погода в екатеринбурге завтра",
-      "expected_domain": "publishing",
-      "expected_source": "empty",
-      "key_facts": [
-        "погода в екатеринбурге завтра"
-      ],
-      "eval_criteria": "keyword_match",
-      "expected_collection": "publishing"
+      "key_facts": ["ADR", "architecture decision record", "template", "context"],
+      "eval_criteria": "keyword_match"
     }
   ]
 }

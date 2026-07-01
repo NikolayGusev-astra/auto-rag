@@ -25,58 +25,7 @@ from pathlib import Path
 #        2 = средний (часто встречается в домене)
 #        1 = слабый (может пересекаться с другими доменами)
 DOMAIN_KEYWORDS = {
-    "rusbitech": {
-        "weight": 3,
-        "anti_keywords": ["nginx", "docker", "letsencrypt", "pytest", "async function",
-                          "javascript", "react", "typescript", "git", "github",
-                          "ci/cd", "redis", "postgresql", "kubernetes"],
-        "keywords": {
-            # Продукты
-            "ald pro": 7, "aldpro": 7, "ald-pro": 7,
-            "acm": 5, "astra control manager": 6, "msad": 5,
-            "rupost": 5, "ru-post": 5, "rupost": 5,
-            "alse": 5, "astra linux special edition": 5,
-            "astra linux": 4, "astralinux": 4,
-            "ald": 4, "astra linux domain": 5, "aldpro": 7,
-            "keycloak": 4,
-            "lodestone": 4,
-            "protopack": 4,
-            # Заказчики
-            "русгидро": 5, "rusgidro": 5, "rus hydro": 5,
-            "татнефть": 5, "tatneft": 5,
-            "новатэк": 5, "novatek": 5, "НОВАТЭК": 5,
-            "газпром": 5, "gazprom": 5,
-            "россети": 4, "roseti": 4,
-            "алабуга": 4, "alabuga": 4,
-            "увз": 3,
-            # Пресейл
-            "presale": 3, "пресейл": 3, "presale-": 4,
-            "пми": 3, "пси": 3, "пилотирование": 3,
-            # Типы работ
-            "rca": 4, "root cause": 4, "root-cause": 4,
-            "hld": 3, "lld": 3, "типовой проект": 3,
-            "стендирование": 3, "внедрение": 3, "домен": 2,
-            "ддо": 5, "кд": 3, "контроллер домена": 6,
-            "аргументация": 2, "аудит": 2, "сайзинг": 3,
-            "vulnerability": 2, "уязвимость": 2, "cve": 3,
-            "samba": 4, "aldprosam": 6, "libipa-aldpro": 6, "доверитель": 5,
-            "smart-card": 2, "смарт-карта": 2, "токен": 2,
-            "rodc": 3, "родс": 3,
-            # Дополнительные для маршрутизации
-            "ретроспектива": 3,    # для РусГидро
-            "workspad": 4, "workspad x": 4, "works pad": 3,
-            # Общее
-            "astra": 2, "astralinux.ru": 3, "rusbitech": 3,
-            "jira": 1, "tempo": 1,
-        },
-        "collections": {
-            "rusbitech-products": ["ald pro", "aldpro", "acm", "rupost", "alse", "keycloak", "lodestone", "protopack"],
-            "rusbitech-customers": ["русгидро", "татнефть", "новатэк", "газпром", "россети", "алабуга", "увз"],
-            "rusbitech-rca": ["rca", "root cause", "анализ", "расследование"],
-            "rusbitech-architecture": ["hld", "lld", "архитектура", "типовой проект", "сайзинг"],
-            "rusbitech-deployment": ["стендирование", "внедрение", "деплой", "развертывание", "пилотирование"],
-            "rusbitech-vulnerability": ["cve", "уязвимость", "vulnerability", "безопасность"],
-        },
+    
     },
     "software-dev": {
         "weight": 3,
@@ -99,8 +48,8 @@ DOMAIN_KEYWORDS = {
             "lint": 2, "линтер": 2, "formatting": 1,
             "ci/cd": 2, "unit test": 3, "integration test": 3,
             "e2e": 3, "test coverage": 3, "юнит-тест": 3,
-            "adr": 3, "напиши adr": 3,
-        },
+            "adr": 3, "напиши adr": 3
+},
         "collections": {
             "code-review": ["код-ревью", "code review", "ревью", "pr", "pull request",
                            "review pr", "проверь код", "check code"],
@@ -119,9 +68,9 @@ DOMAIN_KEYWORDS = {
                         "spike", "writing plan", "scope",
                         "adr", "напиши adr", "архитектурное решение",
                         "план миграции", "план миграции данных",
-                        "создай план"],
-        },
-    },
+                        "создай план"]
+}
+},
     "devops": {
         "weight": 3,
         "keywords": {
@@ -145,8 +94,8 @@ DOMAIN_KEYWORDS = {
             "domain controller": 3, "ldap": 3, "kerberos": 3,
             "настройка ддо": 5, "настройка aldpro": 5, "настройка msad": 5,
             "ддо aldpro": 5, "msad aldpro": 5,
-            "конфигурация ддо": 5, "конфигурация aldpro": 5,
-        },
+            "конфигурация ддо": 5, "конфигурация aldpro": 5
+},
         "anti_keywords": ["сравни", "сравнение", "vs", "проаналижи лог", "лог ошибок", "научная", "научный",
                           "firewall правила", "настрой firewall", "ufw правила", "iptables правила",
                           "vulnerability", "cve", "exploit", "threat model", "red team",
@@ -172,9 +121,9 @@ DOMAIN_KEYWORDS = {
                           "уведомления о падении", "alert о падении",
                           "падение сервера", "сервер упал"],
             "security": ["security", "sbl", "аудит", "firewall", "ufw",
-                         "iptables", "sanitize", "forensics"],
-        },
-    },
+                         "iptables", "sanitize", "forensics"]
+}
+},
     "publishing": {
         "weight": 3,
         "anti_keywords": ["научная", "научный", "федерация", "rag",
@@ -190,8 +139,8 @@ DOMAIN_KEYWORDS = {
             "posting": 3, "публикация": 3,
             "контент": 2, "content": 2, "cms": 2,
             "форматирование": 2, "markdown": 2, "rich message": 2,
-            "оформи пост": 3, "напиши пост": 3, "пост для": 3,
-        },
+            "оформи пост": 3, "напиши пост": 3, "пост для": 3
+},
         "collections": {
             "articles": ["статья", "article", "habr", "хабр",
                         "medium", "черновик", "draft",
@@ -203,15 +152,17 @@ DOMAIN_KEYWORDS = {
             "posting": ["telegram", "telegraph", "постинг", "публикация",
                        "rich message", "posting workflow",
                        "опубликуй пост", "пост в телеграм",
-                       "напиши пост про", "оформи пост"],
-        },
-    },
+                       "напиши пост про", "оформи пост"]
+}
+},
     "research": {
         "weight": 2,
         "anti_keywords": ["сервер", "деплой", "docker", "nginx", "firewall",
                           "создать задача", "cron", "бэкап", "backup",
                           "линтер", "тест", "код-ревью", "refactor",
-                          "сравни", "сравнение", "vs"],
+                          "сравни", "сравнение", "vs",
+                          "lodestone", "confluence", "документация",
+                          "техническая документация", "wiki страница"],
         "keywords": {
             "исследование": 3, "research": 3, "arxiv": 3, "paper": 3,
             "wiki": 3, "wiki-sync": 3, "llm wiki": 3,
@@ -224,8 +175,8 @@ DOMAIN_KEYWORDS = {
             "llm": 3, "large language model": 3, "модель": 2, "модели": 2,
             "claude": 3, "модель claude": 3, "новые модели": 3,
             "федерация": 3, "rag федерация": 3,
-            "альтернативы": 3, "альтернатива": 3, "найди альтернативы": 3,
-        },
+            "альтернативы": 3, "альтернатива": 3, "найди альтернативы": 3
+},
         "collections": {
             "academic": ["arxiv", "paper", "research", "academic", "научный",
                         "научная статья", "статья", "федерация",
@@ -243,9 +194,9 @@ DOMAIN_KEYWORDS = {
                         "polymarket", "market research",
                         "сравни", "подготовь отчет", "подготовь отчёт",
                         "проанализируй лог", "лог ошибок", "отчет по проекту",
-                        "сравни zvec", "сравни chroma", "zvec vs chroma"],
-        },
-    },
+                        "сравни zvec", "сравни chroma", "zvec vs chroma"]
+}
+},
     "automation": {
         "weight": 3,
         "anti_keywords": ["код-ревью", "bug", "ошибка в коде", "деплой кода",
@@ -258,7 +209,9 @@ DOMAIN_KEYWORDS = {
                           "zvec", "chroma",
                           "nginx", "docker",
                           "лог ошибок", "падение сервера", "сервер упал",
-                          "firewall", "vulnerability", "аудит безопасности"],
+                          "firewall", "vulnerability", "аудит безопасности",
+                          "proxmox", "backup server", "pbs", "резервное копирование",
+                          "debian", "vm", "virtual machine"],
         "keywords": {
             "cron": 3, "cronjob": 3, "автопланировщик": 3, "schedule": 3,
             "webhook": 3, "subscription": 2, "event-driven": 3,
@@ -274,8 +227,8 @@ DOMAIN_KEYWORDS = {
             "бэкап": 3, "backup": 3, "restore": 3,
             "расписание": 3, "расписани": 3, "задача задача": 2,
             "автомат": 2, "триггер": 2, "event": 2,
-            "поменять работу cron": 3, "cron задача": 3,
-        },
+            "поменять работу cron": 3, "cron задача": 3
+},
         "collections": {
             "cron": ["cron", "cronjob", "schedule", "автопланировщик", "periodic"],
             "webhooks": ["webhook", "subscription", "event-driven",
@@ -289,9 +242,9 @@ DOMAIN_KEYWORDS = {
             "notifications": ["notification", "уведомление", "alert",
                              "message", "оповещение",
                              "уведомления о падении", "alert о падении",
-                             "настрой уведомления"],
-        },
-    },
+                             "настрой уведомления"]
+}
+},
     "data-ml": {
         "weight": 2,
         "anti_keywords": ["статья", "пост", "публикация", "код-ревью", "деплой",
@@ -309,8 +262,8 @@ DOMAIN_KEYWORDS = {
             "huggingface": 3, "hf": 2, "token": 1, "tokenization": 2,
             "segment": 2, "image": 2, "video": 2,
             "classification": 2, "ner": 2, "embedding": 2,
-            "обучи": 3, "распознавание": 3, "изображение": 3, "изображений": 3,
-        },
+            "обучи": 3, "распознавание": 3, "изображение": 3, "изображений": 3
+},
         "collections": {
             "mlops": ["mlops", "machine learning", "ml pipeline", "training",
                      "fine-tune", "finetune", "dataset",
@@ -320,46 +273,12 @@ DOMAIN_KEYWORDS = {
             "dspy": ["dspy", "prompt engineering", "prompt optimization",
                      "declarative program"],
             "multimodal": ["audio", "music", "image", "video", "segment",
-                                      "musicgen", "audiocraft", "stable diffusion",
-                                      "изображение", "изображений", "распознавание",
-                                      "сгенерируй музыку", "музыку для видео",
-                                      "видео с музыкой"],
-        },
-    },
-    "ford-club": {
-        "weight": 3,
-        "keywords": {
-            "ford": 4, "explorer": 4, "шрус": 5, "cv joint": 5,
-            "авто": 3, "запчасти": 4, "parts": 3, "партномер": 5,
-            "oem": 3, "vin": 4, "двигатель": 3, "engine": 3,
-            "шины": 3, "tires": 3, "диски": 3, "r15": 3,
-            "ремонт": 3, "замена": 3, "масло": 2, "oil": 2,
-            "фильтр": 2, "filter": 2, "тормоза": 2, "brake": 2,
-            "carpc": 4, "car-pc": 4,
-            "полуось": 5, "пыльник": 4, "подвеска": 3,
-        },
-        "collections": {"ford-club": ["ford", "explorer", "шрус", "vin", "запчасти", "авто", "carpc"]},
-    },
-    "manuals": {
-        "weight": 2,
-        "keywords": {
-            "руководство": 3, "manual": 3, "how to": 3, "как сделать": 3,
-            "инструкция": 3, "документация": 3, "doc": 2, "док": 2,
-            "пошагово": 2, "туториал": 3, "tutorial": 3,
-            "интеграция": 2, "настройка": 2, "установка": 2, "монтаж": 2,
-        },
-        "collections": {"manuals": ["руководство", "manual", "how to", "инструкция", "туториал"]},
-    },
-    "sessions": {
-        "weight": 2,
-        "keywords": {
-            "сессия": 3, "session": 3, "conversation": 2,
-            "история": 2, "переписка": 3, "разговор": 2,
-            "встреча": 2, "meeting": 2, "созвон": 2,
-            "вчера": 1, "напомни": 2, "что обсуждали": 3,
-        },
-        "collections": {"sessions": ["сессия", "session", "переписка", "встреча", "что обсуждали", "напомни"]},
-    },
+                          "musicgen", "audiocraft", "stable diffusion",
+                          "изображение", "изображений", "распознавание",
+                          "сгенерируй музыку", "музыку для видео",
+                          "видео с музыкой"]
+}
+},
     "integrations": {
         "weight": 2,
         "keywords": {
@@ -372,8 +291,8 @@ DOMAIN_KEYWORDS = {
             "discord": 3, "slack": 2,
             "homeassistant": 3, "openhue": 3, "smart home": 3,
             "api": 1, "rest": 2, "graphql": 2,
-            "integration": 2, "интеграция": 2,
-        },
+            "integration": 2, "интеграция": 2
+},
         "collections": {
             "github": ["github", "gh", "gitlab", "pull request", "issue",
                        "code review", "repository", "github actions",
@@ -390,9 +309,9 @@ DOMAIN_KEYWORDS = {
                         "marketplace", "авито интеграция"],
             "feishu": ["feishu", "lark", "doc", "drive"],
             "smart_home": ["homeassistant", "openhue", "smart home",
-                          "light", "switch", "sensor"],
-        },
-    },
+                          "light", "switch", "sensor"]
+}
+},
     "analysis": {
         "weight": 2,
         "anti_keywords": ["код", "ревью", "pr ", "deploy", "деплой", "сервер",
@@ -414,8 +333,8 @@ DOMAIN_KEYWORDS = {
             "лог ошибок сервера": 5, "проаналижи лог ошибок": 5,
             "лог ошибок": 3, "проаналижи лог": 3,
             "сравни": 3, "vs": 3, "zvec": 2, "chroma": 2,
-            "ошибка": 2, "ошибок": 2, "баг": 2, "лог": 2,
-        },
+            "ошибка": 2, "ошибок": 2, "баг": 2, "лог": 2
+},
         "collections": {
             "prism": ["prism", "prism-3way", "prism-discover", "prism-full"],
             "whatif": ["whatif", "premortem", "премортем", "риск", "risk"],
@@ -427,9 +346,9 @@ DOMAIN_KEYWORDS = {
                         "polymarket", "market research",
                         "сравни", "подготовь отчет", "подготовь отчёт",
                         "проанализируй лог", "лог ошибок", "отчет по проекту",
-                        "сравни zvec", "сравни chroma", "zvec vs chroma"],
-        },
-    },
+                        "сравни zvec", "сравни chroma", "zvec vs chroma"]
+}
+},
     "creative": {
         "weight": 2,
         "anti_keywords": ["код", "ревью", "bug", "ошибка", "деплой", "сервер",
@@ -455,8 +374,8 @@ DOMAIN_KEYWORDS = {
             "пиксель-арт": 3, "pixel art": 3,
             "нарисуй": 3, "создай рисунок": 3,
             "сгенерируй комикс": 3, "создай комикс": 3,
-            "нарисуй пиксель-арт": 3,
-        },
+            "нарисуй пиксель-арт": 3
+},
         "collections": {
             "diagrams": ["диаграмма", "diagram", "ascii", "ascii art",
                         "excalidraw", "schema diagram",
@@ -473,9 +392,9 @@ DOMAIN_KEYWORDS = {
             "visual": ["рисунок", "drawing", "sketch", "pixel art",
                        "illustration", "prototype", "design",
                        "пиксель-арт", "нарисуй", "нарисуй пиксель-арт",
-                       "ascii art", "ascii баннер"],
-        },
-    },
+                       "ascii art", "ascii баннер"]
+}
+},
     "personal": {
         "weight": 1,
         "keywords": {
@@ -487,8 +406,8 @@ DOMAIN_KEYWORDS = {
             "озвучь": 3, "озвучу": 3, "озвучивание": 3,
             "sbl": 2, "system boundary": 2,
             "personal": 2, "личный": 2,
-            "адаптация": 2, "adaptation": 2,
-        },
+            "адаптация": 2, "adaptation": 2
+},
         "collections": {
             "auto": ["ford", "форд", "explorer", "ford explorer",
                     "car", "машина", "automotive", "carpc",
@@ -499,9 +418,9 @@ DOMAIN_KEYWORDS = {
             "notes": ["заметки", "notes", "obsidian", "note taking", "voice memo",
                      "создай заметку", "озвучь", "tts", "текст через tts",
                      "озвучь текст"],
-            "adaptation": ["адаптация", "adaptation", "yar", "ярославская"],
-        },
-    },
+            "adaptation": ["адаптация", "adaptation", "yar", "ярославская"]
+}
+},
     "communication": {
         "weight": 2,
         "anti_keywords": ["статья", "постинг", "публикация", "оформи пост",
@@ -515,22 +434,24 @@ DOMAIN_KEYWORDS = {
             "email": 3, "почта": 3, "imap": 2, "smtp": 2,
             "rich message": 3, "rich": 2,
             "отправь сообщение": 3, "send message": 3,
-            "оповещение": 3, "notification": 3,
-        },
+            "оповещение": 3, "notification": 3
+},
         "collections": {
             "telegram": ["telegram", "телеграм", "rich message", "пост",
                         "posting", "chat"],
             "matrix": ["matrix", "synapse", "homeserver", "element"],
             "discord": ["discord", "bot", "server"],
             "email": ["email", "почта", "imap", "smtp", "himalaya",
-                     "mail", "письмо"],
-        },
-    },
+                     "mail", "письмо"]
+}
+},
     "security": {
         "weight": 3,
         "anti_keywords": ["код-ревью", "refactor", "деплой кода",
                           "wiki страница", "пост в телеграм",
-                          "тестирование", "test coverage", "unit test"],
+                          "тестирование", "test coverage", "unit test",
+                          "astra linux", "astralinux", "альт", "альт линукс",
+                          "мандатный доступ", "замкнутая среда", "патч"],
         "keywords": {
             "security": 3, "безопасность": 3, "аудит": 2, "audit": 2,
             "sbl": 3, "system boundary": 3, "boundary layer": 3,
@@ -541,8 +462,8 @@ DOMAIN_KEYWORDS = {
             "jailbreak": 3, "godmode": 3, "red team": 4, "red team тестирование": 5,
             "supply chain": 3, "зависимости": 2, "dependencies": 2,
             "проведи аудит": 3, "проанализируй безопасность": 3,
-            "восстанови": 3, "восстановление": 3, "инцидент": 3,
-        },
+            "восстанови": 3, "восстановление": 3, "инцидент": 3
+},
         "collections": {
             "audit": ["audit", "аудит", "sbl", "system boundary",
                      "boundary layer", "scan", "проведи аудит",
@@ -556,9 +477,9 @@ DOMAIN_KEYWORDS = {
                          "firewall", "firewall правила", "настрой firewall",
                          "ufw", "ufw правила", "iptables", "iptables правила"],
             "red_team": ["jailbreak", "godmode", "red team", "threat",
-                        "threat model", "injection", "red team тестирование"],
-        },
-    },
+                        "threat model", "injection", "red team тестирование"]
+}
+}
 }
 
 # ─── Нормализация ──────────────────────────────────────────────────
@@ -622,7 +543,7 @@ STOP_WORDS = {
     "used", "to", "of", "in", "for", "on", "with", "at", "by", "from",
     "this", "that", "these", "those", "it", "its", "and", "or", "but",
     "not", "no", "nor", "so", "yet", "both", "either", "neither", "each",
-    "please", "thanks", "thank", "hi", "hello", "hey",
+    "please", "thanks", "thank", "hi", "hello", "hey"
 }
 
 # ─── Основные функции ──────────────────────────────────────────────
@@ -680,8 +601,8 @@ def classify(query: str) -> dict:
             "collection": str,
             "confidence": float (0.0 - 1.0),
             "keywords_matched": list[str],
-            "fallback": bool,
-        }
+            "fallback": bool
+}
     """
     tokens = _extract_tokens(query)
     if not tokens:
@@ -690,8 +611,8 @@ def classify(query: str) -> dict:
             "collection": "planning",
             "confidence": 0.0,
             "keywords_matched": [],
-            "fallback": True,
-        }
+            "fallback": True
+}
     
     # 1. Подсчёт весов для каждого домена (с учётом стемминга и анти-триггеров)
     domain_scores = {}
@@ -725,8 +646,8 @@ def classify(query: str) -> dict:
             "collection": "planning",
             "confidence": 0.0,
             "keywords_matched": [],
-            "fallback": True,
-        }
+            "fallback": True
+}
     
     # 2. Выбор лучшего домена
     best_domain = max(domain_scores, key=lambda k: domain_scores[k])
@@ -773,16 +694,16 @@ def classify(query: str) -> dict:
             "collection": list(DOMAIN_KEYWORDS[best_domain]["collections"].keys())[0] if DOMAIN_KEYWORDS[best_domain]["collections"] else "general",
             "confidence": round(confidence, 2),
             "keywords_matched": matched_keywords,
-            "fallback": True,
-        }
+            "fallback": True
+}
     
     return {
         "domain": best_domain,
         "collection": best_collection or list(DOMAIN_KEYWORDS[best_domain]["collections"].keys())[0],
         "confidence": round(confidence, 2),
         "keywords_matched": matched_keywords,
-        "fallback": False,
-    }
+        "fallback": False
+}
 
 
 def classify_with_details(query: str) -> dict:

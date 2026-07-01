@@ -11,9 +11,9 @@ from rag_config import EMBEDDING_URL, EMBEDDING_MODEL
 # ── Config ────────────────────────────────────────────────────────
 COLL_PATH = os.path.join(ZVEC_PATH, ZVEC_WIKI_COLLECTION)
 WIKI_PATHS = [
-    os.path.expanduser("/root/wiki"),
-    os.path.expanduser("/root/llm-wiki"),
-    os.path.expanduser("/root/.autolycus/skills"),
+    os.path.expanduser("~/wiki"),
+    os.path.expanduser("~/llm-wiki"),
+    os.path.expanduser("~/skills"),
 ]
 CHUNK_SIZE = 2000
 STATE_FILE = os.path.join(ZVEC_PATH, ".index_state.v2.json")
