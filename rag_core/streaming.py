@@ -20,8 +20,6 @@ from typing import AsyncGenerator
 
 import aiohttp
 
-from rag_v2.engine import rag_v2_search
-
 
 async def stream_rag_response(
     query: str,
@@ -81,6 +79,7 @@ async def stream_rag_response(
 
     # 3. Full pipeline
     try:
+        from rag_v2.engine import rag_v2_search
         result = await rag_v2_search(query)
         yield {
             "type": "trace",
