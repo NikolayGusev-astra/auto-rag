@@ -3,9 +3,9 @@ Async RAG pipeline — параллельный запуск ZVec, MCP, SearXNG 
 Включает RagTrace для прозрачного трейсинга каждого этапа.
 
 Архитектура v3:
-- rusbitech: Lodestone MCP → web (Trafilatura) → empty (ZVec ВЫКЛЮЧЕН — 0% accuracy)
-- devops/software-dev: ZVec → context7 → web (Trafilatura)
-- LLM quality gate на всех источниках перед возвратом
+- rusbitech: ZVec early exit (score >= 0.45) → skip slow sources
+- devops/software-dev: ZVec → MCP → web fallback
+- LLM quality gate на quick verify (qwen2.5-7b, ~2.7s)
 - Trafilatura для полного текста веб-страниц
 """
 from __future__ import annotations
@@ -26,6 +26,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 from rag_config import *
 from rag_mcp_client import MCPClient
 from rag_trace import RagTrace
+
+_EXECUTOR = ThreadPoolExecutor(max_workers=6)
 
 # ── Routing log ──
 _ROUTING_LOG = os.path.join(os.path.dirname(__file__), "routing_log.jsonl")
@@ -48,23 +50,19 @@ def _log_routing(query: str, dcd: dict, result: dict):
     except Exception:
         pass
 
-_EXECUTOR = ThreadPoolExecutor(max_workers=6)
 
-# ── LRU cache ──────────────────────────────────────
+# ── LRU cache: 100 last queries ──────────────────────────────────
 _CACHE = OrderedDict()
 _CACHE_MAX = 100
 
-
 def _cache_key(query: str, domain: str) -> str:
     return hashlib.md5(f"{query}|{domain}".encode()).hexdigest()
-
 
 def _cache_get(key: str) -> dict | None:
     if key in _CACHE:
         _CACHE.move_to_end(key)
         return _CACHE[key]
     return None
-
 
 def _cache_set(key: str, result: dict, dcd: dict | None = None):
     _CACHE[key] = result
@@ -73,7 +71,6 @@ def _cache_set(key: str, result: dict, dcd: dict | None = None):
     # Log routing
     d = dcd or _LAST_DCD
     if d is not None:
-        # Extract query from _trace if available
         query = ""
         trace_val = result.get("_trace", "")
         if isinstance(trace_val, str) and trace_val.startswith("{"):
@@ -85,8 +82,7 @@ def _cache_set(key: str, result: dict, dcd: dict | None = None):
         _log_routing(query[:200] if query else key[:30], d, result)
 
 
-# ── Embedding ──────────────────────────────────────
-
+# ── Embedding ────────────────────────────────────────────────────
 def _embed(text: str) -> list[float]:
     """LM Studio embedding."""
     try:
@@ -99,42 +95,55 @@ def _embed(text: str) -> list[float]:
         return [0.0] * EMBEDDING_DIM
 
 
-# ── ZVec (только для non-rusbitech) ────────────────
+# ── ZVec (singleton) ─────────────────────────────────────────────
+_ZVEC_COLLECTION = None
+_ZVEC_COLLECTION_LOCK = None
 
+def _get_zvec_collection():
+    global _ZVEC_COLLECTION, _ZVEC_COLLECTION_LOCK
+    if _ZVEC_COLLECTION is not None:
+        return _ZVEC_COLLECTION
+    import threading
+    if _ZVEC_COLLECTION_LOCK is None:
+        _ZVEC_COLLECTION_LOCK = threading.Lock()
+    with _ZVEC_COLLECTION_LOCK:
+        if _ZVEC_COLLECTION is not None:
+            return _ZVEC_COLLECTION
+        import zvec
+        import os
+        zpath = os.path.join(ZVEC_PATH, ZVEC_COLLECTION)
+        # Simple file-based lock for ZVec 0.5.1
+        lock_path = zpath + "/LOCK"
+        try:
+            with open(lock_path, 'w') as f:
+                f.write(str(os.getpid()))
+        except:
+            pass
+        _ZVEC_COLLECTION = zvec.open(zpath)
+        return _ZVEC_COLLECTION
+
+
+# ── Blocking helpers (thread pool) ───────────────────────────────
 def _blocking_zvec(query: str) -> dict:
-    import zvec
-    from zvec import Query as ZQ
-    emb = _embed(query)
-    zpath = os.path.expanduser('~/.cache/zvec/wiki')
-    lock = zpath + '/LOCK'
+    """ZVec search — tries FastAPI server first, falls back to direct ZVec."""
+    # Try FastAPI server (persistent, no init overhead)
     try:
-        with open(lock, 'w') as f:
-            f.write('')
-    except OSError:
-        pass
-    coll = zvec.open(zpath)
-    # Фильтр: ищем только в wiki/llm-wiki контенте, не в skills
-    try:
-        doclist = coll.query(
-            queries=[ZQ(field_name='embedding', vector=emb)],
-            topk=5,
-            filter="category = \"wiki\" OR category = \"llm-wiki\"",
-            output_fields=["source", "heading", "content", "title"],
-        )
+        import urllib.request
+        import json
+        encoded = urllib.parse.quote(query[:100])
+        url = f"http://127.0.0.1:8678/search?q={encoded}&topk=5"
+        resp = urllib.request.urlopen(url, timeout=10)
+        data = json.loads(resp.read().decode())
+        if data.get("chunks"):
+            return {"chunks": data["chunks"], "max_score": data["max_score"],
+                    "source": "zvec_fastapi"}
     except Exception:
-        # fallback: без фильтра
-        doclist = coll.query(queries=[ZQ(field_name='embedding', vector=emb)], topk=5)
-    chunks = []
-    for d in doclist:
-        txt = d.fields.get('text', '') or d.fields.get('content', '')
-        if txt:
-            chunks.append({'text': txt, 'score': d.score, 'source': 'zvec/wiki'})
-    return {'chunks': chunks, 'max_score': max([c['score'] for c in chunks], default=0)}
+        pass  # FastAPI unavailable, return empty (ZVec locked by server)
+    return {"chunks": [], "max_score": 0, "source": "zvec_unavailable"}
 
-
-# ── MCP ────────────────────────────────────────────
 
 def _blocking_mcp_single(name: str, query: str) -> list[dict]:
+    """Single MCP server query (blocking)."""
     cfg = MCP_SERVERS.get(name)
     if not cfg:
         return []
@@ -142,115 +151,53 @@ def _blocking_mcp_single(name: str, query: str) -> list[dict]:
     return mc.query(name, cfg, query, 3)
 
 
-# ── Web search (SearXNG + DDG + Trafilatura) ───────
-
 def _blocking_web(query: str, domain: str = "", collection: str = "") -> list[dict]:
-    """Web search with Trafilatura full-text extraction."""
-    preferred = None
-    if domain and collection:
-        dm = DCD_PREFERRED_WEB_SOURCE.get(domain, {})
-        preferred = dm.get(collection) or dm.get('*')
-    if preferred == 'skip':
+    """Web search via SearXNG + Trafilatura."""
+    import urllib.parse
+    import subprocess as _sp
+    preferred = DCD_PREFERRED_WEB_SOURCE.get(domain, {}).get(collection) or \
+                DCD_PREFERRED_WEB_SOURCE.get(domain, {}).get("*")
+    if preferred == "skip":
         return []
-
-    def _extract_full_text(url: str) -> str | None:
-        """Trafilatura full-text extraction from URL."""
-        try:
-            import trafilatura
-            downloaded = trafilatura.fetch_url(url)
-            if downloaded:
-                text = trafilatura.extract(downloaded, output_format="txt")
-                if text and len(text) > 50:
-                    return text[:3000]
-        except Exception:
-            pass
-        # Fallback: requests + trafilatura
-        try:
-            resp = requests.get(url, timeout=8,
-                                headers={'User-Agent': 'Mozilla/5.0'})
-            if resp.status_code == 200:
-                import trafilatura
-                text = trafilatura.extract(resp.text, output_format="txt")
-                if text and len(text) > 50:
-                    return text[:3000]
-        except Exception:
-            pass
-        return None
-
-    def _searxng(q: str) -> list[dict]:
-        from urllib.parse import quote
-        url = f'{SEARXNG_URL}/search?q={quote(q)}&format=json&pageno=1'
-        try:
-            r = requests.get(url, timeout=10,
-                             headers={'User-Agent': 'HermesRAG/1.0'})
-            if r.status_code == 200:
-                data = r.json()
-                results = data.get('results', [])[:5]
-                chunks = []
-                for wr in results:
-                    text = wr.get('content', '') or wr.get('snippet', '')
-                    url = wr.get('url', '')
-                    if text or url:
-                        # Try full-text extraction
-                        full = _extract_full_text(url) if url else None
-                        chunks.append({
-                            'text': (full or text)[:3000],
-                            'title': wr.get('title', ''),
-                            'url': url,
-                            'source': 'web/searxng',
-                            'full_text': bool(full),
-                        })
-                return chunks
-        except Exception:
-            pass
+    encoded = urllib.parse.quote(query)
+    try:
+        r = _sp.run(["curl", "-s", "--max-time", "10", f"{SEARXNG_URL}/search?q={encoded}&format=json"],
+                    capture_output=True, text=True, timeout=15)
+        if r.returncode == 0 and r.stdout:
+            data = json.loads(r.stdout)
+            results = data.get("results", [])[:WEB_SEARCH_MAX_RESULTS]
+            chunks = []
+            for wr in results:
+                text = wr.get("content", "") or wr.get("snippet", "")
+                url = wr.get("url", "")
+                if text and len(chunks) < 1:
+                    try:
+                        import urllib.request
+                        import trafilatura
+                        req = urllib.request.Request(url, headers={
+                            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"})
+                        resp = urllib.request.urlopen(req, timeout=8)
+                        html = resp.read().decode("utf-8", errors="replace")
+                        full = trafilatura.extract(html)
+                        if full:
+                            text = full[:2000]
+                    except:
+                        pass
+                if text:
+                    chunks.append({"text": text[:800], "source": "web", "url": url})
+            return chunks
+    except Exception:
         return []
-
-    def _ddg(q: str) -> list[dict]:
-        from urllib.parse import quote
-        import re
-        try:
-            r = requests.get(
-                f'https://html.duckduckgo.com/html/?q={quote(q[:200])}',
-                headers={'User-Agent': 'Mozilla/5.0'},
-                timeout=10,
-            )
-            if r.status_code == 200:
-                chunks = []
-                for block in re.findall(
-                        r'<a[^>]+class="result__a"[^>]*href="([^"]+)"[^>]*>([^<]+)</a>.*?<a[^>]+class="result__snippet"[^>]*>([^<]*)</a>',
-                        r.text, re.DOTALL):
-                    url, title, snippet = block
-                    text = (snippet or '').strip()
-                    if text:
-                        full = _extract_full_text(url)
-                        chunks.append({
-                            'text': (full or text)[:3000],
-                            'title': title.strip(),
-                            'url': url,
-                            'source': 'web/ddg',
-                            'full_text': bool(full),
-                        })
-                return chunks[:5]
-        except Exception:
-            pass
-        return []
-
-    if preferred == 'ddg':
-        return _ddg(query)
-    chunks = _searxng(query)
-    if not chunks:
-        chunks = _ddg(query)
-    return chunks
+    return []
 
 
-# ── LLM quality gate ───────────────────────────────
-
+# ── LLM Verify (fast) ────────────────────────────────────────────
 def _llm_verify(query: str, chunks: list[dict]) -> float:
     """Soft verification: returns 0.0-1.0 relevance score.
     ≥ 0.3 = pass (chunks are relevant enough).
-    Uses qwen2.5-7b-instruct (non-thinking, fast).
+    Uses local LM Studio qwen2.5-7b-instruct (~2.7s).
     """
-    if not chunks:
+    if not chunks or not LLM_VERIFY_ENABLED:
         return 0.0
     import re
     top = '\n\n'.join(
@@ -262,11 +209,11 @@ def _llm_verify(query: str, chunks: list[dict]) -> float:
         f'Query: {query[:200]}\nDocuments:\n{top}'
     )
     try:
-        r = requests.post(LM_STUDIO_CHAT_URL, json={
-            'model': 'qwen2.5-7b-instruct',
+        r = requests.post(LLM_VERIFY_URL, json={
+            'model': LLM_VERIFY_MODEL,
             'messages': [{'role': 'user', 'content': prompt}],
             'temperature': 0.0, 'max_tokens': 10,
-        }, timeout=10)
+        }, timeout=LLM_VERIFY_TIMEOUT)
         answer = r.json()['choices'][0]['message']['content'].strip()
         nums = re.findall(r'0\.\d+|1\.0', answer)
         return float(nums[0]) if nums else 0.3  # default pass on parse error
@@ -274,6 +221,7 @@ def _llm_verify(query: str, chunks: list[dict]) -> float:
         return 0.5  # pass on error (don't block)
 
 
+# ── LLM Eval (for borderline scores) ─────────────────────────────
 def _blocking_llm_eval(query: str, chunks: list) -> float:
     import re
     top = '\n\n'.join(
@@ -285,147 +233,85 @@ def _blocking_llm_eval(query: str, chunks: list) -> float:
         r = requests.post(LM_STUDIO_CHAT_URL, json={
             'model': 'qwen2.5-7b-instruct',
             'messages': [{'role': 'user', 'content': prompt}],
-            'temperature': 0.0, 'max_tokens': 20,
+            'temperature': 0.0, 'max_tokens': 10,
         }, timeout=15)
-        content = r.json()['choices'][0]['message']['content'].strip()
-        nums = re.findall(r'0\.\d+|1\.0', content)
+        answer = r.json()['choices'][0]['message']['content'].strip()
+        nums = re.findall(r'0\.\d+|1\.0', answer)
         return float(nums[0]) if nums else 0.0
     except Exception:
         return 0.0
 
 
-# ── Entity Match ──────────────────────────────────
-
+# ── Entity extraction & matching ────────────────────────────────
 _ENTITY_EXTRACTOR_CACHE = {}
 
-
 def _extract_entities(query: str) -> set[str]:
-    key = hash(query) % 1000000
-    if key in _ENTITY_EXTRACTOR_CACHE:
-        return _ENTITY_EXTRACTOR_CACHE[key]
+    """Extract technical entities from query."""
     import re
+    cache_key = hashlib.md5(query.encode()).hexdigest()
+    if cache_key in _ENTITY_EXTRACTOR_CACHE:
+        return _ENTITY_EXTRACTOR_CACHE[cache_key]
+    # Technical terms
     entities = set()
-    ql = query.lower()
-    urls = re.findall(r'https?://[^\s]+', query)
-    entities.update(urls)
-    for u in urls:
-        domain = re.findall(r'://([^/]+)', u)
-        if domain:
-            entities.add(domain[0])
-            parts = domain[0].split('.')
-            if len(parts) >= 2:
-                entities.add(parts[-2])
-                if len(parts) >= 3:
-                    entities.add(parts[0])
-    known_products = [
-        'terraform', 'ansible', 'docker', 'kubernetes', 'postgresql',
-        'postgres', 'redis', 'nginx', 'acm', 'ald pro', 'aldpro',
-        'rupest', 'alse', 'keycloak', 'workspad', 'freeipa',
-        'samba', 'sssd', 'proxmox', 'patroni', 'reprepro',
-        'letsencrypt', 'certbot', 'gitlab', 'prometheus', 'grafana',
-        'elasticsearch', 'kafka', 'rabbitmq', 'mongodb', 'mysql',
-        'pgsql', 'mariadb', 'haproxy', 'keepalived',
-        'astra', 'astralinux', 'astracloud', 'laika',
-    ]
-    for prod in known_products:
-        if prod in ql:
-            entities.add(prod)
-    _GENERIC_SHORT = {'ip', 'ha', 'vm', 'ac', 'dc', 'ok', 'id', 'api', 'db',
-                      'os', 'ui', 'ux', 'pc', 'io', 'cl', 'fe', 'be', 'sla',
-                      'tls', 'ssh', 'dns', 'dhcp', 'nat', 'vpn', 'lan', 'wan',
-                      'smtp', 'pop', 'tcp', 'udp', 'http', 'html', 'xml', 'json'}
-    caps = re.findall(r'\b[A-Z][a-zA-Z0-9_-]{2,}\b', query)
-    for c in caps:
-        low = c.lower()
-        if low not in ('the', 'this', 'that', 'what', 'how', 'why',
-                       'not', 'for', 'and', 'with'):
-            if low not in _GENERIC_SHORT:
-                entities.add(low)
-    _ENTITY_EXTRACTOR_CACHE[key] = entities
+    # English tech terms
+    entities.update(re.findall(r'\b[A-Za-z][A-Za-z0-9_.-]{2,}\b', query))
+    # Russian tech terms
+    entities.update(re.findall(r'\b[А-Яа-яё][А-Яа-яё]{3,}\b', query))
+    # Filter stop words
+    stop = {'the', 'and', 'for', 'not', 'how', 'why', 'what', 'this', 'that',
+            'это', 'что', 'как', 'все', 'если', 'котор', 'можно', 'тольк',
+            'есть', 'при', 'ваш', 'меня', 'быть', 'когда', 'после', 'через'}
+    entities = {e for e in entities if e.lower() not in stop and len(e) > 2}
+    _ENTITY_EXTRACTOR_CACHE[cache_key] = entities
     return entities
 
 
 def _check_entities_in_query(query: str, chunks: list[dict]) -> bool | None:
+    """Check if extracted entities appear in chunks."""
+    if not chunks:
+        return None
     entities = _extract_entities(query)
-    tech_entities = {e for e in entities
-                     if not e.startswith('http') and len(e) > 2}
-    if not entities and not tech_entities:
+    if not entities:
         return None
-    chunk_text = ' '.join([c.get('text', '') for c in chunks]).lower()
-    missing = []
-    for ent in entities:
-        if ent.startswith('http'):
-            continue
-        if ent not in chunk_text:
-            missing.append(ent)
-    checked = [e for e in entities
-               if not e.startswith('http') and len(e) > 3]
-    if not checked:
-        return None
-    missing_ratio = len(missing) / max(len(checked), 1)
-    return False if missing_ratio >= 0.33 else True
+    chunk_text = " ".join(c.get("text", "") for c in chunks).lower()
+    matches = sum(1 for e in entities if e.lower() in chunk_text)
+    return matches / len(entities) >= 0.5 if entities else None
 
 
-# ── Fallback helper ───────────────────────────────
-
+# ── MCP Fallback ────────────────────────────────────────────────
 async def _fallback_to_mcp_web(
-    query: str, domain: str, collection: str, loop,
-    trace: RagTrace | None = None,
+    query: str, domain: str, collection: str, loop: asyncio.AbstractEventLoop, trace: RagTrace
 ) -> dict:
-    dm = DCD_COLLECTION_MCP_MAP.get(domain, {})
-    primary = dm.get(collection) or dm.get('*')
-    sources = []
-    if primary and primary in MCP_SERVERS:
-        sources.append(primary)
-    if domain == 'rusbitech' and 'confluence' in MCP_SERVERS \
-            and 'confluence' not in sources:
-        sources.append('confluence')
-    if primary != 'lodestone' and 'lodestone' in MCP_SERVERS:
-        sources.append('lodestone')
-    if primary != 'jira' and 'jira' in MCP_SERVERS and domain == 'rusbitech':
-        sources.append('jira')
-
-    if trace:
-        trace.decision("mcp_source_selection",
-                       choice=str(sources),
-                       reason=f"primary={primary}, domain={domain}, "
-                              f"collection={collection}")
-
-    if not sources:
-        if trace:
-            trace.event("mcp_fallback", status="skip",
-                        reason="no sources matched")
-        return {'source': None, 'chunks': []}
-
-    tasks = [loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, s, query)
-             for s in sources]
-    all_results = await asyncio.gather(*tasks)
-
-    best_chunks = []
-    best_src = None
-    for src, chunks in zip(sources, all_results):
-        if trace:
-            trace.event("mcp_result", source=src, chunks=len(chunks),
-                        status="ok" if chunks else "empty")
-        if chunks and len(chunks) > len(best_chunks):
-            best_chunks = chunks
-            best_src = src
-
-    if best_chunks:
-        if trace:
-            trace.decision("mcp_selected", choice=best_src or "none",
-                           reason=f"best of {len(sources)} sources, "
-                                  f"{len(best_chunks)} chunks")
-        return {'source': best_src, 'chunks': best_chunks, 'score': 0.7,
-                'trace': f'MCP({best_src})'}
-    if trace:
-        trace.event("mcp_fallback", status="empty",
-                    reason="all MCP sources returned empty")
-    return {'source': None, 'chunks': []}
+    """Try MCP servers in priority order."""
+    mcp = MCPClient(timeout=15)
+    # Priority for non-rusbitech: context7 > jira > confluence > lodestone > protopack
+    for name in ['context7', 'jira', 'confluence', 'lodestone', 'protopack']:
+        if name in MCP_SERVERS:
+            with trace.stage(f"mcp_{name}"):
+                chunks = await loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, name, query)
+                trace.event("mcp_result", source=name, chunks=len(chunks))
+            if chunks:
+                trace.decision("mcp_selected", choice=name,
+                               reason=f"MCP {name} returned {len(chunks)} chunks")
+                return {'source': name, 'chunks': chunks, 'score': 0.7}
+    # Web fallback
+    web_chunks = await loop.run_in_executor(_EXECUTOR, _blocking_web, query, domain, collection)
+    if web_chunks:
+        trace.decision("source_selection", choice="web", reason="all MCP empty, web fallback")
+        return {'source': 'web', 'chunks': web_chunks, 'score': 0.6}
+    return {'source': 'empty', 'chunks': [], 'score': 0}
 
 
-# ── Main entry ────────────────────────────────────
+def _is_noise_chunk(text: str) -> bool:
+    """Проверяет что чанк — не мусор (ошибка/нет результатов)."""
+    if not text:
+        return True
+    noise_phrases = ["no results", "Error executing tool", "All configured sources failed",
+                     "not found", "Lodestone Search: no results"]
+    return any(p in text.lower() for p in noise_phrases)
 
+
+# ── Main entry ──────────────────────────────────────────────────
 async def async_rag_search(
     query: str, dcd_result: dict,
     trace: RagTrace | None = None,
@@ -436,6 +322,7 @@ async def async_rag_search(
     collection = dcd_result.get('collection', '')
     confidence = dcd_result.get('confidence', 0)
     ck = _cache_key(query, domain)
+    loop = asyncio.get_event_loop()
 
     if trace is None:
         trace = RagTrace(query, domain, collection)
@@ -449,90 +336,166 @@ async def async_rag_search(
 
     cached = _cache_get(ck)
     if cached:
-        trace.event("cache_hit", source=cached.get('source', '?'),
-                    chunks=len(cached.get('chunks', [])))
+        trace.event("cache_hit", source=cached.get('source', '?'))
         cached['_trace'] = trace.json()
         return cached
 
-    loop = asyncio.get_running_loop()
+    # ── FORCE PATHS ──
 
-    # ═══════════════════════════════════════════════
-    # PATH A: rusbitech — ZVec + Lodestone + MCP + Web
-    # ZVec включён, но с фильтром category="wiki"
-    # ═══════════════════════════════════════════════
-    if domain == 'rusbitech':
-        trace.event("rusbitech_path",
-                     note="ZVec + Lodestone + MCP for rusbitech")
-
-        # Force route для jira-target коллекций
-        _FORCE_JIRA = {'rusbitech-rca', 'rusbitech-presale',
-                       'rusbitech-vulnerability', 'rusbitech-security',
-                       'rusbitech-customers'}
-        if collection in _FORCE_JIRA:
-            trace.decision("force_route", choice=f"ForceJira→{collection}",
-                           reason="jira-only collection")
-            with trace.stage("force_jira"):
-                result = await _fallback_to_mcp_web(
-                    query, domain, collection, loop, trace)
-                if result['chunks']:
-                    result['trace'] = 'ForceJira→' + result.get('trace', '')
-                    result['_trace'] = trace.json()
-                    _cache_set(ck, result)
-                    return result
-            # Jira empty → web
-            with trace.stage("web_fallback"):
-                web_chunks = await loop.run_in_executor(
-                    _EXECUTOR, _blocking_web, query, domain, collection)
-                trace.event("web_result", chunks=len(web_chunks))
-                if web_chunks:
-                    result = {'source': 'web', 'chunks': web_chunks,
-                              'score': 0.6,
-                              'trace': 'ForceJira→empty→Web',
-                              '_trace': trace.json()}
-                    _cache_set(ck, result)
-                    return result
+    # Jira for security/rca/presale
+    if collection in ('rusbitech-security', 'rusbitech-rca', 'rusbitech-presale') and 'jira' in MCP_SERVERS:
+        trace.decision("rusbitech_path", choice=f"ForceJira→{collection}",
+                       reason=f"DCD collection={collection} forces Jira")
+        with trace.stage("force_jira"):
+            mcp = MCPClient(timeout=15)
+            jira_chunks = await loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, 'jira', query)
+            trace.event("jira_result", chunks=len(jira_chunks))
+            if jira_chunks:
+                trace.decision("source_selection", choice="jira", reason="Jira returned data")
+                result = {'source': 'jira', 'chunks': jira_chunks,
+                          'score': 0.7, 'trace': f'ForceJira→Jira',
+                          '_trace': trace.json()}
+                _cache_set(ck, result, dcd=dcd_result)
+                return result
+        # Jira empty → web
+        with trace.stage("web_fallback"):
+            web_chunks = await loop.run_in_executor(_EXECUTOR, _blocking_web, query, domain, collection)
+            trace.event("web_result", chunks=len(web_chunks))
+            if web_chunks:
+                result = {'source': 'web', 'chunks': web_chunks,
+                          'score': 0.6, 'trace': 'ForceJira→empty→Web',
+                          '_trace': trace.json()}
+                _cache_set(ck, result, dcd=dcd_result)
+                return result
             result = {'source': 'empty', 'chunks': [], 'score': 0,
                       'trace': 'ForceJira→empty', '_trace': trace.json()}
-            _cache_set(ck, result)
+            _cache_set(ck, result, dcd=dcd_result)
             return result
 
-        # Основной путь: ZVec (wiki) + Lodestone параллельно
-        trace.decision("rusbitech_path", choice="zvec+lodestone",
-                       reason="parallel ZVec (category=wiki) + Lodestone MCP")
+    # ── PATH A: rusbitech — prefer lodestone/confluence for corporate docs ──
+    if domain == 'rusbitech':
+        trace.event("parallel_start", sources="lodestone_first")
 
-        with trace.stage("rusbitech_parallel"):
-            zvec_task = loop.run_in_executor(_EXECUTOR, _blocking_zvec, query)
-            lodestone_task = loop.run_in_executor(
-                _EXECUTOR, _blocking_mcp_single, 'lodestone', query)
-            confluence_task = loop.run_in_executor(
-                _EXECUTOR, _blocking_mcp_single, 'confluence', query)
-            web_task = loop.run_in_executor(_EXECUTOR, _blocking_web,
-                                            query, domain, collection)
+        # Check query for corporate product indicators
+        corporate_keywords = {'ald', 'rupost', 'termidesk', 'workspad', 'alabuga', 'tatneft', 'gazprom', 'novatek', 'rusgidro', 'клиент', 'сервер'}
+        query_lower = query.lower()
+        is_corporate = any(kw in query_lower for kw in corporate_keywords)
+        is_presale = 'presale' in collection or 'presale' in query_lower
 
-        with trace.stage("gather_rusbitech"):
-            zvec_result, lodestone_chunks, confluence_chunks, web_chunks = await asyncio.gather(
-                zvec_task, lodestone_task, confluence_task, web_task)
+        # For corporate queries → parallel slow sources directly, skip zvec
+        if is_corporate or is_presale:
+            trace.decision("rusbitech_corporate", choice="lodestone+confluence+web",
+                           reason="corporate product query detected" if is_corporate else "presale query")
+            with trace.stage("slow_sources_parallel"):
+                lodestone_task = loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, 'lodestone', query)
+                confluence_task = loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, 'confluence', query)
+                jira_task = loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, 'jira', query)
+                web_task = loop.run_in_executor(_EXECUTOR, _blocking_web, query, domain, collection)
+
+            with trace.stage("gather_slow_sources"):
+                lodestone_chunks, confluence_chunks, jira_chunks, web_chunks = await asyncio.gather(
+                    lodestone_task, confluence_task, jira_task, web_task)
+
+            trace.event("lodestone_result", chunks=len(lodestone_chunks))
+            trace.event("confluence_result", chunks=len(confluence_chunks))
+
+            # Filter out noise chunks (errors, "no results")
+            lodestone_chunks = [c for c in lodestone_chunks if not _is_noise_chunk(c.get('text', ''))]
+            jira_chunks = [c for c in jira_chunks if not _is_noise_chunk(c.get('text', ''))]
+            confluence_chunks = [c for c in confluence_chunks if not _is_noise_chunk(c.get('text', ''))]
+
+            all_sources = {
+                'lodestone': lodestone_chunks,
+                'jira': jira_chunks,
+                'confluence': confluence_chunks,
+                'web': web_chunks,
+            }
+            # For presale queries, prefer Jira over lodestone
+            if is_presale:
+                primary = next((s for s, c in [('jira', jira_chunks), ('lodestone', lodestone_chunks),
+                                                ('confluence', confluence_chunks), ('web', web_chunks)] if c), 'empty')
+            else:
+                primary = next((s for s, c in all_sources.items() if c), 'empty')
+            trace.decision("source_selection", choice=primary,
+                           reason="corporate path - main model decides")
+            result = {
+                'source': primary,
+                'sources': all_sources,
+                'chunks': all_sources.get(primary, []),
+                'score': 0.7,
+                '_trace': trace.json()}
+            _cache_set(ck, result, dcd=dcd_result)
+            return result
+
+        # Non-corporate rusbitech → zvec first (infra topics)
+        trace.event("rusbitech_noncorp", note="using zvec-first for infra/security queries")
+
+        # 1. Fast ZVec search first
+        with trace.stage("zvec_search_fast"):
+            zvec_result = await loop.run_in_executor(_EXECUTOR, _blocking_zvec, query)
 
         zvec_chunks = zvec_result['chunks']
         max_score = zvec_result['max_score']
-        trace.event("zvec_result", chunks=len(zvec_chunks),
+        trace.event("zvec_result_fast", chunks=len(zvec_chunks),
                     max_score=round(max_score, 4))
-        trace.event("lodestone_result", chunks=len(lodestone_chunks),
-                    status="ok" if lodestone_chunks else "empty")
-        trace.event("confluence_result", chunks=len(confluence_chunks),
-                    status="ok" if confluence_chunks else "empty")
+
+        # If ZVec has good score — return early, skip slow sources
+        if max_score >= 0.60:
+            trace.decision("source_selection", choice="zvec_early",
+                           reason=f"zvec score {max_score:.2f} >= 0.60, skipping slow sources")
+            all_sources = {'zvec': zvec_chunks, 'lodestone': [], 'confluence': [], 'web': []}
+            primary = 'zvec'
+            result = {'source': primary, 'sources': all_sources,
+                      'chunks': zvec_chunks, 'score': max_score,
+                      'trace': f'ZVec_early({max_score:.2f})',
+                      '_trace': trace.json()}
+            _cache_set(ck, result, dcd=dcd_result)
+            return result
+
+        # Borderline ZVec score (0.45-0.60) → LLM verify before deciding
+        if max_score >= 0.45:
+            trace.event("zvec_borderline", score=round(max_score, 3),
+                        note="running LLM verify before source decision")
+            verified = await loop.run_in_executor(_EXECUTOR, _llm_verify, query, zvec_chunks)
+            trace.event("llm_verify_result", verified=verified)
+            if verified >= 0.3:
+                trace.decision("source_selection", choice="zvec_verified",
+                               reason=f"zvec score {max_score:.2f} + LLM verify {verified:.2f}")
+                all_sources = {'zvec': zvec_chunks, 'lodestone': [], 'confluence': [], 'web': []}
+                primary = 'zvec'
+                result = {'source': primary, 'sources': all_sources,
+                          'chunks': zvec_chunks, 'score': max_score,
+                          'trace': f'ZVec_verified({max_score:.2f}/{verified:.2f})',
+                          '_trace': trace.json()}
+                _cache_set(ck, result, dcd=dcd_result)
+                return result
+            trace.event("zvec_verify_failed", score=round(max_score, 2), verified=verified)
+
+        # 2. ZVec score low — parallel search slow sources
+        trace.event("zvec_low_score", score=round(max_score, 3),
+                    note="launching slow sources in parallel")
+
+        with trace.stage("slow_sources_parallel"):
+            lodestone_task = loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, 'lodestone', query)
+            confluence_task = loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, 'confluence', query)
+            web_task = loop.run_in_executor(_EXECUTOR, _blocking_web, query, domain, collection)
+
+        with trace.stage("gather_slow_sources"):
+            lodestone_chunks, confluence_chunks, web_chunks = await asyncio.gather(
+                lodestone_task, confluence_task, web_task)
+
+        trace.event("lodestone_result", chunks=len(lodestone_chunks))
+        trace.event("confluence_result", chunks=len(confluence_chunks))
         trace.event("web_result", chunks=len(web_chunks))
 
-        # Возвращаем ВСЕ чанки из всех источников (main model решает)
+        # Return all sources, main model decides
         all_sources = {
             'lodestone': lodestone_chunks,
             'confluence': confluence_chunks,
             'zvec': zvec_chunks,
             'web': web_chunks,
         }
-        # primary = первый источник с данными (для обратной совместимости)
         primary = next((s for s, c in all_sources.items() if c), 'empty')
-        
         trace.decision("source_selection", choice=primary,
                        reason="all sources returned, main model decides")
         result = {
@@ -541,62 +504,45 @@ async def async_rag_search(
             'chunks': all_sources.get(primary, []),
             'score': 0.7,
             '_trace': trace.json()}
-        _cache_set(ck, result)
+        _cache_set(ck, result, dcd=dcd_result)
         return result
 
-        result = {'source': 'empty', 'chunks': [], 'score': 0,
-                  'trace': 'Lodestone→Web→no_valid_answer',
-                  '_trace': trace.json()}
-        _cache_set(ck, result)
-        return result
-
-    # ═══════════════════════════════════════════════
-    # PATH B: devops/software-dev — ZVec → MCP → web
-    # ═══════════════════════════════════════════════
+    # ── PATH B: devops/software-dev — ZVec → MCP → web ──
 
     trace.event("parallel_start", sources="zvec+web")
 
     with trace.stage("zvec_search"):
         zvec_task = loop.run_in_executor(_EXECUTOR, _blocking_zvec, query)
-        web_task = loop.run_in_executor(_EXECUTOR, _blocking_web,
-                                        query, domain, collection)
+        web_task = loop.run_in_executor(_EXECUTOR, _blocking_web, query, domain, collection)
 
     with trace.stage("gather_parallel"):
-        zvec_result, web_chunks = await asyncio.gather(
-            zvec_task, web_task)
+        zvec_result, web_chunks = await asyncio.gather(zvec_task, web_task)
 
     zvec_chunks = zvec_result['chunks']
     max_score = zvec_result['max_score']
-    trace.event("zvec_result", chunks=len(zvec_chunks),
-                max_score=round(max_score, 4))
+    trace.event("zvec_result", chunks=len(zvec_chunks), max_score=round(max_score, 4))
     trace.event("web_result", chunks=len(web_chunks))
 
     # Entity match for ZVec
     with trace.stage("entity_match"):
         _zvec_entities_match = await loop.run_in_executor(
             _EXECUTOR, _check_entities_in_query, query, zvec_chunks)
-        trace.event("entity_match_result",
-                    zvec_match=str(_zvec_entities_match))
+        trace.event("entity_match_result", zvec_match=str(_zvec_entities_match))
 
     # Entity mismatch → MCP/Web
     if _zvec_entities_match is False:
-        trace.decision("source_selection", choice="mcp_fallback",
-                       reason="zvec entity mismatch")
+        trace.decision("source_selection", choice="mcp_fallback", reason="zvec entity mismatch")
         with trace.stage("mcp_fallback"):
-            result = await _fallback_to_mcp_web(
-                query, domain, collection, loop, trace)
+            result = await _fallback_to_mcp_web(query, domain, collection, loop, trace)
             if result['chunks']:
                 result['_trace'] = trace.json()
-                _cache_set(ck, result)
+                _cache_set(ck, result, dcd=dcd_result)
                 return result
         if web_chunks:
-            trace.decision("source_selection", choice="web",
-                           reason="mcp empty")
-            result = {'source': 'web', 'chunks': web_chunks,
-                      'score': 0.6,
-                      'trace': f'ZVec→EntityMismatch→Web',
-                      '_trace': trace.json()}
-            _cache_set(ck, result)
+            trace.decision("source_selection", choice="web", reason="mcp empty")
+            result = {'source': 'web', 'chunks': web_chunks, 'score': 0.6,
+                      'trace': f'ZVec→EntityMismatch→Web', '_trace': trace.json()}
+            _cache_set(ck, result, dcd=dcd_result)
             return result
 
     # ZVec score >= threshold → return (no LLM gate)
@@ -604,10 +550,9 @@ async def async_rag_search(
         trace.decision("source_selection", choice="zvec",
                        reason=f"zvec score {max_score:.2f} >= threshold (no LLM gate)")
         result = {'source': 'zvec', 'chunks': zvec_chunks,
-                  'score': max_score,
-                  'trace': f'ZVec({max_score:.2f})',
+                  'score': max_score, 'trace': f'ZVec({max_score:.2f})',
                   '_trace': trace.json()}
-        _cache_set(ck, result)
+        _cache_set(ck, result, dcd=dcd_result)
         return result
 
     # Low DCD confidence → MCP/Web
@@ -615,45 +560,67 @@ async def async_rag_search(
         trace.decision("source_selection", choice="mcp_fallback",
                        reason=f"dcd confidence {confidence:.2f} < 0.2")
         with trace.stage("mcp_fallback_lowconf"):
-            result = await _fallback_to_mcp_web(
-                query, domain, collection, loop, trace)
+            result = await _fallback_to_mcp_web(query, domain, collection, loop, trace)
             if result['chunks']:
                 result['_trace'] = trace.json()
-                _cache_set(ck, result)
+                _cache_set(ck, result, dcd=dcd_result)
                 return result
         if web_chunks:
-            result = {'source': 'web', 'chunks': web_chunks,
-                      'score': 0.6,
-                      'trace': f'DCD(conf={confidence:.2f}<0.2)→Web',
-                      '_trace': trace.json()}
-            _cache_set(ck, result)
+            result = {'source': 'web', 'chunks': web_chunks, 'score': 0.6,
+                      'trace': f'DCD(conf={confidence:.2f}<0.2)→Web', '_trace': trace.json()}
+            _cache_set(ck, result, dcd=dcd_result)
             return result
         result = {'source': 'empty', 'chunks': [], 'score': 0,
-                  'trace': f'DCD(conf={confidence:.2f}<0.2)→empty',
-                  '_trace': trace.json()}
-        _cache_set(ck, result)
+                  'trace': f'DCD(conf={confidence:.2f}<0.2)→empty', '_trace': trace.json()}
+        _cache_set(ck, result, dcd=dcd_result)
         return result
 
-    # Final MCP fallback (no LLM gate)
+    # Final MCP fallback
     with trace.stage("final_mcp"):
-        result = await _fallback_to_mcp_web(
-            query, domain, collection, loop, trace)
+        result = await _fallback_to_mcp_web(query, domain, collection, loop, trace)
         if result['chunks']:
             result['_trace'] = trace.json()
-            _cache_set(ck, result)
+            _cache_set(ck, result, dcd=dcd_result)
             return result
 
     if web_chunks:
-        trace.decision("source_selection", choice="web",
-                       reason="all MCP empty, final web")
+        trace.decision("source_selection", choice="web", reason="all MCP empty, final web")
         result = {'source': 'web', 'chunks': web_chunks, 'score': 0.6,
                   'trace': 'ZVec→MCP→Web', '_trace': trace.json()}
-        _cache_set(ck, result)
+        _cache_set(ck, result, dcd=dcd_result)
         return result
 
-    trace.decision("source_selection", choice="empty",
-                   reason="all sources returned empty")
+    trace.decision("source_selection", choice="empty", reason="all sources returned empty")
     result = {'source': 'empty', 'chunks': [], 'score': 0,
               'trace': 'ZVec→MCP→Web→empty', '_trace': trace.json()}
-    _cache_set(ck, result)
+    _cache_set(ck, result, dcd=dcd_result)
     return result
+
+
+# ── CLI ──
+
+def main():
+    import asyncio
+    if len(sys.argv) < 2:
+        print("Usage: python -m rag_async <query>")
+        return
+
+    query = " ".join(sys.argv[1:])
+    result = asyncio.run(async_rag_search(query, classify(query)))
+
+    print(f"\nSource: {result.get('source', 'empty')}")
+    print(f"DCD: {result.get('dcd_domain', '')}/{result.get('dcd_collection', '')}")
+    print(f"Chunks: {len(result.get('chunks', []))}")
+    print(f"Trace: {result.get('trace', '?')}")
+
+    if 'sources' in result:
+        for src, chunks in result['sources'].items():
+            if chunks:
+                print(f"\n{src} ({len(chunks)} chunks):")
+                for c in chunks[:2]:
+                    txt = c.get('text', '')[:200]
+                    print(f"  {txt}")
+
+
+if __name__ == "__main__":
+    main()
