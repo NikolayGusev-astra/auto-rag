@@ -98,10 +98,18 @@ async def health():
     }
 
 
+# ZVec category filters (from rag_config)
+ZVEC_CATEGORY_FILTERS = {
+    "wiki": "category = 'wiki' OR category = 'llm-wiki'",
+    "skills": "category = 'skill'",
+    "sessions": "category = 'session'",
+}
+
 @app.get("/search")
 async def search(
     q: str = Query(..., description="Search query text"),
     topk: int = Query(5, ge=1, le=20, description="Number of results"),
+    category: str = Query("wiki", description="Collection category filter"),
 ):
     coll = app_state["zvec"]
     if coll is None:
@@ -111,11 +119,12 @@ async def search(
     from zvec import Query as ZQ
 
     emb = _embed_via_lmstudio(q)
+    filter_expr = ZVEC_CATEGORY_FILTERS.get(category, ZVEC_CATEGORY_FILTERS["wiki"])
     try:
         doclist = coll.query(
             queries=[ZQ(field_name="embedding", vector=emb)],
             topk=topk,
-            filter="category = 'wiki' OR category = 'llm-wiki'",
+            filter=filter_expr,
             output_fields=["source", "heading", "content", "title", "category"],
         )
     except Exception:

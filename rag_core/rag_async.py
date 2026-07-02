@@ -138,7 +138,30 @@ def _blocking_zvec(query: str) -> dict:
             return {"chunks": data["chunks"], "max_score": data["max_score"],
                     "source": "zvec_fastapi"}
     except Exception:
-        pass  # FastAPI unavailable, return empty (ZVec locked by server)
+        pass  # FastAPI unavailable, try direct ZVec
+
+    # Fallback to direct ZVec
+    try:
+        import zvec
+        from zvec import Query as ZQ
+        emb = _embed(query)
+        zpath = os.path.join(ZVEC_PATH, ZVEC_COLLECTION)
+        coll = zvec.open(zpath)
+        doclist = coll.query(
+            queries=[ZQ(field_name="embedding", vector=emb)],
+            topk=5,
+            filter="category = 'wiki' OR category = 'llm-wiki'",
+            output_fields=["source", "heading", "content", "title", "category"],
+        )
+        chunks = []
+        for d in doclist:
+            txt = d.fields.get("text", "") or d.fields.get("content", "")
+            if txt:
+                chunks.append({"text": txt, "score": d.score, "source": "zvec/wiki"})
+        if chunks:
+            return {"chunks": chunks, "max_score": max(c["score"] for c in chunks), "source": "zvec_direct"}
+    except Exception:
+        pass
     return {"chunks": [], "max_score": 0, "source": "zvec_unavailable"}
 
 
