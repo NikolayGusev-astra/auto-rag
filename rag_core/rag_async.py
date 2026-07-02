@@ -245,39 +245,6 @@ def _llm_verify(query: str, chunks: list[dict]) -> float:
 
 
 # ── LLM Eval (for borderline scores) ─────────────────────────────
-def _blocking_llm_eval(query: str, chunks: list) -> float:
-    import re
-    top = '\n\n'.join(
-        [f'[{i}] {c["text"][:300].replace(chr(10), " ")}'
-         for i, c in enumerate(chunks[:3])])
-    prompt = (f'Rate relevance 0.0-1.0. Reply ONLY a number.\n'
-              f'Query: {query[:200]}\nDocuments:\n{top}')
-    try:
-        r = requests.post(LM_STUDIO_CHAT_URL, json={
-            'model': 'qwen2.5-7b-instruct',
-            'messages': [{'role': 'user', 'content': prompt}],
-            'temperature': 0.0, 'max_tokens': 10,
-        }, timeout=15)
-        answer = r.json()['choices'][0]['message']['content'].strip()
-        nums = re.findall(r'0\.\d+|1\.0', answer)
-        return float(nums[0]) if nums else 0.0
-    except Exception:
-        return 0.0
-
-
-# ── Entity extraction & matching ────────────────────────────────
-_ENTITY_EXTRACTOR_CACHE = {}
-
-def _extract_entities(query: str) -> set[str]:
-    """Extract technical entities from query."""
-    import re
-    cache_key = hashlib.md5(query.encode()).hexdigest()
-    if cache_key in _ENTITY_EXTRACTOR_CACHE:
-        return _ENTITY_EXTRACTOR_CACHE[cache_key]
-    # Technical terms
-    entities = set()
-    # English tech terms
-    entities.update(re.findall(r'\b[A-Za-z][A-Za-z0-9_.-]{2,}\b', query))
     # Russian tech terms
     entities.update(re.findall(r'\b[А-Яа-яё][А-Яа-яё]{3,}\b', query))
     # Filter stop words

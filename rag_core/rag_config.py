@@ -54,6 +54,10 @@ LLM_EVAL_ENABLED = os.getenv("RAG_LLM_EVAL", "true").lower() == "true"
 LLM_EVAL_MODEL = os.getenv("RAG_LLM_EVAL_MODEL", "qwen2.5-7b-instruct")
 LLM_EVAL_URL = os.getenv("RAG_LLM_EVAL_URL", LM_STUDIO_CHAT_URL)
 LLM_EVAL_TIMEOUT = int(os.getenv("RAG_LLM_EVAL_TIMEOUT", "15"))
+LLM_VERIFY_ENABLED = os.getenv("RAG_LLM_VERIFY", "true").lower() == "true"
+LLM_VERIFY_URL = os.getenv("RAG_LLM_VERIFY_URL", LM_STUDIO_CHAT_URL)
+LLM_VERIFY_MODEL = os.getenv("RAG_LLM_VERIFY_MODEL", "qwen2.5-7b-instruct")
+LLM_VERIFY_TIMEOUT = int(os.getenv("RAG_LLM_VERIFY_TIMEOUT", "10"))
 LLM_EVAL_LOW_THRESHOLD = float(os.getenv("RAG_LLM_EVAL_LOW", "0.4"))
 LLM_EVAL_HIGH_THRESHOLD = float(os.getenv("RAG_LLM_EVAL_HIGH", "0.75"))
 RERANK_LM_STUDIO_TIMEOUT = int(os.getenv("RAG_EVAL_TIMEOUT", "30"))
