@@ -1,1 +1,2 @@
 __pycache__/\n*.pyc\n.env
+*.pyc\n__pycache__/

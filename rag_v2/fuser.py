@@ -15,7 +15,9 @@ from typing import Any
 
 import aiohttp
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+_rag_core = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'rag_core'))
+if _rag_core not in sys.path:
+    sys.path.insert(0, _rag_core)
 from rag_config import (
     LM_STUDIO_CHAT_URL, EMBEDDING_URL,
     LOCAL_RERANKER_ENABLED, LOCAL_RERANKER_MODEL, LOCAL_RERANKER_DEVICE,
