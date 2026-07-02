@@ -77,11 +77,13 @@ def llm_judge(query: str, chunks_text: str, key_facts: list[str]) -> dict:
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.0, "max_tokens": 10,
         }, timeout=15)
+        if r.status_code != 200:
+            return {"verdict": "error", "score": 0.0, "reason": f"HTTP {r.status_code}: {r.text[:200]}"}
         answer = r.json()["choices"][0]["message"]["content"].strip()
         nums = re.findall(r'0\.\d+|1\.0', answer)
         score = float(nums[0]) if nums else 0.0
-    except Exception:
-        score = 0.0
+    except Exception as e:
+        return {"verdict": "error", "score": 0.0, "reason": str(e)}
 
     if score >= 0.7:
         verdict = "correct"
