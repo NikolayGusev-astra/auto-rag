@@ -1,110 +1,155 @@
 #!/usr/bin/env python3
+"""FastAPI server for ZVec — loads collection once, keeps it in memory.
+
+Usage:
+  python zvec_server.py          # default port 8678
+  python zvec_server.py --port 8765
+
+Endpoints:
+  GET /health                    → {"status": "ok", "collection": "wiki"}
+  GET /search?q=ALD+Pro+IP       → {"chunks": [...], "max_score": 0.45, "latency_seconds": 0.5}
 """
-ZVec Daemon — FastAPI сервер, держит ZVec открытым, 
-обходит LOCK баг Windows.
-"""
-import asyncio
+
+import argparse
 import json
 import os
 import sys
-from typing import Optional
+import time
+import urllib.request
+from contextlib import asynccontextmanager
 
-import uvicorn
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, Query
+from fastapi.responses import JSONResponse
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from rag_config import ZVEC_PATH, ZVEC_COLLECTION, EMBEDDING_URL, EMBEDDING_MODEL
+# ── Config (matches rag_config.py) ────────────────────────────────────
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-baai-bge-m3-568m")
+EMBEDDING_URL = os.environ.get("EMBEDDING_URL", "http://localhost:1234/v1/embeddings")
+EMBEDDING_DIM = int(os.environ.get("EMBEDDING_DIM", "1024"))
+ZVEC_PATH = os.environ.get("ZVEC_PATH", os.path.expanduser("~/.cache/zvec"))
+ZVEC_COLLECTION = os.environ.get("ZVEC_COLLECTION", "wiki")
 
-app = FastAPI(title="ZVec RAG Daemon")
+app_state = {"zvec": None, "started": None}
 
-# Глобальный держатель коллекции (открывается 1 раз при старте)
-_zvec_collection = None
-_zvec_lock = asyncio.Lock()
 
-class SearchRequest(BaseModel):
-    query: str
-    topk: int = 5
+def _embed_via_lmstudio(text: str) -> list[float]:
+    """LM Studio embedding API — same as rag_async._embed."""
+    payload = json.dumps({
+        "model": EMBEDDING_MODEL,
+        "input": [text[:2000]],
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        EMBEDDING_URL,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=30)
+        data = json.loads(resp.read().decode())
+        return data["data"][0]["embedding"]
+    except Exception:
+        return [0.0] * EMBEDDING_DIM
 
-class SearchResult(BaseModel):
-    text: str
-    score: float
-    source: str
 
-@app.on_event("startup")
-async def startup():
-    global _zvec_collection
+def _load_zvec():
+    """Load ZVec collection once at startup."""
     import zvec
-    from zvec import Query as ZQ
-    zpath = os.path.join(os.path.expanduser(ZVEC_PATH), ZVEC_COLLECTION)
-    # LOCK workaround — создаём пустой lock при старте
-    lock = os.path.join(zpath, "LOCK")
+
+    zpath = os.path.join(ZVEC_PATH, ZVEC_COLLECTION)
+    if not os.path.isdir(zpath):
+        raise FileNotFoundError(f"ZVec collection not found: {zpath}")
+
+    print(f"[zvec-server] Loading ZVec from {zpath} ...")
+    t0 = time.time()
+    coll = zvec.open(zpath)
+    print(f"[zvec-server] ZVec loaded in {time.time()-t0:.1f}s")
+    return coll
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Load ZVec on startup, clean up on shutdown."""
     try:
-        with open(lock, 'w') as f: f.write('')
-    except: pass
-    _zvec_collection = {
-        'coll': zvec.open(zpath),
-        'zpath': zpath,
-    }
-    # Проверка: пробуем query
-    try:
-        test = _zvec_collection['coll'].query(
-            queries=[ZQ(field_name='embedding', vector=[0.0]*1024)],
-            topk=1
-        )
-        print(f"ZVec daemon: opened {zpath}, {len(test) if test else 0} docs")
+        coll = _load_zvec()
+        app_state["zvec"] = coll
+        app_state["started"] = time.time()
+        print(f"[zvec-server] Ready on port {port}")
     except Exception as e:
-        print(f"ZVec daemon WARNING: {e}")
+        print(f"[zvec-server] FAILED: {e}", file=sys.stderr)
+        app_state["error"] = str(e)
+    yield
+    app_state["zvec"] = None
+
+
+app = FastAPI(title="ZVec Search Server", version="1.0", lifespan=lifespan)
+
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "collection": ZVEC_COLLECTION}
+    if app_state.get("error"):
+        return JSONResponse({"status": "error", "message": app_state["error"]}, status_code=503)
+    if app_state["zvec"] is None:
+        return JSONResponse({"status": "loading"}, status_code=503)
+    uptime = time.time() - (app_state.get("started") or time.time())
+    return {
+        "status": "ok",
+        "collection": ZVEC_COLLECTION,
+        "embedding": EMBEDDING_MODEL,
+        "uptime_seconds": round(uptime, 1),
+    }
 
-@app.post("/embed", response_model=list[float])
-async def embed(text: str):
-    """Embed text via LM Studio."""
-    import requests
-    try:
-        resp = requests.post(EMBEDDING_URL, json={
-            'model': EMBEDDING_MODEL,
-            'input': [f'Instruct: Given a wiki search query, retrieve relevant wiki passages\nQuery: {text[:2000]}']
-        }, timeout=30)
-        return resp.json()['data'][0]['embedding']
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/search", response_model=list[SearchResult])
-async def search(req: SearchRequest):
-    """Search ZVec collection."""
-    import requests as _req
+@app.get("/search")
+async def search(
+    q: str = Query(..., description="Search query text"),
+    topk: int = Query(5, ge=1, le=20, description="Number of results"),
+):
+    coll = app_state["zvec"]
+    if coll is None:
+        return JSONResponse({"error": "Not ready"}, status_code=503)
+
+    t0 = time.time()
     from zvec import Query as ZQ
-    
-    async with _zvec_lock:
-        if _zvec_collection is None:
-            raise HTTPException(status_code=503, detail="ZVec not initialized")
-        
-        # Get embedding
-        emb = _req.post(EMBEDDING_URL, json={
-            'model': EMBEDDING_MODEL,
-            'input': [f'Instruct: Given a wiki search query, retrieve relevant wiki passages\nQuery: {req.query[:2000]}']
-        }, timeout=30).json()['data'][0]['embedding']
-        
-        # Search
-        vq = ZQ(field_name='embedding', vector=emb)
-        doclist = _zvec_collection['coll'].query(queries=[vq], topk=req.topk)
-        
-        results = []
-        for d in doclist:
-            txt = d.fields.get('text', '') or d.fields.get('content', '')
-            if txt:
-                results.append(SearchResult(
-                    text=txt[:2000],
-                    score=d.score,
-                    source='zvec/wiki'
-                ))
-        return results
+
+    emb = _embed_via_lmstudio(q)
+    try:
+        doclist = coll.query(
+            queries=[ZQ(field_name="embedding", vector=emb)],
+            topk=topk,
+            filter="category = 'wiki' OR category = 'llm-wiki'",
+            output_fields=["source", "heading", "content", "title", "category"],
+        )
+    except Exception:
+        doclist = coll.query(
+            queries=[ZQ(field_name="embedding", vector=emb)], topk=topk
+        )
+
+    chunks = []
+    for d in doclist:
+        txt = d.fields.get("text", "") or d.fields.get("content", "")
+        if txt:
+            chunks.append({
+                "text": txt[:500],
+                "score": d.score,
+                "source": (d.fields or {}).get("source", "zvec/wiki"),
+            })
+
+    max_score = max((c["score"] for c in chunks), default=0)
+    latency = round(time.time() - t0, 3)
+
+    return {
+        "chunks": chunks,
+        "max_score": max_score,
+        "latency_seconds": latency,
+        "query": q[:100],
+    }
+
 
 if __name__ == "__main__":
-    port = int(os.getenv("ZVEC_DAEMON_PORT", "8765"))
-    print(f"Starting ZVec daemon on :{port}")
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+    import uvicorn
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=8678, help="Listen port")
+    parser.add_argument("--host", default="127.0.0.1", help="Bind address")
+    args = parser.parse_args()
+    port = args.port
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")

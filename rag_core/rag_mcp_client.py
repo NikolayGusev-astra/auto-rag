@@ -164,7 +164,9 @@ class MCPClient:
                 "params": {"protocolVersion": "2024-11-05", "capabilities": {},
                           "clientInfo": {"name": "rag-mcp", "version": "1.0"}}}
         try:
-            r = requests.post(url, json=init, headers=headers, timeout=self.timeout, stream=True)
+            sess = requests.Session()
+            sess.trust_env = False
+            r = sess.post(url, json=init, headers=headers, timeout=self.timeout, stream=True)
             r.raise_for_status()
             sid = r.headers.get("mcp-session-id", "")
             r.close()
@@ -177,7 +179,9 @@ class MCPClient:
         """Send MCP message and read SSE response."""
         import requests
         try:
-            r = requests.post(url, json=payload, headers=headers, timeout=self.timeout, stream=True)
+            sess = requests.Session()
+            sess.trust_env = False
+            r = sess.post(url, json=payload, headers=headers, timeout=self.timeout, stream=True)
             r.raise_for_status()
             body = r.content
             r.close()
@@ -198,12 +202,14 @@ class MCPClient:
 
     def _http_mcp_call(self, url, headers, tool, args) -> dict | list | None:
         """Call MCP tool and return result content."""
+        import requests
         call_id = hash(tool + str(args)) % 10000 + 3
         payload = {"jsonrpc": "2.0", "id": call_id, "method": "tools/call",
                    "params": {"name": tool, "arguments": args}}
         try:
-            import requests
-            r = requests.post(url, json=payload, headers=headers, timeout=self.timeout, stream=True)
+            sess = requests.Session()
+            sess.trust_env = False
+            r = sess.post(url, json=payload, headers=headers, timeout=self.timeout, stream=True)
             r.raise_for_status()
             body = r.content
             r.close()
@@ -325,16 +331,21 @@ class MCPClient:
         tools_data = []
         init_ok = bool(session_id)
 
+        # Init payload (always defined - used both for fresh init and cached session)
+        init_payload = {
+            "jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {"protocolVersion": "2024-11-05", "capabilities": {},
+                       "clientInfo": {"name": "rag-mcp", "version": "1.0"}},
+        }
+
         if not session_id:
-            # Step 1: Initialize via SSE
-            init_payload = {
-                "jsonrpc": "2.0", "id": 1, "method": "initialize",
-                "params": {"protocolVersion": "2024-11-05", "capabilities": {},
-                           "clientInfo": {"name": "rag-mcp", "version": "1.0"}},
-            }
+            pass  # Just use the init_payload defined above
 
         try:
-            resp = requests.post(url, json=init_payload, headers=headers, timeout=self.timeout, stream=True)
+            # Create session without proxy (trust_env=False)
+            session = requests.Session()
+            session.trust_env = False
+            resp = session.post(url, json=init_payload, headers=headers, timeout=self.timeout, stream=True)
             resp.raise_for_status()
             session_id = resp.headers.get("mcp-session-id", "")
             body = resp.content
@@ -378,7 +389,10 @@ class MCPClient:
         list_req = {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
         try:
             for msg in [notif, list_req]:
-                r = requests.post(url, json=msg, headers=call_headers, timeout=self.timeout, stream=True)
+                # Use no-proxy session
+                sess = requests.Session()
+                sess.trust_env = False
+                r = sess.post(url, json=msg, headers=call_headers, timeout=self.timeout, stream=True)
                 body = r.content
                 r.close()
                 if msg.get("id") == 2:
@@ -427,7 +441,9 @@ class MCPClient:
             call_headers["mcp-session-id"] = session_id
 
         try:
-            resp = requests.post(url, json=call_payload, headers=call_headers, timeout=self.timeout, stream=True)
+            sess = requests.Session()
+            sess.trust_env = False
+            resp = sess.post(url, json=call_payload, headers=call_headers, timeout=self.timeout, stream=True)
             resp.raise_for_status()
             result_content = None
             body = resp.content
@@ -472,7 +488,9 @@ class MCPClient:
             query_first3 = query
         url = base_url + rest_template.format(query=quote_plus(query), query_first3=quote_plus(query_first3), query_and3=query_and3, max=max_results)
         try:
-            resp = requests.get(url, headers=headers, timeout=self.timeout)
+            sess = requests.Session()
+            sess.trust_env = False
+            resp = sess.get(url, headers=headers, timeout=self.timeout)
             resp.raise_for_status()
             data = resp.json()
             chunks = []

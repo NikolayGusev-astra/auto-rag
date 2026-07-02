@@ -29,7 +29,9 @@ DOMAIN_KEYWORDS = {
         "weight": 3,
         "anti_keywords": ["nginx", "docker", "letsencrypt", "pytest", "async function",
                           "javascript", "react", "typescript", "git", "github",
-                          "ci/cd", "redis", "postgresql", "kubernetes"],
+                          "ci/cd", "redis", "postgresql", "kubernetes",
+                          "cve", "patroni", "etcd", "aes", "gost", "шифрование",
+                          "инцидент", "инцидента", "adr ", "sbl", "sbl "],
         "keywords": {
             # Продукты
             "ald pro": 7, "aldpro": 7, "ald-pro": 7,
@@ -116,6 +118,12 @@ DOMAIN_KEYWORDS = {
                 "presale", "пресейл", "консультация", "импортозамещение",
                 "анализ проекта", "пми", "пси",
                 "консультация пресейл",
+            ],
+            "rusbitech-jira": [
+                "presale", "пресейл", "PRESALE-", "jira",
+                "татнефть", "tatneft", "новатэк", "novatek", "НОВАТЭК",
+                "газпром", "gazprom", "алабуга", "alabuga",
+                "тикет", "issue", "backlog",
             ],
         },
     },
