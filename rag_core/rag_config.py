@@ -182,3 +182,25 @@ COSINE_THRESHOLDS = {
 # Search limits
 ZVEC_SEARCH_K = 5
 WEB_SEARCH_MAX_RESULTS = 5
+
+# ── Hybrid Search (FTS + Vector RRF) ───────────────────────────────
+# Enables BM25 full-text search fused with vector search via RRF.
+# Requires FTS index on the 'content' field in Zvec schema.
+HYBRID_SEARCH_ENABLED = os.getenv("RAG_HYBRID_SEARCH", "true").lower() == "true"
+HYBRID_SEARCH_RECALL_TOPK = int(os.getenv("RAG_HYBRID_RECALL_TOPK", "20"))
+HYBRID_SEARCH_RRF_CONSTANT = int(os.getenv("RAG_HYBRID_RRF_CONSTANT", "60"))
+
+# ── DCD Router Mode ────────────────────────────────────────────────
+# keyword: fast keyword matching (default)
+# llm: LLM classification via JSON Schema (slower, more accurate)
+# hybrid: keyword first, LLM override if confidence < 0.5
+DCD_MODE = os.getenv("RAG_DCD_MODE", "keyword").lower()
+
+# ── Local Cross-Encoder Reranker ───────────────────────────────────
+# ms-marco-MiniLM-L6-v2 (~80MB), runs locally, no LM Studio round-trip.
+LOCAL_RERANKER_ENABLED = os.getenv("RAG_LOCAL_RERANKER", "true").lower() == "true"
+LOCAL_RERANKER_MODEL = os.getenv("RAG_LOCAL_RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L6-v2")
+LOCAL_RERANKER_DEVICE = os.getenv("RAG_LOCAL_RERANKER_DEVICE", "cpu")
+
+# ── Streaming ────────────────────────────────────────────────────
+STREAMING_ENABLED = os.getenv("RAG_STREAMING", "true").lower() == "true"
