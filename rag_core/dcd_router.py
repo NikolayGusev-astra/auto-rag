@@ -275,15 +275,17 @@ def _extract_tokens(text: str) -> List[str]:
     bigrams = [f"{tokens[i]} {tokens[i+1]}" for i in range(len(tokens)-1)]
     return tokens + bigrams
 
-def _score_domain(tokens: List[str], domain_data: Dict) -> float:
+def _score_domain(tokens: List[str], domain_data: Dict) -> tuple:
     keywords = domain_data.get("keywords", {})
     anti = domain_data.get("anti_keywords", [])
     weight = domain_data.get("weight", 1)
 
     score = 0.0
     matched = []
+    text_lower = " ".join(tokens)
+
     for kw, kw_weight in keywords.items():
-        if kw in text_lower := " ".join(tokens):
+        if kw in text_lower:
             score += kw_weight * weight
             matched.append(kw)
 
@@ -334,7 +336,6 @@ def classify(query: str) -> Dict:
     }
 
 if __name__ == "__main__":
-    import json
     test_queries = [
         "как настроить postgresql streaming replication",
         "rust ownership borrow checker",
