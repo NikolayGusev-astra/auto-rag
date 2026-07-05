@@ -51,7 +51,7 @@ def _llm_judge(query: str, answer: str, key_facts: list[str]) -> float:
         import re
         nums = re.findall(r'0\.\d+|1\.0', text)
         return float(nums[0]) if nums else 0.0
-    except:
+    except Exception:
         return 0.0
 
 

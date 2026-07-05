@@ -284,13 +284,26 @@ def _score_domain(tokens: List[str], domain_data: Dict) -> tuple:
     matched = []
     text_lower = " ".join(tokens)
 
+    def _matches(kw: str, text: str) -> bool:
+        """Match keyword with word boundaries to avoid substring false positives.
+
+        For multi-word keywords (e.g. 'docker compose') or keywords containing
+        non-word chars (e.g. '802.1q', 'ci/cd'), fall back to substring match
+        because \b doesn't behave intuitively across punctuation.
+        """
+        if not kw:
+            return False
+        if re.search(r'[^A-Za-z0-9_]', kw):
+            return kw in text
+        return re.search(r'\b' + re.escape(kw) + r'\b', text) is not None
+
     for kw, kw_weight in keywords.items():
-        if kw in text_lower:
+        if _matches(kw, text_lower):
             score += kw_weight * weight
             matched.append(kw)
 
     for anti_kw in anti:
-        if anti_kw in text_lower:
+        if _matches(anti_kw, text_lower):
             score *= 0.3  # penalty
 
     return score, matched

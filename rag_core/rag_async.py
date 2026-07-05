@@ -23,9 +23,21 @@ from typing import Any
 import requests
 
 sys.path.insert(0, os.path.dirname(__file__))
-from rag_config import *
+from rag_config import (
+    EMBEDDING_URL, EMBEDDING_MODEL, EMBEDDING_DIM,
+    ZVEC_PATH, ZVEC_COLLECTION,
+    MCP_SERVERS, MCP_ENABLED, MCP_MAX_RESULTS,
+    LLM_VERIFY_ENABLED, LLM_VERIFY_URL, LLM_VERIFY_MODEL, LLM_VERIFY_TIMEOUT,
+    LLM_EVAL_HIGH_THRESHOLD,
+    SEARXNG_URL, SEARXNG_ENABLED, WEB_SEARCH_MAX_RESULTS, WEB_SEARCH_MAX_CHARS,
+    DCD_PREFERRED_WEB_SOURCE,
+    LOCAL_NODE_NAME,
+)
+from dcd_router import classify
 from rag_mcp_client import MCPClient
 from rag_trace import RagTrace
+
+_AsyncMCPClient = None  # lazy import to avoid circular deps
 
 _EXECUTOR = ThreadPoolExecutor(max_workers=6)
 
@@ -330,6 +342,8 @@ async def async_rag_search(
         cached['_trace'] = trace.json()
         return cached
 
+    chunks = []  # populated by federation fallback if all other sources empty
+
     # ── FORCE PATHS ──
 
     # Jira for security/rca/presale
@@ -579,6 +593,55 @@ async def async_rag_search(
                   'trace': 'ZVec→MCP→Web', '_trace': trace.json()}
         _cache_set(ck, result, dcd=dcd_result)
         return result
+
+    # ── Federation fallback: опрос других RAG-инстансов ──
+    if not chunks and os.getenv("RAG_FEDERATED_ENABLED", "false").lower() == "true":
+        with trace.stage("federation"):
+            try:
+                from rag_federated import query_federated_servers
+                fed_results = await query_federated_servers(query, k, domain=domain)
+            except Exception as fed_err:
+                trace.error("federation", str(fed_err))
+                fed_results = {}
+
+        pool = []
+        for server_name, server_chunks in fed_results.items():
+            for c in server_chunks:
+                text = c.get("text", "")
+                score = c.get("score", 0)
+                if text and score > 0:
+                    pool.append({
+                        "text": text[:800],
+                        "score": float(score),
+                        "source": f"federated:{server_name}",
+                        "_src": f"federated:{server_name}",
+                    })
+
+        seen = set()
+        deduped = []
+        for c in pool:
+            key = c["text"][:200]
+            if key not in seen:
+                seen.add(key)
+                deduped.append(c)
+
+        if deduped:
+            deduped.sort(key=lambda x: x["score"], reverse=True)
+            chunks = deduped[:k]
+            fallback_used = "federated"
+            trace.event("federation_result",
+                        servers=len(fed_results),
+                        chunks_merged=len(deduped))
+            trace.decision("source_selection", choice="federated",
+                           reason=f"federation returned {len(chunks)} chunks from {len(fed_results)} servers")
+            result = {'source': 'federated', 'chunks': chunks,
+                      'score': chunks[0]["score"] if chunks else 0,
+                      'trace': 'ZVec→MCP→Web→Federated',
+                      '_trace': trace.json()}
+            _cache_set(ck, result, dcd=dcd_result)
+            return result
+        else:
+            trace.event("federation_empty", servers=len(fed_results))
 
     trace.decision("source_selection", choice="empty", reason="all sources returned empty")
     result = {'source': 'empty', 'chunks': [], 'score': 0,

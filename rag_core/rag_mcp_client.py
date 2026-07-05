@@ -468,16 +468,21 @@ class MCPClient:
             return []
 
     def _query_rest(self, name: str, cfg: dict, query: str, max_results: int) -> list[dict]:
-        base_url = cfg["base_url"]
+        # Config from rag_config.py uses "url"; legacy configs may use "base_url".
+        base_url = cfg.get("base_url") or cfg.get("url", "")
         headers = cfg.get("headers", {})
         rest_template = cfg.get("rest_query", "/rest/api/2/search?jql=text~\"{query}\"+ORDER+BY+created+DESC&maxResults={max}")
         # Поддержка {query_and3} — первые 3 значимых слова с AND вместо фразы
+        # Escape double quotes inside words to prevent JQL/CQL injection.
+        def _esc(w: str) -> str:
+            return w.replace('"', '\\"')
+
         query_and3 = query_first3 = query
         if "{query_and3}" in rest_template:
             words = [w for w in query.split() if len(w) > 2][:3]
             if words:
                 # JQL требует AND с пробелами, encode как %20AND%20
-                query_and3 = "%20AND%20".join(f'text~"{w}"' for w in words)
+                query_and3 = "%20AND%20".join(f'text~"{_esc(w)}"' for w in words)
         elif "{query_first3}" in rest_template:
             words = [w for w in query.split() if len(w) > 2][:3]
             query_first3 = " ".join(words) if words else query[:50]

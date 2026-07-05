@@ -88,7 +88,7 @@ def chunk_text(text, heading="Overview"):
         nonlocal current_lines
         if not current_lines: return
         content = '\n'.join(current_lines).strip()
-        if len(content) < 20:
+        if not content:
             current_lines = []
             return
         if len(content) > CHUNK_SIZE:
@@ -100,7 +100,12 @@ def chunk_text(text, heading="Overview"):
                     buf = p
                 else:
                     buf = (buf + '\n\n' + p) if buf else p
-            if buf: chunks.append({"heading": current_heading, "text": buf})
+            if buf:
+                if len(buf) > CHUNK_SIZE:
+                    for i in range(0, len(buf), CHUNK_SIZE):
+                        chunks.append({"heading": current_heading, "text": buf[i:i+CHUNK_SIZE]})
+                else:
+                    chunks.append({"heading": current_heading, "text": buf})
         else:
             chunks.append({"heading": current_heading, "text": content})
         current_lines = []
