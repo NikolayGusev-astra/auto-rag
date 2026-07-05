@@ -100,15 +100,9 @@ def _cache_set(key: str, result: dict, dcd: dict | None = None):
 
 # ── Embedding ────────────────────────────────────────────────────
 def _embed(text: str) -> list[float]:
-    """LM Studio embedding."""
-    try:
-        r = requests.post(EMBEDDING_URL, json={
-            'model': EMBEDDING_MODEL,
-            'input': [text[:2000]],
-        }, timeout=30)
-        return r.json()['data'][0]['embedding']
-    except Exception:
-        return [0.0] * EMBEDDING_DIM
+    """Embedding через EmbeddingService."""
+    from embedding_service import get_embedding
+    return get_embedding(text)
 
 
 # ── ZVec (singleton) ─────────────────────────────────────────────
@@ -193,38 +187,38 @@ def _blocking_mcp_single(name: str, query: str) -> list[dict]:
 def _blocking_web(query: str, domain: str = "", collection: str = "") -> list[dict]:
     """Web search via SearXNG + Trafilatura."""
     import urllib.parse
-    import subprocess as _sp
     preferred = DCD_PREFERRED_WEB_SOURCE.get(domain, {}).get(collection) or \
                 DCD_PREFERRED_WEB_SOURCE.get(domain, {}).get("*")
     if preferred == "skip":
         return []
     encoded = urllib.parse.quote(query)
     try:
-        r = _sp.run(["curl", "-s", "--max-time", "10", f"{SEARXNG_URL}/search?q={encoded}&format=json"],
-                    capture_output=True, text=True, timeout=15)
-        if r.returncode == 0 and r.stdout:
-            data = json.loads(r.stdout)
-            results = data.get("results", [])[:WEB_SEARCH_MAX_RESULTS]
-            chunks = []
-            for wr in results:
-                text = wr.get("content", "") or wr.get("snippet", "")
-                url = wr.get("url", "")
-                if text and len(chunks) < 1:
-                    try:
-                        import urllib.request
-                        import trafilatura
-                        req = urllib.request.Request(url, headers={
-                            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"})
-                        resp = urllib.request.urlopen(req, timeout=8)
-                        html = resp.read().decode("utf-8", errors="replace")
-                        full = trafilatura.extract(html)
-                        if full:
-                            text = full[:2000]
-                    except Exception:
-                        pass
-                if text:
-                    chunks.append({"text": text[:800], "source": "web", "url": url})
-            return chunks
+        r = requests.get(
+            f"{SEARXNG_URL}/search",
+            params={"q": query, "format": "json"},
+            timeout=15,
+        )
+        r.raise_for_status()
+        data = r.json()
+        results = data.get("results", [])[:WEB_SEARCH_MAX_RESULTS]
+        chunks = []
+        for wr in results:
+            text = wr.get("content", "") or wr.get("snippet", "")
+            url = wr.get("url", "")
+            if text and len(chunks) < 1:
+                try:
+                    req = requests.get(url, timeout=8, headers={
+                        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+                    })
+                    html = req.text
+                    full = trafilatura.extract(html)
+                    if full:
+                        text = full[:2000]
+                except Exception:
+                    pass
+            if text:
+                chunks.append({"text": text[:800], "source": "web", "url": url})
+        return chunks
     except Exception:
         return []
     return []

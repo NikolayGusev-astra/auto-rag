@@ -1,3 +1,26 @@
+[project]
+name = "auto-rag"
+version = "0.2.0"
+description = "Local-first RAG with LM Studio backend and federation"
+requires-python = ">=3.11"
+dependencies = [
+    "zvec>=0.5.0",
+    "trafilatura>=2.0",
+    "aiohttp>=3.9.0",
+    "requests>=2.31.0",
+    "numpy>=1.24.0",
+    "pyyaml>=6.0",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "psutil>=5.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

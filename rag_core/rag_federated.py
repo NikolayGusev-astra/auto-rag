@@ -63,6 +63,10 @@ class FederatedRAGClient:
         self.configs = {c.name: c for c in configs}
         self._ssh_config_written = False
         self._health: dict[str, _ServerHealth] = {name: _ServerHealth() for name in self.configs}
+        self._domain_map: dict[str, list[str]] = {}
+        self._server_capabilities: dict[str, dict] = {}
+        self._domain_map_ts = 0.0
+        self._domain_map_ttl = 300
     
     @classmethod
     def from_env(cls) -> "FederatedRAGClient":
@@ -302,7 +306,7 @@ class FederatedRAGClient:
         return out
 
     async def _fetch_domains(self, name: str) -> dict | None:
-        """Получить список доменов с сервера."""
+        """Получить список доменов + capabilities с сервера."""
         config = self.configs.get(name)
         if not config:
             return None
@@ -323,16 +327,34 @@ class FederatedRAGClient:
             return None
         return None
 
+    async def _load_domain_map(self, force: bool = False) -> None:
+        """Опросить /domains на каждом сервере."""
+        if not force and self._domain_map and time.time() - self._domain_map_ts < self._domain_map_ttl:
+            return
+
+        new_map: dict[str, list[str]] = {}
+        self._server_capabilities = {}
+
+        tasks = [self._fetch_domains(name) for name in self.configs]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for name, result in zip(self.configs.keys(), results):
+            if isinstance(result, Exception) or not result:
+                continue
+            for domain in result.get("domains", []):
+                new_map.setdefault(domain, []).append(name)
+            self._server_capabilities[name] = result.get("capabilities", {})
+
+        self._domain_map = new_map
+        self._domain_map_ts = time.time()
+
     async def query_routed(self, query: str, domain: str, max_results: int = 5) -> dict[str, list[dict]]:
         """Запрос только на серверы, у которых есть нужный домен."""
+        await self._load_domain_map()
         target_servers = []
-        for name in self.configs:
-            try:
-                domains_info = await self._fetch_domains(name)
-                if domains_info and domain in domains_info.get("domains", []):
-                    target_servers.append(name)
-            except Exception:
-                continue
+        for name, domains in self._domain_map.items():
+            if domain in domains and name in self.configs:
+                target_servers.append(name)
 
         if not target_servers:
             return await self.query_all(query, max_results)

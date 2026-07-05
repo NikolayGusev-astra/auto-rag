@@ -16,10 +16,10 @@ from typing import Any
 import aiohttp
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from rag_config import LM_STUDIO_CHAT_URL, EMBEDDING_URL, EMBEDDING_MODEL
+from rag_config import LM_STUDIO_CHAT_URL
+from reranker_service import RerankerService, rerank_chunks
 
 _LLM_URL = LM_STUDIO_CHAT_URL.rstrip('/')
-_RERANK_URL = f"{EMBEDDING_URL.rstrip('/')}"
 
 FUSION_PROMPT = """Ты — система оценки качества RAG ответов.
 
@@ -94,31 +94,13 @@ async def fuse(
 async def _rerank(
     query: str, chunks: list[dict], session: aiohttp.ClientSession
 ) -> list[dict]:
-    """Bge-reranker-v2-m3 через LM Studio."""
+    """Rerank через RerankerService."""
+    if not chunks:
+        return []
     try:
-        texts = [c["text"][:500] for c in chunks]
-        payload = {
-            "model": "text-embedding-bge-reranker-v2-m3",
-            "query": query,
-            "documents": texts,
-        }
-        async with session.post(
-            _RERANK_URL, json=payload,
-            timeout=aiohttp.ClientTimeout(total=15)
-        ) as resp:
-            data = await resp.json()
-            scores = [r.get("relevance_score", 0) for r in data.get("data", [])]
+        return RerankerService.get().rerank_chunks(query, chunks, top_k=10)
     except Exception:
-        scores = [c.get("score", 0.5) for c in chunks]
-    
-    # Отсортировать по score
-    indexed = list(enumerate(chunks))
-    if scores:
-        indexed.sort(key=lambda x: scores[x[0]], reverse=True)
-    else:
-        indexed.sort(key=lambda x: x[1].get("score", 0.5), reverse=True)
-    
-    return [c for _, c in indexed]
+        return chunks
 
 
 async def _llm_fuse(

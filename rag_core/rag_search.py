@@ -25,39 +25,8 @@ try:
 except ImportError: pass
 
 
-# ── Embedding ─────────────────────────────────────────────────────
-def get_embedding(text: str) -> list[float]:
-    """LM Studio embedding via curl subprocess."""
-    import subprocess, json
-    try:
-        payload = json.dumps({"model": EMBEDDING_MODEL, "input": [text]})
-        r = subprocess.run(
-            ["curl", "-s", "--max-time", "10", EMBEDDING_URL, "-d", payload, "-H", "Content-Type: application/json"],
-            capture_output=True, text=True, timeout=15
-        )
-        if r.returncode == 0 and r.stdout:
-            return json.loads(r.stdout)["data"][0]["embedding"]
-    except Exception:
-        pass
-    return [0.0] * EMBEDDING_DIM
-
-
-def get_rerank_scores(query: str, chunks: list[dict]) -> list[float]:
-    """bge-reranker-v2-m3 via LM Studio (curl subprocess)."""
-    if not chunks or not RERANK_ENABLED: return [c.get("score", 0) for c in chunks]
-    import subprocess, json
-    pairs = [{"query": query, "document": c.get("content", "")[:500]} for c in chunks]
-    try:
-        payload = json.dumps({"model": RERANK_MODEL, "input": pairs})
-        r = subprocess.run(
-            ["curl", "-s", "--max-time", "10", RERANK_URL, "-d", payload, "-H", "Content-Type: application/json"],
-            capture_output=True, text=True, timeout=15
-        )
-        if r.returncode == 0 and r.stdout:
-            return [d["score"] for d in json.loads(r.stdout)["data"]]
-    except Exception:
-        pass
-    return [c.get("score", 0) for c in chunks]
+from embedding_service import get_embedding, get_embeddings_batch
+from reranker_service import rerank_chunks
 
 
 # ── Entity Match ────────────────────────────────────────────────
@@ -110,13 +79,14 @@ def entity_match(chunks: list[dict], query: str, threshold: float = 0.5) -> tupl
     return ratio >= threshold, entities, matched
 def searxng_search(query: str, max_results: int = 5) -> list[dict]:
     if not SEARXNG_ENABLED: return []
-    import urllib.parse, subprocess
-    encoded = urllib.parse.quote(query)
     try:
-        r = subprocess.run(["curl", "-s", f"{SEARXNG_URL}/search?q={encoded}&format=json"],
-                          capture_output=True, text=True, timeout=15)
-        if r.returncode != 0: return []
-        data = json.loads(r.stdout)
+        r = requests.get(
+            f"{SEARXNG_URL}/search",
+            params={"q": query, "format": "json"},
+            timeout=15,
+        )
+        r.raise_for_status()
+        data = r.json()
         results = []
         for item in data.get("results", [])[:max_results]:
             results.append({
@@ -126,16 +96,15 @@ def searxng_search(query: str, max_results: int = 5) -> list[dict]:
                 "source": "searxng",
                 "score": item.get("score", 0),
             })
-            # Extract full text via Trafilatura
             if _TRAFILATURA_AVAILABLE and len(results) <= 2:
                 try:
-                    import requests as req
-                    resp = req.get(item["url"], timeout=10)
+                    resp = requests.get(item["url"], timeout=10)
                     text = trafilatura.extract(resp.text)
                     if text: results[-1]["content"] = text[:WEB_SEARCH_MAX_CHARS]
                 except Exception:
                     pass
             return results
+        return results
     except Exception as e:
         logger.warning(f"SearXNG error: {e}")
         return []
@@ -206,11 +175,7 @@ class CragSearch:
 
         # Step 3: Rerank
         if chunks:
-            scores = get_rerank_scores(query, chunks)
-            for i, c in enumerate(chunks):
-                c["score"] = scores[i] if i < len(scores) else c.get("score", 0)
-            chunks.sort(key=lambda x: x.get("score", 0), reverse=True)
-            chunks = chunks[:k]
+            chunks = rerank_chunks(query, chunks, top_k=k)
 
         # Step 3b: Entity Match — проверка сущностей из запроса в чанках
         em_pass, em_entities, em_matched = entity_match(chunks, query)

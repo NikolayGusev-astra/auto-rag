@@ -120,28 +120,11 @@ def chunk_text(text, heading="Overview"):
     return chunks
 
 # ── Embedding ─────────────────────────────────────────────────────
-def _embed_via_curl(texts):
-    """Embedding via subprocess curl (requests.connect fails on localhost:1234)."""
-    import subprocess, json
-    if not texts: return None
-    try:
-        payload = json.dumps({"model": EMBEDDING_MODEL, "input": texts})
-        r = subprocess.run(
-            ["curl", "-s", "--max-time", "10", EMBEDDING_URL, "-d", payload, "-H", "Content-Type: application/json"],
-            capture_output=True, text=True, timeout=15
-        )
-        if r.returncode == 0 and r.stdout:
-            data = json.loads(r.stdout)
-            return [d["embedding"] for d in data["data"]]
-    except: pass
-    return None
+from embedding_service import get_embeddings_batch, get_embedding
 
-def get_embeddings_batch(texts):
-    return _embed_via_curl(texts)
 
-def get_embedding_single(text):
-    r = _embed_via_curl([text])
-    return r[0] if r else None
+def get_embedding_single(text: str) -> list[float]:
+    return get_embedding(text)
 
 # ── Schema ────────────────────────────────────────────────────────
 def get_schema():
