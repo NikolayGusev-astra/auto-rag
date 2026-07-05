@@ -4,18 +4,36 @@ API keys and URLs via environment variables.
 
 import os
 import platform
+import re
 
 # Node identity
 RAG_HOST = os.getenv("RAG_HOST", "local")
 RAG_NODE_NAME = os.getenv("RAG_NODE_NAME", "local")
+LOCAL_NODE_NAME = RAG_NODE_NAME
 
 # ZVec Collections
 _zvec_base = os.getenv("RAG_ZVEC_PATH", os.path.expanduser("~/.cache/zvec"))
 ZVEC_PATH = os.path.abspath(_zvec_base)
 ZVEC_COLLECTION = os.getenv("RAG_ZVEC_COLLECTION", "wiki")
+ZVEC_WIKI_COLLECTION = ZVEC_COLLECTION
 ZVEC_SESSIONS_COLLECTION = os.getenv("RAG_ZVEC_SESSIONS", "sessions")
 ZVEC_WINDOWS = platform.system() == "Windows"
 ZVEC_LOCK_PATH = os.path.join(ZVEC_PATH, "LOCK")
+
+EXCLUDE_DIRS = {".git", "__pycache__", "node_modules", ".venv", "venv", ".idea", ".vscode"}
+
+
+def ensure_zvec_lock(path: str) -> str:
+    """ZVec LOCK workaround."""
+    lock_path = os.path.join(path, "LOCK")
+    if os.path.isdir(path) and not os.path.exists(lock_path):
+        try:
+            with open(lock_path, "w") as f:
+                f.write("")
+        except Exception:
+            pass
+    return lock_path
+
 
 # Embedding API (local LM Studio)
 EMBEDDING_URL = os.getenv("RAG_EMBEDDING_URL", "http://localhost:1234/v1/embeddings")
@@ -120,7 +138,9 @@ def _build_mcp_servers():
                 "Authorization": f"Bearer {os.getenv('RAG_JIRA_TOKEN', '')}",
                 "Accept": "application/json",
             },
-            "rest_query": "/rest/api/2/search?jql=text~\"{query_and3}\"&maxResults={max}",
+            # NOTE: {query_and3} already expands to: text~"w1" AND text~"w2" AND text~"w3"
+            # Do NOT wrap it in another text~"..." — that would produce invalid nested JQL.
+            "rest_query": "/rest/api/2/search?jql={query_and3}&maxResults={max}",
         }
     
     # Lodestone (generic)
@@ -158,6 +178,13 @@ def _build_mcp_servers():
     return servers
 
 MCP_SERVERS = _build_mcp_servers()
+
+# MCP fallback order for generic MCP search
+MCP_FALLBACK_CHAIN = ["context7", "jira", "confluence", "lodestone", "protopack"]
+
+# Quality thresholds
+AMBIGUOUS_RATIO = float(os.getenv("RAG_AMBIGUOUS_RATIO", "0.7"))
+MIN_RELEVANT_COUNT = int(os.getenv("RAG_MIN_RELEVANT_COUNT", "2"))
 
 # DCD preferred web source per domain/collection (override via env if needed)
 DCD_PREFERRED_WEB_SOURCE = {

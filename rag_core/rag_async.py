@@ -3,10 +3,13 @@ Async RAG pipeline — параллельный запуск ZVec, MCP, SearXNG 
 Включает RagTrace для прозрачного трейсинга каждого этапа.
 
 Архитектура v3:
-- rusbitech: ZVec early exit (score >= 0.45) → skip slow sources
-- devops/software-dev: ZVec → MCP → web fallback
+- ZVec early exit (score >= 0.45) → skip slow sources
+- ZVec → MCP → web fallback
 - LLM quality gate на quick verify (qwen2.5-7b, ~2.7s)
 - Trafilatura для полного текста веб-страниц
+- Multi-source fallback: пустой источник → следующий
+- Compound queries: альд+postgresql → 2 подзапроса без LLM
+- Smart fusion: все чанки из всех источников → main model
 """
 from __future__ import annotations
 
@@ -14,6 +17,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 from collections import OrderedDict
@@ -24,6 +28,7 @@ import requests
 
 sys.path.insert(0, os.path.dirname(__file__))
 from rag_config import *
+from dcd_router import classify
 from rag_mcp_client import MCPClient
 from rag_trace import RagTrace
 
@@ -77,7 +82,7 @@ def _cache_set(key: str, result: dict, dcd: dict | None = None):
             try:
                 td = json.loads(trace_val)
                 query = td.get("query", "")
-            except:
+            except Exception:
                 pass
         _log_routing(query[:200] if query else key[:30], d, result)
 
@@ -117,7 +122,7 @@ def _get_zvec_collection():
         try:
             with open(lock_path, 'w') as f:
                 f.write(str(os.getpid()))
-        except:
+        except Exception:
             pass
         _ZVEC_COLLECTION = zvec.open(zpath)
         return _ZVEC_COLLECTION
@@ -204,7 +209,7 @@ def _blocking_web(query: str, domain: str = "", collection: str = "") -> list[di
                         full = trafilatura.extract(html)
                         if full:
                             text = full[:2000]
-                    except:
+                    except Exception:
                         pass
                 if text:
                     chunks.append({"text": text[:800], "source": "web", "url": url})
@@ -245,12 +250,31 @@ def _llm_verify(query: str, chunks: list[dict]) -> float:
 
 
 # ── LLM Eval (for borderline scores) ─────────────────────────────
+_ENTITY_EXTRACTOR_CACHE: dict[str, set[str]] = {}
+
+
+def _extract_entities(query: str) -> set[str]:
+    """Extract tech entities from query for chunk relevance check."""
+    cache_key = query[:200]
+    if cache_key in _ENTITY_EXTRACTOR_CACHE:
+        return _ENTITY_EXTRACTOR_CACHE[cache_key]
+
+    entities: set[str] = set()
+    # English tech terms: camelCase, snake_case, CAPS acronyms
+    entities.update(re.findall(r'\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b', query))  # CamelCase
+    entities.update(re.findall(r'\b[a-z]+_[a-z_]+\b', query))              # snake_case
+    entities.update(re.findall(r'\b[A-Z]{2,}\b', query))                   # ACRONYMs
+    # Version numbers / product codes
+    entities.update(re.findall(r'\b\d+\.\d+(?:\.\d+)?\b', query))         # 1.2.3
     # Russian tech terms
-    entities.update(re.findall(r'\b[А-Яа-яё][А-Яа-яё]{3,}\b', query))
+    entities.update(re.findall(r'\b[А-Яа-яё]{3,}\b', query))
     # Filter stop words
     stop = {'the', 'and', 'for', 'not', 'how', 'why', 'what', 'this', 'that',
             'это', 'что', 'как', 'все', 'если', 'котор', 'можно', 'тольк',
-            'есть', 'при', 'ваш', 'меня', 'быть', 'когда', 'после', 'через'}
+            'есть', 'при', 'ваш', 'меня', 'быть', 'когда', 'после', 'через',
+            'ком', 'как', 'podcast', 'для', 'или', 'ещё', 'уже', 'где', 'как',
+            'так', 'вот', 'тут', 'там', 'его', 'её', 'их', 'мой', 'твой',
+            'свой', 'кто', 'что', 'где', 'когда', 'почему', 'зачем', 'сколько'}
     entities = {e for e in entities if e.lower() not in stop and len(e) > 2}
     _ENTITY_EXTRACTOR_CACHE[cache_key] = entities
     return entities
@@ -274,7 +298,6 @@ async def _fallback_to_mcp_web(
 ) -> dict:
     """Try MCP servers in priority order."""
     mcp = MCPClient(timeout=15)
-    # Priority for non-rusbitech: context7 > jira > confluence > lodestone > protopack
     for name in ['context7', 'jira', 'confluence', 'lodestone', 'protopack']:
         if name in MCP_SERVERS:
             with trace.stage(f"mcp_{name}"):
@@ -330,174 +353,7 @@ async def async_rag_search(
         cached['_trace'] = trace.json()
         return cached
 
-    # ── FORCE PATHS ──
-
-    # Jira for security/rca/presale
-    if collection in ('rusbitech-security', 'rusbitech-rca', 'rusbitech-presale') and 'jira' in MCP_SERVERS:
-        trace.decision("rusbitech_path", choice=f"ForceJira→{collection}",
-                       reason=f"DCD collection={collection} forces Jira")
-        with trace.stage("force_jira"):
-            mcp = MCPClient(timeout=15)
-            jira_chunks = await loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, 'jira', query)
-            trace.event("jira_result", chunks=len(jira_chunks))
-            if jira_chunks:
-                trace.decision("source_selection", choice="jira", reason="Jira returned data")
-                result = {'source': 'jira', 'chunks': jira_chunks,
-                          'score': 0.7, 'trace': f'ForceJira→Jira',
-                          '_trace': trace.json()}
-                _cache_set(ck, result, dcd=dcd_result)
-                return result
-        # Jira empty → web
-        with trace.stage("web_fallback"):
-            web_chunks = await loop.run_in_executor(_EXECUTOR, _blocking_web, query, domain, collection)
-            trace.event("web_result", chunks=len(web_chunks))
-            if web_chunks:
-                result = {'source': 'web', 'chunks': web_chunks,
-                          'score': 0.6, 'trace': 'ForceJira→empty→Web',
-                          '_trace': trace.json()}
-                _cache_set(ck, result, dcd=dcd_result)
-                return result
-            result = {'source': 'empty', 'chunks': [], 'score': 0,
-                      'trace': 'ForceJira→empty', '_trace': trace.json()}
-            _cache_set(ck, result, dcd=dcd_result)
-            return result
-
-    # ── PATH A: rusbitech — prefer lodestone/confluence for corporate docs ──
-    if domain == 'rusbitech':
-        trace.event("parallel_start", sources="lodestone_first")
-
-        # Check query for corporate product indicators
-        corporate_keywords = {'ald', 'rupost', 'termidesk', 'workspad', 'alabuga', 'tatneft', 'gazprom', 'novatek', 'rusgidro', 'клиент', 'сервер'}
-        query_lower = query.lower()
-        is_corporate = any(kw in query_lower for kw in corporate_keywords)
-        is_presale = 'presale' in collection or 'presale' in query_lower
-
-        # For corporate queries → parallel slow sources directly, skip zvec
-        if is_corporate or is_presale:
-            trace.decision("rusbitech_corporate", choice="lodestone+confluence+web",
-                           reason="corporate product query detected" if is_corporate else "presale query")
-            with trace.stage("slow_sources_parallel"):
-                lodestone_task = loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, 'lodestone', query)
-                confluence_task = loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, 'confluence', query)
-                jira_task = loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, 'jira', query)
-                web_task = loop.run_in_executor(_EXECUTOR, _blocking_web, query, domain, collection)
-
-            with trace.stage("gather_slow_sources"):
-                lodestone_chunks, confluence_chunks, jira_chunks, web_chunks = await asyncio.gather(
-                    lodestone_task, confluence_task, jira_task, web_task)
-
-            trace.event("lodestone_result", chunks=len(lodestone_chunks))
-            trace.event("confluence_result", chunks=len(confluence_chunks))
-
-            # Filter out noise chunks (errors, "no results")
-            lodestone_chunks = [c for c in lodestone_chunks if not _is_noise_chunk(c.get('text', ''))]
-            jira_chunks = [c for c in jira_chunks if not _is_noise_chunk(c.get('text', ''))]
-            confluence_chunks = [c for c in confluence_chunks if not _is_noise_chunk(c.get('text', ''))]
-
-            all_sources = {
-                'lodestone': lodestone_chunks,
-                'jira': jira_chunks,
-                'confluence': confluence_chunks,
-                'web': web_chunks,
-            }
-            # For presale queries, prefer Jira over lodestone
-            if is_presale:
-                primary = next((s for s, c in [('jira', jira_chunks), ('lodestone', lodestone_chunks),
-                                                ('confluence', confluence_chunks), ('web', web_chunks)] if c), 'empty')
-            else:
-                primary = next((s for s, c in all_sources.items() if c), 'empty')
-            trace.decision("source_selection", choice=primary,
-                           reason="corporate path - main model decides")
-            result = {
-                'source': primary,
-                'sources': all_sources,
-                'chunks': all_sources.get(primary, []),
-                'score': 0.7,
-                '_trace': trace.json()}
-            _cache_set(ck, result, dcd=dcd_result)
-            return result
-
-        # Non-corporate rusbitech → zvec first (infra topics)
-        trace.event("rusbitech_noncorp", note="using zvec-first for infra/security queries")
-
-        # 1. Fast ZVec search first
-        with trace.stage("zvec_search_fast"):
-            zvec_result = await loop.run_in_executor(_EXECUTOR, _blocking_zvec, query)
-
-        zvec_chunks = zvec_result['chunks']
-        max_score = zvec_result['max_score']
-        trace.event("zvec_result_fast", chunks=len(zvec_chunks),
-                    max_score=round(max_score, 4))
-
-        # If ZVec has good score — return early, skip slow sources
-        if max_score >= 0.60:
-            trace.decision("source_selection", choice="zvec_early",
-                           reason=f"zvec score {max_score:.2f} >= 0.60, skipping slow sources")
-            all_sources = {'zvec': zvec_chunks, 'lodestone': [], 'confluence': [], 'web': []}
-            primary = 'zvec'
-            result = {'source': primary, 'sources': all_sources,
-                      'chunks': zvec_chunks, 'score': max_score,
-                      'trace': f'ZVec_early({max_score:.2f})',
-                      '_trace': trace.json()}
-            _cache_set(ck, result, dcd=dcd_result)
-            return result
-
-        # Borderline ZVec score (0.45-0.60) → LLM verify before deciding
-        if max_score >= 0.45:
-            trace.event("zvec_borderline", score=round(max_score, 3),
-                        note="running LLM verify before source decision")
-            verified = await loop.run_in_executor(_EXECUTOR, _llm_verify, query, zvec_chunks)
-            trace.event("llm_verify_result", verified=verified)
-            if verified >= 0.3:
-                trace.decision("source_selection", choice="zvec_verified",
-                               reason=f"zvec score {max_score:.2f} + LLM verify {verified:.2f}")
-                all_sources = {'zvec': zvec_chunks, 'lodestone': [], 'confluence': [], 'web': []}
-                primary = 'zvec'
-                result = {'source': primary, 'sources': all_sources,
-                          'chunks': zvec_chunks, 'score': max_score,
-                          'trace': f'ZVec_verified({max_score:.2f}/{verified:.2f})',
-                          '_trace': trace.json()}
-                _cache_set(ck, result, dcd=dcd_result)
-                return result
-            trace.event("zvec_verify_failed", score=round(max_score, 2), verified=verified)
-
-        # 2. ZVec score low — parallel search slow sources
-        trace.event("zvec_low_score", score=round(max_score, 3),
-                    note="launching slow sources in parallel")
-
-        with trace.stage("slow_sources_parallel"):
-            lodestone_task = loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, 'lodestone', query)
-            confluence_task = loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, 'confluence', query)
-            web_task = loop.run_in_executor(_EXECUTOR, _blocking_web, query, domain, collection)
-
-        with trace.stage("gather_slow_sources"):
-            lodestone_chunks, confluence_chunks, web_chunks = await asyncio.gather(
-                lodestone_task, confluence_task, web_task)
-
-        trace.event("lodestone_result", chunks=len(lodestone_chunks))
-        trace.event("confluence_result", chunks=len(confluence_chunks))
-        trace.event("web_result", chunks=len(web_chunks))
-
-        # Return all sources, main model decides
-        all_sources = {
-            'lodestone': lodestone_chunks,
-            'confluence': confluence_chunks,
-            'zvec': zvec_chunks,
-            'web': web_chunks,
-        }
-        primary = next((s for s, c in all_sources.items() if c), 'empty')
-        trace.decision("source_selection", choice=primary,
-                       reason="all sources returned, main model decides")
-        result = {
-            'source': primary,
-            'sources': all_sources,
-            'chunks': all_sources.get(primary, []),
-            'score': 0.7,
-            '_trace': trace.json()}
-        _cache_set(ck, result, dcd=dcd_result)
-        return result
-
-    # ── PATH B: devops/software-dev — ZVec → MCP → web ──
+    # ── Generic RAG pipeline: ZVec → MCP → web ──
 
     trace.event("parallel_start", sources="zvec+web")
 

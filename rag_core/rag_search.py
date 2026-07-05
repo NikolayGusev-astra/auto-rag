@@ -29,7 +29,8 @@ def get_embedding(text: str) -> list[float]:
         )
         if r.returncode == 0 and r.stdout:
             return json.loads(r.stdout)["data"][0]["embedding"]
-    except: pass
+    except Exception:
+        pass
     return [0.0] * EMBEDDING_DIM
 
 
@@ -46,7 +47,8 @@ def get_rerank_scores(query: str, chunks: list[dict]) -> list[float]:
         )
         if r.returncode == 0 and r.stdout:
             return [d["score"] for d in json.loads(r.stdout)["data"]]
-    except: pass
+    except Exception:
+        pass
     return [c.get("score", 0) for c in chunks]
 
 
@@ -69,21 +71,12 @@ def extract_entities(query: str) -> set[str]:
     # CamelCase / PascalCase / kebab-case tech terms
     for m in re.finditer(r'[A-Z][a-z]+[A-Z]\w+|[a-z]+-[a-z]+(?:\.[a-z]+)*', query):
         entities.add(m.group().lower())
-    # Explicit patterns: product + version, vendor codes
-    for m in re.finditer(r'\b(astra|aldpro|terraform|ansible|nginx|postgresql|keycloak|'
-                        r'docker|kubernetes|python|rust|java|elasticsearch|redis|kafka|'
-                        r'prometheus|grafana|sonarqube|jenkins|gitlab|github)\b', q):
+    # Generic tech terms
+    for m in re.finditer(r'\b(docker|kubernetes|python|rust|java|elasticsearch|redis|kafka|'
+                        r'prometheus|grafana|jenkins|gitlab|github|nginx|postgresql|mysql|mongodb)\b', q):
         entities.add(m.group())
-    # Autolycus-specific: part numbers, VIN, OEM codes
-    for m in re.finditer(r'\b[A-Z0-9]{3,5}-\d{3,6}[A-Z]?\b', query.upper()):  # OEM: F5TZ-3A427A
-        entities.add(m.group())
-    for m in re.finditer(r'\b\d{17}\b', q):  # VIN: 17 chars
-        entities.add(m.group())
-    for m in re.finditer(r'\b(ford|explorer|шрус|cv.joint|vin|oem|партномер|carpc)\b', q):
-        entities.add(m.group())
-    for m in re.finditer(r'\b(adr|dcd|crag|zvec|rag|llm.wiki|embedding|hnsw|fts)\b', q):
-        entities.add(m.group())
-    for m in re.finditer(r'\b(nginx|docker|postgresql|redis|systemd|xray|openvpn|searxng|trafilatura)\b', q):
+    # RAG-specific terms
+    for m in re.finditer(r'\b(embedding|hnsw|fts|vector|rerank|rag|mcp)\b', q):
         entities.add(m.group())
     
     # Limit cache size
@@ -132,8 +125,9 @@ def searxng_search(query: str, max_results: int = 5) -> list[dict]:
                     resp = req.get(item["url"], timeout=10)
                     text = trafilatura.extract(resp.text)
                     if text: results[-1]["content"] = text[:WEB_SEARCH_MAX_CHARS]
-                except: pass
-        return results
+                except Exception:
+                    pass
+            return results
     except Exception as e:
         logger.warning(f"SearXNG error: {e}")
         return []

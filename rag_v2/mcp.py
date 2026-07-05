@@ -315,17 +315,21 @@ class AsyncMCPClient:
         words = query.split()
         query_first3 = " ".join(words[:3]) if len(words) >= 3 else " ".join(words[:2]) if len(words) >= 2 else query
         
+        # Escape quotes for JQL/CQL string literals
+        def _esc(w: str) -> str:
+            return w.replace('"', '\\"')
+        
         # AND-формат: text~"w1" AND text~"w2" AND text~"w3"
         non_rus = [w for w in words if not any('\u0400' <= c <= '\u04FF' for c in w)]
         if len(non_rus) >= 2:
-            query_and3 = " AND ".join(f'text~"{w}"' for w in non_rus[:5])
+            query_and3 = " AND ".join(f'text~"{_esc(w)}"' for w in non_rus[:5])
         elif len(words) >= 2:
-            query_and3 = " AND ".join(f'text~"{w}"' for w in words[:5])
+            query_and3 = " AND ".join(f'text~"{_esc(w)}"' for w in words[:5])
         else:
-            query_and3 = f'text~"{query}"'
+            query_and3 = f'text~"{_esc(query)}"'
         
         result = template.replace("{query_first3}", query_first3)
-        result = result.replace("{query_and3}", query_and3.replace('"', '__QUOTE__'))
+        result = result.replace("{query_and3}", query_and3)
         result = result.replace("{query}", query)
         result = result.replace("{max}", str(max_results))
         result = result.replace("__QUOTE__", '"')
