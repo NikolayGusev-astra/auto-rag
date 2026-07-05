@@ -364,6 +364,8 @@ async def async_rag_search(
         cached['_trace'] = trace.json()
         return cached
 
+    chunks = []  # populated by federation fallback if all other sources empty
+
     # ── Generic RAG pipeline: ZVec → MCP → web ──
 
     trace.event("parallel_start", sources="zvec+web")
