@@ -5,7 +5,15 @@ Architecture: DCD classify → ZVec search → evaluate → MCP fallback → Sea
 """
 import argparse, json, logging, os, sys, time, hashlib, re
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from rag_config import *
+from rag_config import (
+    EMBEDDING_URL, EMBEDDING_MODEL, EMBEDDING_DIM,
+    RERANK_ENABLED, RERANK_MODEL, RERANK_URL,
+    SEARXNG_URL, SEARXNG_ENABLED, WEB_SEARCH_MAX_RESULTS, WEB_SEARCH_MAX_CHARS,
+    MCP_ENABLED, MCP_SERVERS, MCP_MAX_RESULTS, MCP_FALLBACK_CHAIN,
+    COSINE_THRESHOLDS, DEFAULT_K,
+    ZVEC_WIKI_COLLECTION, ZVEC_SESSIONS_COLLECTION,
+    AMBIGUOUS_RATIO, MIN_RELEVANT_COUNT, LOCAL_NODE_NAME,
+)
 from dcd_router import classify as dcd_classify
 from zvec_adapter import ZVecSearcher
 from rag_mcp_client import MCPClient

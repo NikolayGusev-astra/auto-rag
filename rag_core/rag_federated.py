@@ -39,6 +39,20 @@ class FederatedServerConfig:
     _tunnel_proc: Optional[subprocess.Popen] = field(default=None, init=False)
     local_port: Optional[int] = field(default=None, init=False)
     _session: Optional[aiohttp.ClientSession] = field(default=None, init=False)
+    accept_new_host: bool = False  # автоматически добавлять новые хосты в known_hosts
+
+
+class _ServerHealth:
+    """Health state для одного сервера."""
+    def __init__(self) -> None:
+        self.consecutive_failures: int = 0
+        self.last_failure_ts: float = 0
+        self.last_success_ts: float = 0
+        self.cooldown_until: float = 0
+
+    @property
+    def is_healthy(self) -> bool:
+        return time.time() >= self.cooldown_until
 
 
 class FederatedRAGClient:
@@ -47,6 +61,7 @@ class FederatedRAGClient:
     def __init__(self, configs: list[FederatedServerConfig]):
         self.configs = {c.name: c for c in configs}
         self._ssh_config_written = False
+        self._health: dict[str, _ServerHealth] = {name: _ServerHealth() for name in self.configs}
     
     @classmethod
     def from_env(cls) -> "FederatedRAGClient":
@@ -118,8 +133,9 @@ class FederatedRAGClient:
             lines.append(f"    Port {config.port}")
             if config.key_path and os.path.exists(config.key_path):
                 lines.append(f"    IdentityFile {config.key_path}")
-            lines.append("    StrictHostKeyChecking no")
-            lines.append("    UserKnownHostsFile /dev/null")
+            if config.accept_new_host:
+                lines.append("    StrictHostKeyChecking accept-new")
+            # По умолчанию ssh требует ручного подтверждения known_hosts
             lines.append("    ServerAliveInterval 30")
             lines.append("    ServerAliveCountMax 3")
             lines.append("    ExitOnForwardFailure yes")
@@ -191,45 +207,82 @@ class FederatedRAGClient:
             return f"http://{config.host}:{config.remote_port}{config.endpoint}"
     
     async def query(self, name: str, query: str, max_results: int = 5) -> list[dict]:
-        """Запрос к одному удалённому RAG серверу."""
+        """Запрос к одному удалённому RAG серверу с circuit breaker."""
         config = self.configs.get(name)
         if not config:
             return [{"text": f"Unknown federated server: {name}", "source": name, "score": 0}]
-        
+
+        health = self._health.get(name)
+        if health and not health.is_healthy:
+            return [{"text": f"Server {name} in cooldown (circuit breaker)",
+                     "source": name, "score": 0}]
+
         try:
-            # Ensure tunnel if needed
-            if config.use_ssh:
-                await self._ensure_tunnel(config)
-            
-            session = self._get_session(config)
-            url = self._build_url(config)
-            
-            async with session.post(url, json={
-                "query": query,
-                "max_results": max_results,
-            }) as resp:
-                if resp.status != 200:
-                    text = await resp.text()
-                    return [{"text": f"Remote RAG {name} error {resp.status}: {text}", "source": name, "score": 0}]
-                data = await resp.json()
-                chunks = data.get("chunks", data.get("results", []))
-                
-                # Normalize chunk format
-                normalized = []
-                for c in chunks[:max_results]:
-                    if isinstance(c, dict):
-                        text = c.get("text", c.get("content", c.get("body", "")))
-                        if text:
-                            normalized.append({
-                                "text": text[:800],
-                                "score": c.get("score", 0.5),
-                                "source": c.get("source", name),
-                                "metadata": c.get("metadata", {}),
-                            })
-                return normalized
-                
+            result = await self._do_query(config, name, query, max_results)
+            if health:
+                health.consecutive_failures = 0
+                health.last_success_ts = time.time()
+            return result
         except Exception as e:
+            if health:
+                health.consecutive_failures += 1
+                health.last_failure_ts = time.time()
+                if health.consecutive_failures >= 3:
+                    health.cooldown_until = time.time() + 300
             return [{"text": f"Federated RAG {name} error: {e}", "source": name, "score": 0}]
+
+    async def _do_query(self, config: FederatedServerConfig, name: str, query: str, max_results: int) -> list[dict]:
+        """Исходная логика query с retry на transient errors."""
+        if config.use_ssh:
+            await self._ensure_tunnel(config)
+
+        session = self._get_session(config)
+        url = self._build_url(config)
+        headers = {}
+        api_key = os.getenv("RAG_FEDERATED_API_KEY")
+        if api_key:
+            headers["X-API-Key"] = api_key
+
+        payload = {"query": query, "max_results": max_results}
+        max_retries = 2
+        last_error = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                async with session.post(url, json=payload, headers=headers) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        chunks = data.get("chunks", data.get("results", []))
+                        normalized = []
+                        for c in chunks[:max_results]:
+                            if isinstance(c, dict):
+                                text = c.get("text", c.get("content", c.get("body", "")))
+                                if text:
+                                    normalized.append({
+                                        "text": text[:800],
+                                        "score": c.get("score", 0.5),
+                                        "source": c.get("source", name),
+                                        "metadata": c.get("metadata", {}),
+                                    })
+                        return normalized
+                    elif resp.status >= 500:
+                        last_error = RuntimeError(f"HTTP {resp.status}")
+                        if attempt < max_retries:
+                            await asyncio.sleep(0.5 * (attempt + 1))
+                            continue
+                        text = await resp.text()
+                        return [{"text": f"Remote RAG {name} error {resp.status}: {text}", "source": name, "score": 0}]
+                    else:
+                        text = await resp.text()
+                        return [{"text": f"Remote RAG {name} error {resp.status}: {text}", "source": name, "score": 0}]
+            except (asyncio.TimeoutError, aiohttp.ClientError) as e:
+                last_error = e
+                if attempt < max_retries:
+                    await asyncio.sleep(0.5 * (attempt + 1))
+                    continue
+                raise
+
+        raise last_error or RuntimeError("Unknown error after retries")
     
     async def query_all(self, query: str, max_results: int = 5) -> dict[str, list[dict]]:
         """Параллельный запрос ко всем настроенным серверам."""
@@ -238,7 +291,7 @@ class FederatedRAGClient:
             for name in self.configs
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         out = {}
         for name, result in zip(self.configs.keys(), results):
             if isinstance(result, Exception):
@@ -246,7 +299,54 @@ class FederatedRAGClient:
             else:
                 out[name] = result
         return out
-    
+
+    async def _fetch_domains(self, name: str) -> dict | None:
+        """Получить список доменов с сервера."""
+        config = self.configs.get(name)
+        if not config:
+            return None
+        try:
+            if config.use_ssh:
+                await self._ensure_tunnel(config)
+            session = self._get_session(config)
+            url = self._build_url(config).replace("/rag/search", "/domains")
+            headers = {}
+            api_key = os.getenv("RAG_FEDERATED_API_KEY")
+            if api_key:
+                headers["X-API-Key"] = api_key
+
+            async with session.get(url, headers=headers) as resp:
+                if resp.status == 200:
+                    return await resp.json()
+        except Exception:
+            return None
+        return None
+
+    async def query_routed(self, query: str, domain: str, max_results: int = 5) -> dict[str, list[dict]]:
+        """Запрос только на серверы, у которых есть нужный домен."""
+        target_servers = []
+        for name in self.configs:
+            try:
+                domains_info = await self._fetch_domains(name)
+                if domains_info and domain in domains_info.get("domains", []):
+                    target_servers.append(name)
+            except Exception:
+                continue
+
+        if not target_servers:
+            return await self.query_all(query, max_results)
+
+        tasks = [self.query(name, query, max_results) for name in target_servers]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        out = {}
+        for name, result in zip(target_servers, results):
+            if isinstance(result, Exception):
+                out[name] = [{"text": f"Error: {result}", "source": name, "score": 0}]
+            else:
+                out[name] = result
+        return out
+
     async def close(self):
         """Закрыть все туннели и сессии."""
         for config in self.configs.values():
@@ -258,14 +358,40 @@ class FederatedRAGClient:
                 config._session = None
 
 
+# ── Singleton client (persistent tunnels) ──────────────────────────
+_CLIENT: "FederatedRAGClient | None" = None
+_CLIENT_LOCK = asyncio.Lock()
+
+
+async def get_federated_client() -> "FederatedRAGClient":
+    """Singleton federated client. Tunnels live for the process lifetime."""
+    global _CLIENT
+    if _CLIENT is not None and _CLIENT.configs:
+        return _CLIENT
+    async with _CLIENT_LOCK:
+        if _CLIENT is None or not _CLIENT.configs:
+            _CLIENT = FederatedRAGClient.from_env()
+    return _CLIENT
+
+
+async def shutdown_federated() -> None:
+    """Закрыть singleton client."""
+    global _CLIENT
+    if _CLIENT is not None:
+        await _CLIENT.close()
+        _CLIENT = None
+
+
 # ── Helper для интеграции в rag_async ──
 
-async def query_federated_servers(query: str, max_results: int = 3) -> dict[str, list[dict]]:
+async def query_federated_servers(query: str, max_results: int = 3, domain: str = "") -> dict[str, list[dict]]:
     """Удобная функция для вызова из rag_async."""
     client = FederatedRAGClient.from_env()
     if not client.configs:
         return {}
     try:
+        if domain:
+            return await client.query_routed(query, domain, max_results)
         return await client.query_all(query, max_results)
     finally:
         await client.close()

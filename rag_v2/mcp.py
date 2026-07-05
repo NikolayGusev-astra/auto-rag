@@ -228,7 +228,7 @@ class AsyncMCPClient:
         try:
             resp = json.loads(line.decode())
             return self._parse_mcp_result(resp, "stdio", query, max_results)
-        except:
+        except Exception:
             return []
 
     # ── HTTP MCP helpers ──
