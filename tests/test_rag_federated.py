@@ -9,6 +9,7 @@ class TestCircuitBreaker:
     def client(self):
         c = FederatedRAGClient({})
         c._health = {"bad": _ServerHealth()}
+        c.configs = {"bad": MagicMock()}
         return c
 
     async def test_circuit_opens_after_3_failures(self, client):
