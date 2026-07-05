@@ -82,7 +82,7 @@ def _cache_set(key: str, result: dict, dcd: dict | None = None):
             try:
                 td = json.loads(trace_val)
                 query = td.get("query", "")
-            except:
+            except Exception:
                 pass
         _log_routing(query[:200] if query else key[:30], d, result)
 
@@ -122,7 +122,7 @@ def _get_zvec_collection():
         try:
             with open(lock_path, 'w') as f:
                 f.write(str(os.getpid()))
-        except:
+        except Exception:
             pass
         _ZVEC_COLLECTION = zvec.open(zpath)
         return _ZVEC_COLLECTION
@@ -209,7 +209,7 @@ def _blocking_web(query: str, domain: str = "", collection: str = "") -> list[di
                         full = trafilatura.extract(html)
                         if full:
                             text = full[:2000]
-                    except:
+                    except Exception:
                         pass
                 if text:
                     chunks.append({"text": text[:800], "source": "web", "url": url})

@@ -29,7 +29,8 @@ def get_embedding(text: str) -> list[float]:
         )
         if r.returncode == 0 and r.stdout:
             return json.loads(r.stdout)["data"][0]["embedding"]
-    except: pass
+    except Exception:
+        pass
     return [0.0] * EMBEDDING_DIM
 
 
@@ -46,7 +47,8 @@ def get_rerank_scores(query: str, chunks: list[dict]) -> list[float]:
         )
         if r.returncode == 0 and r.stdout:
             return [d["score"] for d in json.loads(r.stdout)["data"]]
-    except: pass
+    except Exception:
+        pass
     return [c.get("score", 0) for c in chunks]
 
 
@@ -123,8 +125,9 @@ def searxng_search(query: str, max_results: int = 5) -> list[dict]:
                     resp = req.get(item["url"], timeout=10)
                     text = trafilatura.extract(resp.text)
                     if text: results[-1]["content"] = text[:WEB_SEARCH_MAX_CHARS]
-                except: pass
-        return results
+                except Exception:
+                    pass
+            return results
     except Exception as e:
         logger.warning(f"SearXNG error: {e}")
         return []

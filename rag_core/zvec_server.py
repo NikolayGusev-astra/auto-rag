@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
         coll = _load_zvec()
         app_state["zvec"] = coll
         app_state["started"] = time.time()
-        print(f"[zvec-server] Ready on port {app_state['port']}")
+        print(f"[zvec-server] Ready on port {app_state.get('port', 8678)}")
     except Exception as e:
         print(f"[zvec-server] FAILED: {e}", file=sys.stderr)
         app_state["error"] = str(e)
