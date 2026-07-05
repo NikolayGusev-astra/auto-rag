@@ -19,6 +19,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from rag_config import MCP_SERVERS, MCP_TIMEOUT
 
 
+def server_name_from_url(url: str) -> str:
+    """Извлечь имя сервера из URL."""
+    from urllib.parse import urlparse
+    netloc = urlparse(url).netloc
+    return netloc.split(".")[0] if netloc else "mcp"
+
+
 class AsyncMCPClient:
     """Async MCP client. Создаётся раз на весь pipeline, переиспользует session."""
 
@@ -332,12 +339,5 @@ class AsyncMCPClient:
         skip = {'the', 'and', 'for', 'with', 'how', 'what', 'setup', 'config', 'install', 'use', 'using', 'this', 'that'}
         for w in words:
             if w.lower() not in skip:
-                candidates.append(w)
+                 candidates.append(w)
         return candidates[:10]
-
-
-def server_name_from_url(url: str) -> str:
-    """Извлечь имя сервера из URL."""
-    from urllib.parse import urlparse
-    netloc = urlparse(url).netloc
-    return netloc.split(".")[0] if netloc else "mcp"

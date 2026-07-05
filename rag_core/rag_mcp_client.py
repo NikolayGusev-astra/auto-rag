@@ -426,9 +426,6 @@ class MCPClient:
                 resolved_args[k] = v.replace("{query}", query)
             else:
                 resolved_args[k] = v
-        # Default args for lodestone_query
-        if not resolved_args and tool == "lodestone_query":
-            resolved_args = {"query": query[:200], "max_results": max_results, "sources": None}
         if not resolved_args:
             resolved_args = {"query": query[:200]}
 

@@ -26,7 +26,7 @@ COLL_PATH = os.path.join(ZVEC_PATH, ZVEC_COLLECTION)
 WIKI_PATHS = [
     os.path.expanduser("~/llm-wiki"),
     os.path.expanduser("~/llm-wiki/raw"),
-    os.path.expanduser("~/wiki"),          # <-- rusbitech docs: products, customers, cross
+    os.path.expanduser("~/wiki"),          # primary wiki docs
 ]
 CHUNK_SIZE = 2000
 STATE_FILE = os.path.join(ZVEC_PATH, ".index_state.json")
