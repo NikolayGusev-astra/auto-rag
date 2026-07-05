@@ -4,7 +4,7 @@
 Запуск:
   python eval_golden.py                         # полный прогон
   python eval_golden.py --dry-run               # только DCD + source routing
-  python eval_golden.py --id aldpro-ip-change   # один вопрос
+  python eval_golden.py --id linux-admin-1      # один вопрос
 
 Результат:
   - golden_eval_report.json — детально по каждому вопросу

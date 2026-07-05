@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Federated RAG endpoint — FastAPI server that wraps rag_async for external queries.
-Run on hermes-agent.ru and autolycus-agent.ru on port 8000 (or any port).
+Run on any remote node on port 8000 (or any port).
 """
 import sys
 import os
@@ -10,8 +10,8 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 
-# Add rag_core to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'rag_core'))
+# Add rag_core to path for sibling imports (dcd_router, rag_async)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from dcd_router import classify
 from rag_async import async_rag_search

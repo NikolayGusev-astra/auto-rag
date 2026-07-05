@@ -10,7 +10,7 @@
   RAG_FEDERATED_<name>_KEY=~/.ssh/key
   RAG_FEDERATED_<name>_USE_SSH=true
 
-Для конкретных хостов используйте rustbitech_servers.json (не в коде).
+Для конкретных хостов используйте environment variables (RAG_FEDERATED_*).
 """
 
 import asyncio

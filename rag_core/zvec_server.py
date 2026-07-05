@@ -28,7 +28,7 @@ EMBEDDING_DIM = int(os.environ.get("EMBEDDING_DIM", "1024"))
 ZVEC_PATH = os.environ.get("ZVEC_PATH", os.path.expanduser("~/.cache/zvec"))
 ZVEC_COLLECTION = os.environ.get("ZVEC_COLLECTION", "wiki")
 
-app_state = {"zvec": None, "started": None}
+app_state = {"zvec": None, "started": None, "port": 8678}
 
 
 def _embed_via_lmstudio(text: str) -> list[float]:
@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
         coll = _load_zvec()
         app_state["zvec"] = coll
         app_state["started"] = time.time()
-        print(f"[zvec-server] Ready on port {port}")
+        print(f"[zvec-server] Ready on port {app_state['port']}")
     except Exception as e:
         print(f"[zvec-server] FAILED: {e}", file=sys.stderr)
         app_state["error"] = str(e)
@@ -161,4 +161,5 @@ if __name__ == "__main__":
     parser.add_argument("--host", default="127.0.0.1", help="Bind address")
     args = parser.parse_args()
     port = args.port
+    app_state["port"] = port
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")

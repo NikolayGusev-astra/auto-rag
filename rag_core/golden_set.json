@@ -1,0 +1,152 @@
+{
+  "meta": {
+    "version": "1.0",
+    "description": "Golden set for generic RAG accuracy evaluation",
+    "created": "2026-07-05",
+    "total_questions": 15,
+    "eval_strategy": "LLM-as-judge: compare pipeline answer vs ground_truth using key_facts",
+    "sources": {
+      "zvec": "Local ZVec index",
+      "web": "SearXNG + web fallback",
+      "context7": "Context7 docs",
+      "mcp": "Generic MCP sources"
+    }
+  },
+  "questions": [
+    {
+      "id": "linux-admin-1",
+      "query": "настройка postgresql streaming replication debian 12",
+      "expected_domain": "devops",
+      "expected_collection": "devops",
+      "expected_source": "context7",
+      "key_facts": ["postgresql", "streaming", "replication", "debian"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "networking-1",
+      "query": "DNS over HTTPS configuration on Linux",
+      "expected_domain": "networking",
+      "expected_collection": "networking",
+      "expected_source": "context7",
+      "key_facts": ["DNS", "HTTPS", "Linux"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "storage-1",
+      "query": "ZFS pool import after disk replacement",
+      "expected_domain": "storage",
+      "expected_collection": "storage",
+      "expected_source": "zvec",
+      "key_facts": ["ZFS", "pool", "import", "disk"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "security-1",
+      "query": "SSH key-based authentication disable password",
+      "expected_domain": "security",
+      "expected_collection": "security",
+      "expected_source": "context7",
+      "key_facts": ["SSH", "key", "authentication", "password"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "database-1",
+      "query": "MySQL slow query log analysis",
+      "expected_domain": "database",
+      "expected_collection": "database",
+      "expected_source": "zvec",
+      "key_facts": ["MySQL", "slow", "query", "log"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "virtualization-1",
+      "query": "QEMU/KVM bridge networking setup",
+      "expected_domain": "virtualization",
+      "expected_collection": "virtualization",
+      "expected_source": "zvec",
+      "key_facts": ["QEMU", "KVM", "bridge", "networking"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "monitoring-1",
+      "query": "Prometheus node_exporter installation",
+      "expected_domain": "monitoring",
+      "expected_collection": "monitoring",
+      "expected_source": "context7",
+      "key_facts": ["Prometheus", "node_exporter", "installation"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "software-dev-1",
+      "query": "Python asyncio best practices",
+      "expected_domain": "software-dev",
+      "expected_collection": "software-dev",
+      "expected_source": "context7",
+      "key_facts": ["Python", "asyncio", "best", "practices"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "kernel-1",
+      "query": "Linux kernel panic debugging",
+      "expected_domain": "kernel",
+      "expected_collection": "kernel",
+      "expected_source": "zvec",
+      "key_facts": ["Linux", "kernel", "panic", "debugging"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "scripting-1",
+      "query": "Bash script argument parsing getopts",
+      "expected_domain": "scripting",
+      "expected_collection": "scripting",
+      "expected_source": "zvec",
+      "key_facts": ["Bash", "script", "getopts", "argument"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "docs-1",
+      "query": "Sphinx documentation build configuration",
+      "expected_domain": "docs",
+      "expected_collection": "docs",
+      "expected_source": "zvec",
+      "key_facts": ["Sphinx", "documentation", "build", "configuration"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "mail-1",
+      "query": "Postfix SPF DKIM configuration",
+      "expected_domain": "mail",
+      "expected_collection": "mail",
+      "expected_source": "zvec",
+      "key_facts": ["Postfix", "SPF", "DKIM"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "hardware-1",
+      "query": "NVMe SMART attributes monitoring",
+      "expected_domain": "hardware",
+      "expected_collection": "hardware",
+      "expected_source": "zvec",
+      "key_facts": ["NVMe", "SMART", "monitoring"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "general-1",
+      "query": "difference between TCP and UDP",
+      "expected_domain": "networking",
+      "expected_collection": "networking",
+      "expected_source": "context7",
+      "key_facts": ["TCP", "UDP", "difference"],
+      "eval_criteria": "keyword_match"
+    },
+    {
+      "id": "ford-club-1",
+      "query": "Ford Explorer 2020 OEM part number lookup",
+      "expected_domain": "ford-club",
+      "expected_collection": "ford-club",
+      "expected_source": "zvec",
+      "key_facts": ["Ford", "Explorer", "OEM", "part"],
+      "eval_criteria": "keyword_match"
+    }
+  ]
+}

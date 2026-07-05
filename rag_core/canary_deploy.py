@@ -38,7 +38,7 @@ WATCHED_FILES = [
 ]
 
 # Эталонные файлы для копирования baseline
-BASELINE_FILES = WATCHED_FILES + ["dcd_router_rusbitech.py"]
+BASELINE_FILES = WATCHED_FILES + ["dcd_router.py"]
 
 
 def file_hash(path: str) -> str:
