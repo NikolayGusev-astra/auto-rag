@@ -138,7 +138,9 @@ def _build_mcp_servers():
                 "Authorization": f"Bearer {os.getenv('RAG_JIRA_TOKEN', '')}",
                 "Accept": "application/json",
             },
-            "rest_query": "/rest/api/2/search?jql=text~\"{query_and3}\"&maxResults={max}",
+            # NOTE: {query_and3} already expands to: text~"w1" AND text~"w2" AND text~"w3"
+            # Do NOT wrap it in another text~"..." — that would produce invalid nested JQL.
+            "rest_query": "/rest/api/2/search?jql={query_and3}&maxResults={max}",
         }
     
     # Lodestone (generic)
