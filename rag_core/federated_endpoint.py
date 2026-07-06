@@ -31,6 +31,26 @@ def _check_auth(x_api_key: Optional[str]) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+def _empty_result_hint(dcd_result: dict, query: str) -> dict:
+    """Generate hints for Hermes agent when no chunks found."""
+    domain = dcd_result.get("domain", "unknown")
+    hint = "No results found"
+    suggested_actions = ["try rephrasing query", "check if data is indexed"]
+
+    if domain != "unknown":
+        primary_source = dcd_result.get("primary_source")
+        if primary_source:
+            hint = f"No results in primary source '{primary_source}', try fallback sources or LLM fallback"
+            suggested_actions.append(f"search in fallback sources: {', '.join(dcd_result.get('fallback_sources', []))}")
+            suggested_actions.append("enable LLM fallback for this domain")
+
+    return {
+        "hint": hint,
+        "suggested_actions": suggested_actions,
+        "dcd_info": dcd_result,
+    }
+
+
 class SearchRequest(BaseModel):
     query: str
     max_results: int = 5
@@ -41,6 +61,9 @@ class SearchResponse(BaseModel):
     source: str
     chunks_count: int
     trace: str
+    dcd_info: dict = {}
+    hint: str = ""
+    suggested_actions: list = []
 
 
 @app.get("/health")
@@ -116,11 +139,18 @@ async def search(
         result = await async_rag_search(request.query, dcd_result)
         chunks = result.get("chunks", [])[: request.max_results]
 
+        empty_hint = {}
+        if not chunks:
+            empty_hint = _empty_result_hint(dcd_result, request.query)
+
         return SearchResponse(
             chunks=chunks,
             source=result.get("source", "empty"),
             chunks_count=len(chunks),
             trace=result.get("trace", "?"),
+            dcd_info=empty_hint.get("dcd_info", dcd_result),
+            hint=empty_hint.get("hint", ""),
+            suggested_actions=empty_hint.get("suggested_actions", []),
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -138,11 +168,18 @@ async def search_get(
         result = await async_rag_search(q, dcd_result)
         chunks = result.get("chunks", [])[:max_results]
 
+        empty_hint = {}
+        if not chunks:
+            empty_hint = _empty_result_hint(dcd_result, q)
+
         return SearchResponse(
             chunks=chunks,
             source=result.get("source", "empty"),
             chunks_count=len(chunks),
             trace=result.get("trace", "?"),
+            dcd_info=empty_hint.get("dcd_info", dcd_result),
+            hint=empty_hint.get("hint", ""),
+            suggested_actions=empty_hint.get("suggested_actions", []),
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

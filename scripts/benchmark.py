@@ -64,6 +64,38 @@ def benchmark_lm_studio() -> dict:
     }
 
 
+def benchmark_llm_calls() -> dict:
+    """Count how many times LLM is invoked during classification."""
+    from dcd_router_llm import classify_hybrid
+    llm_call_count = 0
+    original_classify_llm = classify_hybrid.__globals__.get("classify_llm")
+
+    if original_classify_llm is None:
+        return {"error": "classify_llm not found"}
+
+    tracing_classify_llm = original_classify_llm
+
+    def traced_classify_llm(*args, **kwargs):
+        nonlocal llm_call_count
+        llm_call_count += 1
+        return tracing_classify_llm(*args, **kwargs)
+
+    classify_hybrid.__globals__["classify_llm"] = traced_classify_llm
+
+    try:
+        for q in DEFAULT_QUERIES:
+            classify_hybrid(q)
+        total = llm_call_count
+    finally:
+        classify_hybrid.__globals__["classify_llm"] = original_classify_llm
+
+    return {
+        "queries": len(DEFAULT_QUERIES),
+        "llm_calls": total,
+        "llm_call_ratio": round(total / len(DEFAULT_QUERIES), 2) if DEFAULT_QUERIES else 0,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="Auto-RAG benchmark")
     parser.add_argument("--queries", type=int, default=0)
@@ -79,6 +111,7 @@ def main():
         results["warmup"] = get_lm_studio().warmup_all()
 
     results["lm_studio"] = benchmark_lm_studio()
+    results["llm_stats"] = benchmark_llm_calls()
 
     report_path = Path(__file__).parent.parent / "benchmark_report.json"
     with open(report_path, "w") as f:
