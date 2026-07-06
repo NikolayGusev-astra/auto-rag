@@ -31,6 +31,8 @@ DOMAIN_KEYWORDS = {
             "proc": 2, "sysctl": 4, "sysfs": 2,
         },
         "collections": ["linux-admin", "server-config"],
+        "primary_source": "zvec",
+        "fallback_sources": ["web"],
     },
     "networking": {
         "weight": 3,
@@ -49,6 +51,8 @@ DOMAIN_KEYWORDS = {
             "ssh": 2, "tunnel": 3, "proxy": 2,
         },
         "collections": ["networking", "vpn-config"],
+        "primary_source": "zvec",
+        "fallback_sources": ["context7", "web"],
     },
     "devops": {
         "weight": 3,
@@ -68,6 +72,8 @@ DOMAIN_KEYWORDS = {
             "git": 2, "gitops": 4, "argocd": 3,
         },
         "collections": ["devops", "infra-as-code"],
+        "primary_source": "context7",
+        "fallback_sources": ["zvec", "web"],
     },
     "software-dev": {
         "weight": 3,
@@ -88,6 +94,8 @@ DOMAIN_KEYWORDS = {
             "design pattern": 3, "solid": 3, "clean code": 3,
         },
         "collections": ["software-dev", "code-patterns"],
+        "primary_source": "context7",
+        "fallback_sources": ["zvec", "web"],
     },
     "database": {
         "weight": 3,
@@ -107,6 +115,8 @@ DOMAIN_KEYWORDS = {
             "connection pool": 4, "pgbouncer": 5,
         },
         "collections": ["database", "postgresql"],
+        "primary_source": "zvec",
+        "fallback_sources": ["context7", "web"],
     },
     "monitoring": {
         "weight": 3,
@@ -122,6 +132,8 @@ DOMAIN_KEYWORDS = {
             "slo": 3, "sli": 3, "error budget": 3,
         },
         "collections": ["monitoring", "observability"],
+        "primary_source": "zvec",
+        "fallback_sources": ["context7", "web"],
     },
     "security": {
         "weight": 3,
@@ -138,6 +150,8 @@ DOMAIN_KEYWORDS = {
             "compliance": 3, "cis": 3, "nist": 3,
         },
         "collections": ["security", "hardening"],
+        "primary_source": "zvec",
+        "fallback_sources": ["jira", "web"],
     },
     "storage": {
         "weight": 3,
@@ -154,6 +168,8 @@ DOMAIN_KEYWORDS = {
             "nfs": 3, "smb": 3, "samba": 3,
         },
         "collections": ["storage", "filesystems"],
+        "primary_source": "zvec",
+        "fallback_sources": ["web"],
     },
     "virtualization": {
         "weight": 3,
@@ -169,6 +185,8 @@ DOMAIN_KEYWORDS = {
             "ceph": 4, "rbd": 3,
         },
         "collections": ["virtualization", "proxmox"],
+        "primary_source": "zvec",
+        "fallback_sources": ["web"],
     },
     "email": {
         "weight": 3,
@@ -184,6 +202,8 @@ DOMAIN_KEYWORDS = {
             "stalwart": 5,
         },
         "collections": ["email", "mail-server"],
+        "primary_source": "zvec",
+        "fallback_sources": ["web"],
     },
     "kernel": {
         "weight": 3,
@@ -200,6 +220,8 @@ DOMAIN_KEYWORDS = {
             "interrupt": 3, "irq": 3, "softirq": 3,
         },
         "collections": ["kernel", "linux-internals"],
+        "primary_source": "zvec",
+        "fallback_sources": ["context7", "web"],
     },
     "scripting": {
         "weight": 3,
@@ -215,6 +237,8 @@ DOMAIN_KEYWORDS = {
             "cron": 3, "at": 2, "systemd timer": 3,
         },
         "collections": ["scripting", "automation"],
+        "primary_source": "zvec",
+        "fallback_sources": ["context7", "web"],
     },
     "docs": {
         "weight": 3,
@@ -228,6 +252,8 @@ DOMAIN_KEYWORDS = {
             "template": 2, "style guide": 3,
         },
         "collections": ["docs", "architecture"],
+        "primary_source": "zvec",
+        "fallback_sources": ["confluence"],
     },
     "hardware": {
         "weight": 3,
@@ -235,14 +261,14 @@ DOMAIN_KEYWORDS = {
         "keywords": {
             "cpu": 3, "intel": 3, "amd": 3, "arm": 3,
             "memory": 3, "ram": 3, "ddr": 3, "ecc": 4,
-            "disk": 3, "ssd": 3, "nvme": 4, "hdd": 3,
-            "gpu": 4, "nvidia": 4, "amd": 3,
-            "pci": 3, "pcie": 3, "usb": 2,
-            "fan": 3, "temperature": 3, "thermal": 3,
-            "ipmi": 4, "bmc": 4, "redfish": 4,
-            "rack": 2, "server": 2, "chassis": 2,
+            "disk": 3, "ssd": 3, "nvme": 4, "hdd": 2,
+            "raid": 4, "mdadm": 4,
+            "backup": 3, "restore": 3, "borg": 4, "restic": 4,
+            "nfs": 3, "smb": 3, "samba": 3,
         },
         "collections": ["hardware", "server-hardware"],
+        "primary_source": "zvec",
+        "fallback_sources": ["web"],
     },
     "ford-club": {
         "weight": 3,
@@ -258,6 +284,8 @@ DOMAIN_KEYWORDS = {
             "эталон": 3, "оригинал": 4, "аналог": 3,
         },
         "collections": ["ford-club", "auto-parts"],
+        "primary_source": "zvec",
+        "fallback_sources": ["web"],
     },
 }
 
@@ -311,7 +339,19 @@ def _score_domain(tokens: List[str], domain_data: Dict) -> tuple:
 # ─── Main Classification Function ──────────────────────────────────
 
 def classify(query: str) -> Dict:
-    """Классифицировать запрос по домену и коллекции."""
+    """Классифицировать запрос по домену, коллекции и источнику.
+
+    Returns: {
+        "domain": str,
+        "collection": str,
+        "confidence": float,
+        "keywords_matched": list,
+        "fallback": bool,
+        "router": "keyword",
+        "primary_source": str,
+        "fallback_sources": list,
+    }
+    """
     tokens = _extract_tokens(query)
     if not tokens:
         return {
@@ -320,6 +360,9 @@ def classify(query: str) -> Dict:
             "confidence": 0.0,
             "keywords_matched": [],
             "fallback": True,
+            "router": "keyword",
+            "primary_source": "zvec",
+            "fallback_sources": ["web"],
         }
 
     best_domain = "software-dev"
@@ -337,7 +380,8 @@ def classify(query: str) -> Dict:
     max_possible = max(data.get("weight", 1) * sum(data.get("keywords", {}).values()) for data in DOMAIN_KEYWORDS.values())
     confidence = min(best_score / max_possible, 1.0) if max_possible > 0 else 0.0
 
-    collections = DOMAIN_KEYWORDS[best_domain].get("collections", ["general"])
+    domain_data = DOMAIN_KEYWORDS[best_domain]
+    collections = domain_data.get("collections", ["general"])
     collection = collections[0]
 
     return {
@@ -346,6 +390,9 @@ def classify(query: str) -> Dict:
         "confidence": round(confidence, 3),
         "keywords_matched": best_matched[:10],
         "fallback": confidence < 0.3,
+        "router": "keyword",
+        "primary_source": domain_data.get("primary_source", "zvec"),
+        "fallback_sources": domain_data.get("fallback_sources", ["web"]),
     }
 
 if __name__ == "__main__":
