@@ -1,11 +1,31 @@
+# Vector databases
 zvec>=0.5.0
-trafilatura>=2.0
-aiohttp>=3.9.0
+chromadb>=0.4.0
+
+# HTTP / async
 requests>=2.31.0
+aiohttp>=3.9.0
+
+# Web scraping
+trafilatura>=2.0
+
+# Numerical
 numpy>=1.24.0
+
+# Config
 pyyaml>=6.0
+
+# API server
 fastapi>=0.104.0
 uvicorn>=0.24.0
+
+# CPU fallback для embedding (когда LM Studio недоступен)
+# bge-m3 ~568M, работает на CPU, 1024d — совместим с LM Studio
+sentence-transformers>=2.2.0
+
+# System metrics for benchmark
+psutil>=5.9.0
+
+# Testing
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
-psutil>=5.9.0
