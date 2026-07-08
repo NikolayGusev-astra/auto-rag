@@ -1,0 +1,10 @@
+# Hermes memvid memory layer — Python dependencies
+# Install with:  pip install -r requirements.txt
+
+# memvid Python SDK (wraps the Rust core). Provides Memvid/PutOptions/
+# SearchRequest. If unavailable, the memory layer degrades to noop.
+memvid-sdk>=2.0
+
+# Used by _Embedder for HTTP calls to LM Studio /v1/embeddings.
+# Already a dependency of auto-rag in most setups; listed for completeness.
+requests>=2.31

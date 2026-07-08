@@ -41,6 +41,55 @@ from dcd_router import classify
 from rag_mcp_client import MCPClient
 from rag_trace import RagTrace
 
+# ── Optional memvid memory layer (T3 integration) ─────────────────
+try:
+    from memvid_memory import Episode, MemvidMemory
+    from memvid_trace import MemvidTraced
+    _MEMVID_AVAILABLE = True
+except Exception:
+    _MEMVID_AVAILABLE = False
+
+_memory = None
+
+def _get_memory():
+    """Lazy singleton for the memvid memory layer.
+
+    Returns a MemvidTraced wrapper, or None when the layer is disabled
+    (RAG_MEMVID_ENABLED != true) or import failed. Never raises.
+    """
+    global _memory
+    if _memory is None and _MEMVID_AVAILABLE:
+        try:
+            from memvid_config_bridge import bridge_memvid_env
+            bridge_memvid_env()
+            _memory = MemvidTraced(MemvidMemory.for_tenant(
+                os.environ.get("RAG_MEMVID_TENANT", "hermes_default")))
+        except Exception:
+            _memory = None
+    return _memory
+
+def _record_episode(result: dict, query: str, domain: str, trace: RagTrace) -> None:
+    """Best-effort record of a RAG result as a memvid episode. Never raises."""
+    if not _MEMVID_AVAILABLE:
+        return
+    mem = _get_memory()
+    if mem is None or not mem.active:
+        return
+    try:
+        mem.record(
+            Episode(
+                query=query,
+                answer=result.get("trace", "") or "",
+                sources=[{"source": result.get("source", "")}],
+                trace=trace,
+                domain=domain,
+                tenant=os.environ.get("RAG_MEMVID_TENANT", "hermes_default"),
+            ),
+            trace=trace,
+        )
+    except Exception:
+        pass
+
 _AsyncMCPClient = None  # lazy import to avoid circular deps
 
 _EXECUTOR = ThreadPoolExecutor(max_workers=6)
@@ -330,7 +379,7 @@ def _is_noise_chunk(text: str) -> bool:
 
 
 # ── Main entry ──────────────────────────────────────────────────
-async def async_rag_search(
+async def _async_rag_search_impl(
     query: str, dcd_result: dict,
     trace: RagTrace | None = None,
 ) -> dict:
@@ -496,6 +545,51 @@ async def async_rag_search(
     result = {'source': 'empty', 'chunks': [], 'score': 0,
               'trace': 'ZVec→MCP→Web→empty', '_trace': trace.json()}
     _cache_set(ck, result, dcd=dcd_result)
+    return result
+
+
+# ── Public entry with memvid memory layer (T3) ───────────────────
+async def async_rag_search(
+    query: str, dcd_result: dict,
+    trace: RagTrace | None = None,
+) -> dict:
+    """Public RAG entrypoint with optional memvid episodic memory.
+
+    Flow:
+      1. recall prior episodes (if memory enabled) -> short-circuit on hit
+      2. run the core pipeline (_async_rag_search_impl)
+      3. record the new episode (if memory enabled, not a memory hit)
+    Memory is fully opt-in (RAG_MEMVID_ENABLED) and never breaks RAG.
+    """
+    if trace is None:
+        domain = dcd_result.get('domain', '')
+        collection = dcd_result.get('collection', '')
+        trace = RagTrace(query, domain, collection)
+
+    # 1) recall (short-circuit)
+    if _MEMVID_AVAILABLE:
+        mem = _get_memory()
+        if mem is not None and mem.active:
+            try:
+                priors = mem.recall(query, domain=trace.domain, trace=trace)
+                if priors and priors[0].score >= mem.recall_threshold:
+                    return {
+                        "answer": priors[0].answer,
+                        "sources": priors[0].sources,
+                        "trace": f"memvid.recall(short-circuit, score={priors[0].score:.3f})",
+                        "from_memory": True,
+                        "_trace": trace.json(),
+                    }
+            except Exception:
+                pass
+
+    # 2) core pipeline
+    result = await _async_rag_search_impl(query, dcd_result, trace=trace)
+
+    # 3) record (skip if this was a memory hit)
+    if not result.get("from_memory"):
+        _record_episode(result, query, trace.domain, trace)
+
     return result
 
 
