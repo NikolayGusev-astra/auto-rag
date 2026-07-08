@@ -9,6 +9,8 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "rag_core"))
 
+from lm_studio_monitor import LMStudioMonitor
+
 
 class TestLMStudioMonitor:
     def test_singleton(self):
