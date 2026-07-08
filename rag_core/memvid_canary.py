@@ -140,9 +140,13 @@ def _load_report(path: Path, name: str) -> Optional[ReportSummary]:
         if not isinstance(q, dict):
             continue
         qid = str(q.get("id") or q.get("qid") or i)
+        _verdict = (q.get("answer_verdict") or "").lower()
+        _score_from_verdict = (
+            1.0 if _verdict == "correct" else 0.5 if _verdict == "partial" else 0.0)
         score = float(q.get("score") or q.get("llm_judge_score")
-                      or q.get("accuracy") or 0.0)
+                      or q.get("accuracy") or _score_from_verdict or 0.0)
         lat = float(q.get("latency_ms") or q.get("latency")
+                    or (q.get("total_latency_s", 0) * 1000)
                     or _trace_latency(q.get("trace")) or 0.0)
         trace = q.get("trace") or {}
         from_mem = bool(_trace_flag(trace, "from_memory")
