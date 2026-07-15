@@ -271,7 +271,17 @@ async def main():
     parser = argparse.ArgumentParser(description="Eval RAG golden set")
     parser.add_argument("--dry-run", action="store_true", help="Only DCD + source check")
     parser.add_argument("--id", type=str, help="Run single question by id")
+    parser.add_argument("--out", type=str, default=None,
+                        help="Override output report path (default: golden_eval_report.json)")
+    parser.add_argument("--golden", type=str, default=None,
+                        help="Override golden set path (default: golden_set.json)")
     args = parser.parse_args()
+
+    global REPORT_PATH, GOLDEN_PATH
+    if args.out:
+        REPORT_PATH = HERE / args.out
+    if args.golden:
+        GOLDEN_PATH = HERE / args.golden
 
     golden = load_golden()
     questions = golden["questions"]
@@ -308,6 +318,17 @@ async def main():
         except Exception as e:
             print(f"ERROR: {e}")
             results.append({"id": q["id"], "error": str(e)})
+
+    # Enrich each result with canary-compatible fields (memvid_canary schema)
+    for rec in results:
+        if not isinstance(rec, dict) or "error" in rec:
+            continue
+        _verdict = str(rec.get("answer_verdict", "")).lower()
+        rec["score"] = (
+            1.0 if _verdict == "correct" else 0.5 if _verdict == "partial" else 0.0)
+        rec.setdefault("from_memory", False)
+        _lat_s = rec.get("total_latency_s", 0) or 0
+        rec["latency_ms"] = round(float(_lat_s) * 1000, 2)
 
     # Summary
     report = accuracy_report(questions, results)
