@@ -560,7 +560,7 @@ async def _async_rag_search_impl(
             for c in server_chunks:
                 text = c.get("text", "")
                 score = c.get("score", 0)
-                if text and score > 0:
+                if text and score > 0 and not c.get("is_error"):
                     pool.append({
                         "text": text[:800],
                         "score": float(score),

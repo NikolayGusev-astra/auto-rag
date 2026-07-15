@@ -215,12 +215,12 @@ class FederatedRAGClient:
         """Запрос к одному удалённому RAG серверу с circuit breaker."""
         config = self.configs.get(name)
         if not config:
-            return [{"text": f"Unknown federated server: {name}", "source": name, "score": 0}]
+            return [{"text": f"Unknown federated server: {name}", "source": name, "score": 0, "is_error": True}]
 
         health = self._health.get(name)
         if health and not health.is_healthy:
             return [{"text": f"Server {name} in cooldown (circuit breaker)",
-                     "source": name, "score": 0}]
+                     "source": name, "score": 0, "is_error": True}]
 
         try:
             result = await self._do_query(config, name, query, max_results)
@@ -234,7 +234,7 @@ class FederatedRAGClient:
                 health.last_failure_ts = time.time()
                 if health.consecutive_failures >= 3:
                     health.cooldown_until = time.time() + 300
-            return [{"text": f"Federated RAG {name} error: {e}", "source": name, "score": 0}]
+            return [{"text": f"Federated RAG {name} error: {e}", "source": name, "score": 0, "is_error": True}]
 
     async def _do_query(self, config: FederatedServerConfig, name: str, query: str, max_results: int) -> list[dict]:
         """Исходная логика query с retry на transient errors."""
@@ -276,10 +276,10 @@ class FederatedRAGClient:
                             await asyncio.sleep(0.5 * (attempt + 1))
                             continue
                         text = await resp.text()
-                        return [{"text": f"Remote RAG {name} error {resp.status}: {text}", "source": name, "score": 0}]
+                        return [{"text": f"Remote RAG {name} error {resp.status}: {text}", "source": name, "score": 0, "is_error": True}]
                     else:
                         text = await resp.text()
-                        return [{"text": f"Remote RAG {name} error {resp.status}: {text}", "source": name, "score": 0}]
+                        return [{"text": f"Remote RAG {name} error {resp.status}: {text}", "source": name, "score": 0, "is_error": True}]
             except (asyncio.TimeoutError, aiohttp.ClientError) as e:
                 last_error = e
                 if attempt < max_retries:

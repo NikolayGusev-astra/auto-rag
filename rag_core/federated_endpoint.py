@@ -23,6 +23,13 @@ app = FastAPI(title="Federated RAG Endpoint", version="1.1.0")
 REQUIRE_AUTH = os.getenv("RAG_FEDERATED_API_KEY", "") != ""
 
 
+def get_bind_host() -> str:
+    """Без API-ключа биндимся только на localhost (иначе удалённый узел
+    без аутентификации открыт всей сети — security HIGH #2)."""
+    require_auth = os.getenv("RAG_FEDERATED_API_KEY", "") != ""
+    return "127.0.0.1" if not require_auth else "0.0.0.0"
+
+
 def _check_auth(x_api_key: Optional[str]) -> None:
     if not REQUIRE_AUTH:
         return
@@ -200,4 +207,6 @@ def _get_doc_count() -> int:
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("RAG_FEDERATED_PORT", "8000"))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    # Без API-ключа биндимся только на localhost (иначе удалённый узел
+    # без аутентификации открыт всей сети — security HIGH #2).
+    uvicorn.run(app, host=get_bind_host(), port=port)
