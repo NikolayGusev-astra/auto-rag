@@ -9,10 +9,11 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "rag_core"))
 
+from lm_studio_monitor import LMStudioMonitor
+
 
 class TestLMStudioMonitor:
     def test_singleton(self):
-        from lm_studio_monitor import LMStudioMonitor
         a = LMStudioMonitor.get()
         b = LMStudioMonitor.get()
         assert a is b
@@ -20,7 +21,6 @@ class TestLMStudioMonitor:
     @patch("lm_studio_monitor.requests.get")
     def test_get_status_available(self, mock_get):
         """get_status возвращает available=True когда LM Studio отвечает."""
-        from lm_studio_monitor import LMStudioMonitor
 
         mock_get.return_value = MagicMock(
             status_code=200,
@@ -43,7 +43,6 @@ class TestLMStudioMonitor:
     @patch("lm_studio_monitor.requests.get")
     def test_get_status_unavailable(self, mock_get):
         """get_status возвращает available=False когда LM Studio не отвечает."""
-        from lm_studio_monitor import LMStudioMonitor
 
         mock_get.side_effect = Exception("Connection refused")
 
@@ -57,7 +56,6 @@ class TestLMStudioMonitor:
     @patch.object(LMStudioMonitor, 'get_status')
     def test_is_model_loaded_true(self, mock_status):
         """is_model_loaded возвращает True если модель в loaded_models."""
-        from lm_studio_monitor import LMStudioMonitor
 
         mock_status.return_value = {
             "available": True,
@@ -71,7 +69,6 @@ class TestLMStudioMonitor:
     @patch.object(LMStudioMonitor, 'get_status')
     def test_is_model_loaded_false(self, mock_status):
         """is_model_loaded возвращает False если модели нет."""
-        from lm_studio_monitor import LMStudioMonitor
 
         mock_status.return_value = {
             "available": True,
@@ -84,7 +81,6 @@ class TestLMStudioMonitor:
     @patch.object(LMStudioMonitor, 'get_status')
     def test_is_model_loaded_unavailable(self, mock_status):
         """is_model_loaded возвращает False когда LM Studio недоступен."""
-        from lm_studio_monitor import LMStudioMonitor
 
         mock_status.return_value = {
             "available": False,
@@ -97,7 +93,6 @@ class TestLMStudioMonitor:
     @patch.object(LMStudioMonitor, 'get_status')
     def test_is_available_property(self, mock_status):
         """is_available property отражает статус."""
-        from lm_studio_monitor import LMStudioMonitor
 
         mock_status.return_value = {"available": True, "loaded_models": []}
         monitor = LMStudioMonitor()
@@ -105,3 +100,34 @@ class TestLMStudioMonitor:
 
         mock_status.return_value = {"available": False, "loaded_models": []}
         assert monitor.is_available is False
+
+    @patch("lm_studio_monitor.requests.get")
+    def test_get_status_connection_error(self, mock_get):
+        """get_status ловит requests.ConnectionError и ставит available=False."""
+        mock_get.side_effect = __import__("requests").ConnectionError("refused")
+
+        monitor = LMStudioMonitor()
+        monitor._cache = None
+        status = monitor.get_status(force=True)
+
+        assert status["available"] is False
+        assert "Connection refused" in status["error"]
+
+    @patch.object(LMStudioMonitor, "get_status")
+    def test_is_model_loaded_case_insensitive(self, mock_status):
+        """is_model_loaded сравнивает модель как есть (регистрозависимо)."""
+        mock_status.return_value = {"available": True, "loaded_models": ["bge-m3"]}
+        monitor = LMStudioMonitor()
+        # точное совпадение
+        assert monitor.is_model_loaded("bge-m3") is True
+        # отличается регистром — не совпадёт
+        assert monitor.is_model_loaded("BGE-M3") is False
+
+    def test_singleton_reset(self):
+        """После сброса _instance новый get() возвращает другой объект."""
+        a = LMStudioMonitor.get()
+        LMStudioMonitor._instance = None
+        b = LMStudioMonitor.get()
+        assert a is not b
+        # восстанавливаем синглтон, чтобы не влиять на другие тесты
+        LMStudioMonitor._instance = a
