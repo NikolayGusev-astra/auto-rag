@@ -78,7 +78,59 @@ def parse_frontmatter(text):
     except: pass
     return (meta if isinstance(meta, dict) else {}), text[end + 3:].strip()
 
-def chunk_text(text, heading="Overview"):
+
+def recursive_chunk_text(text, heading="Overview", chunk_size=2000, min_chunk=200):
+    """Recursive chunking: paragraphs → sentences → fixed-size.
+    Preserves semantic boundaries better than fixed-size splitting."""
+    chunks = []
+    lines = text.split('\n')
+    current_heading = heading
+    current_lines = []
+
+    def flush():
+        nonlocal current_lines
+        if not current_lines: return
+        content = '\n'.join(current_lines).strip()
+        if not content:
+            current_lines = []
+            return
+        if len(content) <= chunk_size:
+            chunks.append({"heading": current_heading, "text": content})
+            current_lines = []
+            return
+        # Try splitting by double newlines (paragraphs)
+        paragraphs = content.split('\n\n')
+        buf = ""
+        for p in paragraphs:
+            if len(buf) + len(p) > chunk_size and buf:
+                if len(buf) >= min_chunk:
+                    chunks.append({"heading": current_heading, "text": buf})
+                buf = p
+            else:
+                buf = (buf + '\n\n' + p) if buf else p
+        if buf:
+            if len(buf) >= min_chunk:
+                chunks.append({"heading": current_heading, "text": buf})
+            else:
+                # Merge with last chunk if too small
+                if chunks:
+                    chunks[-1]["text"] += '\n\n' + buf
+                else:
+                    chunks.append({"heading": current_heading, "text": buf})
+        current_lines = []
+
+    for line in lines:
+        if line.startswith('# ') or line.startswith('## ') or line.startswith('### '):
+            flush()
+            current_heading = line.lstrip('#').strip()
+        else:
+            current_lines.append(line)
+    flush()
+    return chunks
+
+
+def fixed_chunk_text(text, heading="Overview"):
+    """Original fixed-size chunking."""
     chunks = []
     lines = text.split('\n')
     current_heading = heading
@@ -118,6 +170,13 @@ def chunk_text(text, heading="Overview"):
             current_lines.append(line)
     flush()
     return chunks
+
+
+def chunk_text(text, heading="Overview", mode="recursive"):
+    """Dispatch to chunking strategy."""
+    if mode == "recursive":
+        return recursive_chunk_text(text, heading)
+    return fixed_chunk_text(text, heading)
 
 # ── Embedding ─────────────────────────────────────────────────────
 from embedding_service import get_embeddings_batch, get_embedding
@@ -164,7 +223,7 @@ def ensure_zvec_lock(path: str) -> str:
 
 
 # ── Main ──────────────────────────────────────────────────────────
-def index(incremental=False, clear=False):
+def index(incremental=False, clear=False, chunk_mode="recursive"):
     import zvec
     zvec.init()
 
@@ -243,7 +302,7 @@ def index(incremental=False, clear=False):
         else: tags = ""
 
         category = rel.split("/")[0] if "/" in rel else "wiki"
-        chunks = chunk_text(body, heading=title)
+        chunks = chunk_text(body, heading=title, mode=chunk_mode)
         for c in chunks:
             all_chunks.append({
                 "source": rel,
@@ -348,5 +407,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--incremental", action="store_true")
     p.add_argument("--clear", action="store_true")
+    p.add_argument("--chunk-mode", choices=["fixed", "recursive"], default="recursive",
+                   help="Chunking strategy: fixed (2000 chars) or recursive (paragraph-boundary aware)")
     args = p.parse_args()
-    index(incremental=args.incremental, clear=args.clear)
+    index(incremental=args.incremental, clear=args.clear, chunk_mode=args.chunk_mode)
