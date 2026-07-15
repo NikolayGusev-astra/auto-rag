@@ -119,26 +119,28 @@ def classify_hybrid(query: str) -> dict:
 
     kw_result = classify_keyword(query)
 
+    # High confidence -> keyword result is good enough
+    if kw_result.get("confidence", 0) >= 0.5:
+        kw_result["router"] = "keyword"
+        return kw_result
+
     # Low confidence -> ask LLM
-    if kw_result.get("confidence", 0) < 0.3:
-        llm_result = classify_llm(query)
+    llm_result = classify_llm(query)
 
-        # If LLM also unsure, keep keyword result
-        if llm_result.get("confidence", 0) < 0.3:
-            kw_result["router"] = "keyword"
-            return kw_result
+    # If LLM also unsure, keep keyword result
+    if llm_result.get("confidence", 0) < 0.3:
+        kw_result["router"] = "keyword"
+        return kw_result
 
-        llm_result["router"] = "llm_override"
-        llm_result["keyword_domain"] = kw_result.get("domain")
-        llm_result["keyword_confidence"] = kw_result.get("confidence")
-        if llm_result["domain"] in _DOMAIN_COLLECTION_MAP:
-            llm_result["collection"] = _DOMAIN_COLLECTION_MAP[llm_result["domain"]][0]
-        else:
-            llm_result["collection"] = llm_result["domain"]
-        return llm_result
-
-    kw_result["router"] = "keyword"
-    return kw_result
+    llm_result["router"] = "llm_override"
+    llm_result["keyword_domain"] = kw_result.get("domain")
+    llm_result["keyword_confidence"] = kw_result.get("confidence")
+    # Preserve keyword's collection mapping
+    if llm_result["domain"] in _DOMAIN_COLLECTION_MAP:
+        llm_result["collection"] = _DOMAIN_COLLECTION_MAP[llm_result["domain"]][0]
+    else:
+        llm_result["collection"] = llm_result["domain"]
+    return llm_result
 
 
 # Collection mapping (same as dcd_router.py DOMAIN_KEYWORDS collections)

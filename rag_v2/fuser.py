@@ -3,7 +3,7 @@ Multi-Source Fuser — собирает чанки из всех источни�
 
 Стратегия:
   1. Все чанки от всех источников → общий пул
-  2. Bge-reranker (bge-reranker-v2-m3) → топ-10
+  2. Reranker: local cross-encoder (default) or bge-reranker (fallback)
   3. LLM (qwen2.5-7b) оценивает: достаточен ли один источник или нужна комбинация
   4. Если составной запрос → склейка ответов из разных источников
 """
@@ -15,9 +15,13 @@ from typing import Any
 
 import aiohttp
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from rag_config import LM_STUDIO_CHAT_URL
-from reranker_service import RerankerService, rerank_chunks
+_rag_core = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'rag_core'))
+if _rag_core not in sys.path:
+    sys.path.insert(0, _rag_core)
+from rag_config import (
+    LM_STUDIO_CHAT_URL, EMBEDDING_URL,
+    LOCAL_RERANKER_ENABLED, LOCAL_RERANKER_MODEL, LOCAL_RERANKER_DEVICE,
+)
 
 _LLM_URL = LM_STUDIO_CHAT_URL.rstrip('/')
 
@@ -57,18 +61,18 @@ async def fuse(
         for c in chunks:
             if c.get("text", "").strip():
                 pool.append({**c, "_src": src})
-    
+
     if not pool:
         return {"source": "empty", "chunks": [], "answer": "",
                 "fusion_needed": False, "sources_used": []}
-    
-    # 2. Bge-reranker (опционально, если >5 чанков)
+
+    # 2. Rerank (local cross-encoder preferred, bge fallback)
     if len(pool) > 5:
         reranked = await _rerank(query, pool, session)
         top_k = reranked[:10]
     else:
         top_k = pool
-    
+
     # 3. LLM fusion
     result = await _llm_fuse(query, top_k, session)
     if result.get("answer"):
@@ -79,7 +83,7 @@ async def fuse(
             "fusion_needed": result.get("fusion_needed", False),
             "sources_used": list(set(c["_src"] for c in top_k)),
         }
-    
+
     # Fallback: просто топ-1 чанк
     best = top_k[0]
     return {
@@ -94,13 +98,62 @@ async def fuse(
 async def _rerank(
     query: str, chunks: list[dict], session: aiohttp.ClientSession
 ) -> list[dict]:
-    """Rerank через RerankerService."""
-    if not chunks:
-        return []
+    """Rerank chunks. Uses local cross-encoder if enabled, else bge-reranker."""
+    if LOCAL_RERANKER_ENABLED:
+        return await _rerank_local(query, chunks)
+
+    # Fallback: bge-reranker-v2-m3 via LM Studio
+    return await _rerank_bge(query, chunks, session)
+
+
+async def _rerank_local(query: str, chunks: list[dict]) -> list[dict]:
+    """Local cross-encoder reranker (ms-marco-MiniLM-L6-v2).
+
+    Runs in thread pool to avoid blocking event loop.
+    No LM Studio round-trip needed.
+    """
+    import asyncio
+
+    def _do_rerank():
+        try:
+            from local_reranker import LocalReranker
+            reranker = LocalReranker(
+                query=query,
+                rerank_field="text",
+                model_name=LOCAL_RERANKER_MODEL,
+                device=LOCAL_RERANKER_DEVICE,
+            )
+            results = reranker.rerank(chunks, topn=10)
+            return results
+        except ImportError:
+            # sentence-transformers not installed — skip rerank
+            return chunks
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Local reranker failed: %s", e)
+            return chunks
+
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _do_rerank)
+
+
+async def _rerank_bge(
+    query: str, chunks: list[dict], session: aiohttp.ClientSession
+) -> list[dict]:
+    """Bge-reranker-v2-m3 через LM Studio."""
     try:
         return RerankerService.get().rerank_chunks(query, chunks, top_k=10)
     except Exception:
-        return chunks
+        scores = [c.get("score", 0.5) for c in chunks]
+
+    # Отсортировать по score
+    indexed = list(enumerate(chunks))
+    if scores:
+        indexed.sort(key=lambda x: scores[x[0]], reverse=True)
+    else:
+        indexed.sort(key=lambda x: x[1].get("score", 0.5), reverse=True)
+
+    return [c for _, c in indexed]
 
 
 async def _llm_fuse(
@@ -113,19 +166,19 @@ async def _llm_fuse(
         src = c.get("_src", c.get("source", "?"))
         txt = c["text"][:400]
         chunk_texts.append(f"[{i}] [{src}] {txt}")
-    
+
     prompt = FUSION_PROMPT.format(
         query=query,
         chunks="\n\n".join(chunk_texts),
     )
-    
+
     payload = {
         "model": "qwen2.5-7b-instruct",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.0,
         "max_tokens": 800,
     }
-    
+
     try:
         async with session.post(
             _LLM_URL, json=payload,

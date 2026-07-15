@@ -9,23 +9,19 @@ aiohttp>=3.9.0
 
 # Web scraping
 trafilatura>=2.0
+# CPU fallback для embedding (когда LM Studio недоступен)
+# bge-m3 ~568M, работает на CPU, 1024d — совместим с LM Studio
+sentence-transformers>=3.0
 
-# Numerical
-numpy>=1.24.0
-
-# Config
-pyyaml>=6.0
-
-# API server
+# API server (для zvec_server.py — обход ZVec LOCK бага через HTTP)
 fastapi>=0.104.0
 uvicorn>=0.24.0
 
-# CPU fallback для embedding (когда LM Studio недоступен)
-# bge-m3 ~568M, работает на CPU, 1024d — совместим с LM Studio
-sentence-transformers>=2.2.0
-
 # System metrics for benchmark
 psutil>=5.9.0
+
+# Local cross-encoder reranker (optional, for RAG_LOCAL_RERANKER=true)
+# sentence-transformers>=3.0
 
 # Testing
 pytest>=7.0.0
