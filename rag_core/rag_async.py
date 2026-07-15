@@ -94,9 +94,62 @@ _AsyncMCPClient = None  # lazy import to avoid circular deps
 
 _EXECUTOR = ThreadPoolExecutor(max_workers=6)
 
+# ── Compound query detection ──
+# Составные запросы: продукт Astra (ALD/РуПост/...) + инфраструктурная штука.
+# "альд postgresql репликация" → и продукт, и инфра. Дробим на 2 подзапроса
+# без LLM, гоним параллельно и сливаем чанки через smart fusion.
+_COMPOUND_PRODUCT_WORDS = {"ald", "aldpro", "ald pro", "rupost", "termidesk",
+                           "workspad", "ddo", "msad", "keycloak", "alse",
+                           "astra linux", "astra",
+                           # кириллические варианты (русскоязычные запросы)
+                           "альд", "альд про", "рупост", "термидеск",
+                           "воркспад", "астра линукс", "астра", "кейклок"}
+_COMPOUND_INFRA_WORDS = {"postgresql", "postgres", "nginx", "redis", "docker",
+                         "kubernetes", "k8s", "patroni", "etcd", "haproxy",
+                         "prometheus", "grafana", "rabbitmq", "kafka", "ansible",
+                         "terraform", "salt", "saltstack", "sssd", "freeipa",
+                         "ipa", "msad", "ad", "active directory", "samba",
+                         "kerberos", "hbac", "rbac", "zabbix", "monitoring",
+                         "миграц", "доверен", "trust", "dhcp", "dns",
+                         "automation", "web оснастк", "web интерфейс",
+                         "web консоль",
+                         # кириллические варианты инфра-терминов
+                         "постгрес", "постгре", "нжинкс", "докер", "кубер",
+                         "кубернетес", "патрони", "реплик", "репликация",
+                         "бд", "база данных", "резервн", "бэкап"}
+
+
+def _detect_compound(query: str, dcd: dict) -> list[dict]:
+    """Detect compound queries with keywords from multiple domains.
+
+    Returns list of sub-queries, or empty list if not compound.
+    Each sub-query: {"query": str, "domain": str, "collection": str}
+    """
+    ql = query.lower()
+    has_product = any(w in ql for w in _COMPOUND_PRODUCT_WORDS)
+    has_infra = any(w in ql for w in _COMPOUND_INFRA_WORDS)
+
+    if not (has_product and has_infra):
+        return []
+
+    subqueries = []
+    # Product part → rusbitech domain
+    if has_product:
+        subqueries.append({"query": query, "domain": "rusbitech",
+                           "collection": "rusbitech-products"})
+    # Infra part → devops
+    if has_infra:
+        infra_terms = [w for w in _COMPOUND_INFRA_WORDS if w in ql]
+        infra_query = f"{query} {' '.join(infra_terms[:3])}" if infra_terms else query
+        subqueries.append({"query": infra_query, "domain": "devops",
+                           "collection": "deployment"})
+    return subqueries
+
+
 # ── Routing log ──
 _ROUTING_LOG = os.path.join(os.path.dirname(__file__), "routing_log.jsonl")
 _LAST_DCD = None  # set by async_rag_search for logging
+
 def _log_routing(query: str, dcd: dict, result: dict):
     """Записать маршрутизацию запроса для DCD Learner."""
     try:
@@ -582,6 +635,39 @@ async def async_rag_search(
                     }
             except Exception:
                 pass
+
+    # 1.5) compound query split (product + infra) → parallel subqueries
+    subqueries = _detect_compound(query, dcd_result)
+    if subqueries:
+        trace.event("compound_detected", subqueries=subqueries)
+        results = await asyncio.gather(*[
+            _async_rag_search_impl(
+                sq["query"],
+                {"domain": sq["domain"], "collection": sq["collection"],
+                 "confidence": dcd_result.get("confidence", 0), "fallback": False},
+                trace=RagTrace(sq["query"], sq["domain"], sq["collection"]),
+            )
+            for sq in subqueries
+        ])
+        # Smart fusion: все чанки из всех подзапросов + sources_used
+        fused_chunks = []
+        sources_used: dict[str, list] = {}
+        for r in results:
+            for c in r.get("chunks", []):
+                fused_chunks.append(c)
+            src = r.get("source", "?")
+            sources_used.setdefault(src, []).extend(r.get("chunks", []))
+        if fused_chunks:
+            fused = {
+                "source": "compound",
+                "chunks": fused_chunks,
+                "score": max((r.get("score", 0) for r in results), default=0),
+                "trace": f"Compound({'+'.join(s['domain'] for s in subqueries)})",
+                "_trace": trace.json(),
+                "sources_used": list(sources_used.keys()),
+            }
+            _cache_set(_cache_key(query, dcd_result.get("domain", "")), fused, dcd=dcd_result)
+            return fused
 
     # 2) core pipeline
     result = await _async_rag_search_impl(query, dcd_result, trace=trace)
