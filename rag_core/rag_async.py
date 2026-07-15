@@ -550,7 +550,7 @@ async def _async_rag_search_impl(
         with trace.stage("federation"):
             try:
                 from rag_federated import query_federated_servers
-                fed_results = await query_federated_servers(query, k, domain=domain)
+                fed_results = await query_federated_servers(query, max_results=5, domain=domain)
             except Exception as fed_err:
                 trace.error("federation", str(fed_err))
                 fed_results = {}

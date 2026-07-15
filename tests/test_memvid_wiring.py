@@ -55,7 +55,7 @@ def test_wiring_recall_before_record(monkeypatch):
         dcd = {"domain": "astra", "collection": "wiki", "confidence": 0.5}
         # trace=None -> created internally; we just check record called
         import asyncio
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             rag_async.async_rag_search("сброс пароля", dcd)
         )
 

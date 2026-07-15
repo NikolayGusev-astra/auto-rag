@@ -185,6 +185,7 @@ async def rag_v2_search(query: str) -> dict:
 
         # 5. Fuser — rerank + LLM fusion
         trace.begin("fuse")
+        result = {}
         try:
             result = await fuse(query, all_chunks, session)
         finally:

@@ -2,7 +2,7 @@
 """Cron wrapper: check ZVec freshness, output only if stale."""
 
 import sys, os, json
-sys.path.insert(0, os.path.expanduser("~/rag-deploy"))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from rag_reindex import check_freshness
 
 report = check_freshness()
