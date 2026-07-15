@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>auto-rag + memvid — Pipeline Infographic</title>
+<style>
+  :root{
+    --bg:#0e1117; --panel:#161b22; --panel2:#1c2230; --line:#30363d;
+    --txt:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --green:#3fb950;
+    --amber:#d29922; --red:#f85149; --purple:#bc8cff; --cyan:#39c5cf;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;}
+  body{background:radial-gradient(1200px 600px at 70% -10%,#1b2433,#0e1117);color:var(--txt);padding:28px 34px;}
+  .wrap{max-width:1280px;margin:0 auto;}
+  header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;border-bottom:1px solid var(--line);padding-bottom:14px;}
+  h1{font-size:26px;font-weight:700;letter-spacing:.3px;}
+  h1 .em{color:var(--purple);}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px;}
+  .badge{background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--accent);}
+
+  .grid{display:grid;grid-template-columns:1fr 320px;gap:20px;}
+  .flow{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;}
+
+  .stage{display:flex;align-items:center;gap:14px;margin:10px 0;}
+  .node{flex:1;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:12px 14px;}
+  .node.short{border-left-color:var(--green);background:linear-gradient(90deg,#16321f,#1c2230);}
+  .node.gen{border-left-color:var(--cyan);}
+  .node.rec{border-left-color:var(--amber);}
+  .node .t{font-weight:600;font-size:14px;}
+  .node .d{color:var(--muted);font-size:12px;margin-top:3px;line-height:1.4;}
+  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:6px;background:#0d1117;border:1px solid var(--line);color:var(--muted);margin-top:6px;margin-right:5px;}
+  .tag.g{color:var(--green);border-color:#1c3a26;}
+  .tag.a{color:var(--amber);border-color:#3a2f12;}
+
+  .arrow{text-align:center;color:var(--muted);font-size:13px;margin:2px 0;}
+  .arrow b{color:var(--txt);}
+  .split{display:flex;gap:12px;}
+  .split .node{flex:1;}
+  .decision{display:flex;align-items:center;gap:14px;margin:8px 0;}
+  .diamond{width:54px;height:54px;flex:0 0 54px;background:#2a1d33;border:2px solid var(--purple);border-radius:10px;transform:rotate(45deg);position:relative;}
+  .diamond span{position:absolute;transform:rotate(-45deg);font-size:10px;color:var(--purple);top:18px;left:6px;white-space:nowrap;}
+
+  .side{display:flex;flex-direction:column;gap:16px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;}
+  .card h3{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px;}
+  .metric{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px dashed var(--line);}
+  .metric:last-child{border-bottom:none;}
+  .metric .k{font-size:12px;color:var(--muted);}
+  .metric .v{font-size:18px;font-weight:700;}
+  .v.on{color:var(--green);} .v.off{color:var(--red);} .v.acc{color:var(--accent);}
+  .speed{display:flex;gap:10px;margin-top:10px;}
+  .bar{flex:1;height:46px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#0e1117;}
+  .bar.on{background:linear-gradient(90deg,#3fb950,#56d364);}
+  .bar.off{background:linear-gradient(90deg,#f85149,#ff7b72);}
+
+  .inset{background:#0f1620;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:14px;}
+  .inset h4{font-size:12px;color:var(--purple);margin-bottom:8px;}
+  .kv{font-size:11px;color:var(--muted);line-height:1.7;}
+  .kv b{color:var(--txt);font-weight:600;}
+  .pill{display:inline-block;font-size:10px;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--cyan);margin:2px 3px 0 0;}
+
+  footer{margin-top:18px;color:var(--muted);font-size:11px;text-align:center;border-top:1px solid var(--line);padding-top:12px;}
+  .legend{display:flex;gap:16px;font-size:11px;color:var(--muted);margin-top:6px;flex-wrap:wrap;}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>auto-rag Pipeline <span class="em">+ memvid</span> Episodic Memory</h1>
+      <div class="sub">Индустриальный паттерн: semantic-cache / read-through memory на уровне RAG-пайплайна</div>
+    </div>
+    <div class="badge">memvid-sdk 2.0.160 · LM Studio bge-m3 · noop-safe</div>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT: pipeline flow -->
+    <div class="flow">
+      <div class="stage">
+        <div class="node"><div class="t">① Query + DCD Router</div>
+          <div class="d">Классификация домена/коллекции, уверенность, fallback-флаг</div>
+          <span class="tag">domain=astra</span><span class="tag">confidence</span></div>
+      </div>
+      <div class="arrow">↓ <b>compound-split</b> (только верхний уровень, guard от рекурсии)</div>
+
+      <div class="stage">
+        <div class="split">
+          <div class="node"><div class="t">② Product-подзапрос</div><div class="d">параллельный async_rag_search</div></div>
+          <div class="node"><div class="t">② Infra-подзапрос</div><div class="d">параллельный async_rag_search</div></div>
+        </div>
+      </div>
+      <div class="arrow">↓ <b>merge → fused result</b> (если compound сработал, возврат)</div>
+
+      <div class="decision">
+        <div class="diamond"><span>≥0.75?</span></div>
+        <div class="node short" style="flex:1">
+          <div class="t">③ memvid · recall (short-circuit)</div>
+          <div class="d">Косинус query-вектора (LM Studio bge-m3) против локального vec-индекса
+            <code>&lt;capsule&gt;.vecidx.jsonl</code>. Если top-score ≥ порога — возврат из памяти.</div>
+          <span class="tag g">from_memory=True</span><span class="tag g">zvec / mcp / web ПРОПУЩЕНЫ</span>
+        </div>
+      </div>
+
+      <div class="arrow">↓ <b>cache-miss</b> (score &lt; 0.75) → полный пайплайн</div>
+
+      <div class="stage">
+        <div class="node gen"><div class="t">④ Generic Pipeline (только при miss)</div>
+          <div class="d"><b>zvec_search ∥ web_search</b> → entity_match → mcp/web fallback → federation (если RAG_FEDERATED)</div>
+          <span class="tag a">дорого: латентность + токены</span></div>
+      </div>
+      <div class="arrow">↓ <b>finally</b></div>
+
+      <div class="stage">
+        <div class="node rec"><div class="t">⑤ memvid · record (write-through)</div>
+          <div class="d">Сохраняем Episode: <code>add_memory_cards</code> (SPO) + эмбеддинг answer → vec-индекс.
+            Следующий похожий запрос попадёт в short-circuit.</div>
+          <span class="tag g">persisted</span><span class="tag">process-independent</span></div>
+      </div>
+
+      <!-- memvid layer inset -->
+      <div class="inset">
+        <h4>Слой memvid (как он реально работает)</h4>
+        <div class="kv">
+          <b>Модуль:</b> <span class="pill">memvid_sdk</span> (не legacy <span class="pill">memvid</span>)<br>
+          <b>Хранение:</b> capsule-файл + <span class="pill">.vecidx.jsonl</span> (RLock, append-only)<br>
+          <b>Эмбеддинг:</b> LM Studio <span class="pill">:1234</span> bge-m3 1024d — <b>no-proxy</b> (HTTP_PROXY гасится для localhost)<br>
+          <b>Recall:</b> cosine(query_vec, stored_vec) → top-k, парсинг Episode JSON<br>
+          <b>Degrade:</b> SDK нет / LM Studio down → <span class="pill">_NoopMemvidBackend</span>, RAG идёт мимо
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: metrics -->
+    <div class="side">
+      <div class="card">
+        <h3>E2E — скорость (cache hit)</h3>
+        <div class="metric"><span class="k">memvid ON (short-circuit)</span><span class="v on">2.1s</span></div>
+        <div class="metric"><span class="k">memvid OFF (full pipe)</span><span class="v off">6.5s</span></div>
+        <div class="speed">
+          <div class="bar on">ON 2.1s</div>
+          <div class="bar off">OFF 6.5s</div>
+        </div>
+        <div class="kv" style="margin-top:10px;">≈ <b style="color:var(--green)">3× быстрее</b> — zvec/web/LLM не вызываются при попадании в память.</div>
+      </div>
+
+      <div class="card">
+        <h3>E2E — точность</h3>
+        <div class="metric"><span class="k">Semantic match (перефраз)</span><span class="v acc">✓</span></div>
+        <div class="metric"><span class="k">«сбросить пароль админа» →</span><span class="v acc">найдено</span></div>
+        <div class="metric"><span class="k">«восстановление root recovery»</span><span class="v acc">→ тот же ответ</span></div>
+        <div class="kv" style="margin-top:10px;">Recall находит эпизод по <b>смыслу</b>, не по точному совпадению строк.</div>
+      </div>
+
+      <div class="card">
+        <h3>Тесты (status)</h3>
+        <div class="metric"><span class="k">system py (noop)</span><span class="v on">30 ✓ / 2 skip</span></div>
+        <div class="metric"><span class="k">venv + SDK 2.0.160</span><span class="v on">35 ✓ / 1 xpass</span></div>
+        <div class="kv" style="margin-top:8px;">MEMVID-001 xfail → <b style="color:var(--green)">XPASS</b> после vec-индекса.</div>
+      </div>
+
+      <div class="card">
+        <h3>Почему zvec пропущен?</h3>
+        <div class="kv">Как HTTP-кэш: при <b>semantic hit</b> (score ≥ 0.75) отдаём ответ из
+          памяти, не пересобирая через zvec/MCP/web. Это <b>read-through cache</b>,
+          не authoritative source — при <code>RAG_MEMVID_ENABLED=false</code> форсируется свежий zvec-поиск.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--green)"></i>memvid short-circuit</span>
+    <span><i style="background:var(--cyan)"></i>generic pipeline (miss)</span>
+    <span><i style="background:var(--amber)"></i>record / write-through</span>
+    <span><i style="background:var(--purple)"></i>decision gate (threshold)</span>
+  </div>
+
+  <footer>auto-rag · deploy @ sync-from-main · коммиты 1309539 → 3c1fc88 → 48207b8 → 2bdfc3f · диаграмма отражает реальный код rag_async.py + memvid_memory.py</footer>
+</div>
+</body>
+</html>

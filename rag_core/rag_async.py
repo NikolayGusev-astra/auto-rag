@@ -81,7 +81,7 @@ def _record_episode(result: dict, query: str, domain: str, trace: RagTrace) -> N
                 query=query,
                 answer=result.get("trace", "") or "",
                 sources=[{"source": result.get("source", "")}],
-                trace=trace,
+                trace=trace.json() if hasattr(trace, "json") else trace,
                 domain=domain,
                 tenant=os.environ.get("RAG_MEMVID_TENANT", "hermes_default"),
             ),

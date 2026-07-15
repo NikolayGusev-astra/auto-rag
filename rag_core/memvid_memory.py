@@ -215,65 +215,99 @@ class _RealMemvidBackend:
         self.cfg = cfg
         self._mem = self._open_capsule(cfg)
         self._embed = _Embedder(cfg)
-        log.info("memvid backend ready: %s (tenant=%s, mode=%s)",
-                 cfg.capsule_path, cfg.tenant, cfg.mode)
+        self._idx_path = cfg.capsule_path.with_suffix(
+            cfg.capsule_path.suffix + ".vecidx.jsonl")
+        self._idx_path.parent.mkdir(parents=True, exist_ok=True)
+        self._idx_lock = threading.RLock()
+        log.info("memvid backend ready: %s (tenant=%s, mode=%s, vecidx=%s)",
+                 cfg.capsule_path, cfg.tenant, cfg.mode, self._idx_path)
 
     # -- open / create capsule ----------------------------------------------
     def _open_capsule(self, cfg: MemvidConfig):
-        import memvid  # noqa: import-on-purpose; wrapped in try/except outside
-
+        # memvid-sdk 2.x exposes the module as `memvid_sdk` (not `memvid`).
+        # It uses a local capsule file created via memvid_sdk.create().
+        try:
+            import memvid_sdk as memvid  # primary: SDK 2.0.160+
+        except ImportError:
+            try:
+                import memvid  # legacy package fallback
+            except ImportError:
+                raise
         cfg.dir.mkdir(parents=True, exist_ok=True)
         path = str(cfg.capsule_path)
         exists = cfg.capsule_path.exists()
-
-        # NOTE: memvid-sdk Python API is still evolving. Try common shapes.
-        # 1) memvid.Memvid.create(...) / .open(...)
-        # 2) memvid.Memvid(path, mode="a")
-        # 3) memvid.open(path)
+        # SDK 2.x: create() builds a local capsule; enable_vec so find()
+        # can do semantic search via the configured embedder.
         try:
-            if hasattr(memvid, "Memvid"):
-                M = memvid.Memvid
-                if not exists and hasattr(M, "create"):
-                    return M.create(path)
-                if hasattr(M, "open"):
-                    return M.open(path)
-                return M(path)                       # ctor-based
+            if hasattr(memvid, "create"):
+                return memvid.create(
+                    path, kind="basic", apikey=None, enable_vec=True)
             if hasattr(memvid, "open"):
                 return memvid.open(path)
             if hasattr(memvid, "MemvidCore"):
                 return memvid.MemvidCore.open_or_create(path)
+            raise RuntimeError("no capsule factory in memvid module")
         except Exception as e:
             log.error("memvid capsule open failed (%s): %s", path, e)
             raise
 
-    # -- put ----------------------------------------------------------------
+    # -- put ---------------------------------------------------------------
     def put(self, payload: bytes, title: str, tags: Dict[str, str],
             uri: Optional[str] = None) -> Optional[str]:
         try:
-            # Try PutOptions builder first (matches Rust API in README)
-            try:
-                from memvid import PutOptions  # type: ignore
-                b = PutOptions.builder().title(title)
-                for k, v in (tags or {}).items():
-                    b = b.tag(k, v)
-                if uri:
-                    b = b.uri(uri)
-                opts = b.build()
-                return self._mem.put_bytes_with_options(payload, opts)
-            except Exception:
-                pass
-            # Fallback: simple put
-            if hasattr(self._mem, "put_bytes"):
-                return self._mem.put_bytes(payload, title=title,
-                                           tags=tags or {})
-            if hasattr(self._mem, "put"):
-                return self._mem.put(payload.decode("utf-8", "replace"),
-                                     title=title, tags=tags or {})
-            log.warning("memvid put: no compatible API found")
-            return None
+            # memvid-sdk 2.x uses SPO memory cards (entity/slot/value).
+            # Map our Episode payload to a single card.
+            import json as _json
+            ep = _json.loads(payload.decode("utf-8", "replace"))
+            entity = ep.get("episode_id") or ep.get("query") or title
+            value = ep.get("answer") or ep.get("query") or ""
+            card = {
+                "entity": str(entity)[:120],
+                "slot": "answered",
+                "value": str(value),
+                "kind": "Fact",
+                "tags": tags or {},
+            }
+            result = self._mem.add_memory_cards([card])
+            added = (result or {}).get("added", 0)
+            fid = None
+            if added and (result or {}).get("ids"):
+                fid = str((result or {}).get("ids")[0])
+            # Local vec index: embed the answer and append to our
+            # persisted jsonl index so recall() can cosine-rank
+            # without relying on memvid-sdk's (absent) local index.
+            self._index_append(entity, str(value), fid, ep)
+            return fid or str(entity) if added else None
         except Exception as e:
             log.warning("memvid put failed: %s", e)
             return None
+
+    # -- local vec index (persisted, process-independent) ----------
+    def _index_append(self, entity: str, text: str, frame_id, ep: dict) -> None:
+        """Append {entity, vec, payload} to <capsule>.vecidx.jsonl.
+
+        LM Studio embeds `text` (the episode answer). If embedding
+        fails (LM Studio down / proxy), we skip the index entry but
+        the SPO card is still persisted in the capsule — graceful.
+        """
+        try:
+            vec = self._embed.embed(text)
+            if not vec:
+                return
+            import json as _json
+            row = _json.dumps({
+                "entity": entity,
+                "text": text,
+                "frame_id": frame_id,
+                "vec": vec,
+                "payload": ep,
+            }, ensure_ascii=False)
+            # append under RLock; index file is per-tenant
+            with self._idx_lock:
+                with open(self._idx_path, "a", encoding="utf-8") as f:
+                    f.write(row + "\n")
+        except Exception as e:
+            log.debug("vec index append skipped: %s", e)
 
     # -- commit -------------------------------------------------------------
     def commit(self) -> bool:
@@ -289,81 +323,56 @@ class _RealMemvidBackend:
     # -- search -------------------------------------------------------------
     def search(self, query: str, top_k: int,
                when: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Returns list of hits: {text, title, score, frame_id, ...}.
+        """Semantic recall over our local vec index (LM Studio embeds).
 
-        Strategy:
-          1) Try memvid native SearchRequest (api_embed must be configured
-             out-of-band via env so memvid knows where to call LM Studio).
-          2) If that fails or returns nothing, fall back to manual
-             embed-and-cosine over the capsule frames.
+        memvid-sdk 2.0.160 (kind="basic") does NOT build a
+        searchable index from add_memory_cards without a managed
+        embedding backend, so find() is empty. We keep our own
+        persisted jsonl vec index (written in put()) and cosine-rank
+        the query embedding against stored episode embeddings.
         """
-        hits = self._search_native(query, top_k, when)
-        if hits:
-            return hits
-        return self._search_manual_fallback(query, top_k, when)
-
-    def _search_native(self, query: str, top_k: int,
-                       when: Optional[str]) -> List[Dict[str, Any]]:
-        try:
+        q_vec = self._embed.embed(query)
+        if not q_vec:
+            return []
+        with self._idx_lock:
+            if not self._idx_path.exists():
+                return []
             try:
-                from memvid import SearchRequest  # type: ignore
-                kw = dict(query=query, top_k=top_k)
-                if when and self.cfg.temporal:
-                    kw["when"] = when
-                req = SearchRequest(**kw)
-                resp = self._mem.search(req)
-                return list(getattr(resp, "hits", []) or [])
-            except Exception:
-                pass
-            if hasattr(self._mem, "search"):
-                resp = self._mem.search(query, top_k=top_k,
-                                        when=when if when else None)
-                return list(getattr(resp, "hits", []) or [])
-            return []
-        except Exception as e:
-            log.debug("memvid native search failed: %s", e)
-            return []
-
-    def _search_manual_fallback(self, query: str, top_k: int,
-                                when: Optional[str]) -> List[Dict[str, Any]]:
-        """If memvid's own vec search isn't wired, embed the query via LM
-        Studio and cosine-rank over recalled frames. Requires the SDK to
-        expose some frame-listing API; if not, returns [].
-        """
-        try:
-            frames = []
-            for name in ("list_frames", "frames", "iter_frames", "all_frames"):
-                fn = getattr(self._mem, name, None)
-                if fn:
-                    frames = list(fn())
-                    break
-            if not frames:
+                import json as _json
+                scored = []
+                with open(self._idx_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            row = _json.loads(line)
+                        except Exception:
+                            continue
+                        fvec = row.get("vec")
+                        if not fvec:
+                            continue
+                        s = _cosine(q_vec, fvec)
+                        scored.append((s, row))
+                if not scored:
+                    return []
+                scored.sort(key=lambda x: x[0], reverse=True)
+                out = []
+                for s, row in scored[:top_k]:
+                    payload = row.get("payload") or {}
+                    # recall() calls Episode.from_payload(text) -> we must
+                    # return the FULL Episode JSON, not raw answer.
+                    import json as _json
+                    out.append({
+                        "text": _json.dumps(payload, ensure_ascii=False),
+                        "title": row.get("entity"),
+                        "score": float(s),
+                        "frame_id": row.get("frame_id"),
+                    })
+                return out
+            except Exception as e:
+                log.debug("local vec search failed: %s", e)
                 return []
-            q_vec = self._embed.embed(query)
-            if not q_vec:
-                return []
-            scored = []
-            for f in frames:
-                text = getattr(f, "text", None) or \
-                    (f.get("text") if isinstance(f, dict) else None)
-                fvec = getattr(f, "embedding", None) or \
-                    (f.get("embedding") if isinstance(f, dict) else None)
-                if not text:
-                    continue
-                if not fvec:
-                    # embed frame text lazily (expensive — prefer memvid vec)
-                    fvec = self._embed.embed(text)
-                if fvec:
-                    s = _cosine(q_vec, fvec)
-                    scored.append({"text": text,
-                                   "title": _attr(f, "title"),
-                                   "score": s,
-                                   "frame_id": _attr(f, "id") or _attr(f, "frame_id")})
-            scored.sort(key=lambda h: h.get("score", 0), reverse=True)
-            return scored[:top_k]
-        except Exception as e:
-            log.debug("memvid manual fallback failed: %s", e)
-            return []
 
     def close(self):
         try:
@@ -398,6 +407,11 @@ class _Embedder:
 
     def _embed_http(self, text: str) -> Optional[List[float]]:
         # Prefer `requests` if available; fall back to urllib.
+        # IMPORTANT: LM Studio listens on localhost:1234. If an HTTP(S)
+        # proxy is set in the env (common when an LLM proxy runs on
+        # 127.0.0.1:12334), requests/urllib route loopback
+        # traffic through it and silently fail. Force NO_PROXY for
+        # the embed endpoint (matches work-branch curl-embedding fix).
         try:
             import requests  # type: ignore
             r = requests.post(
@@ -406,12 +420,15 @@ class _Embedder:
                          "Content-Type": "application/json"},
                 json={"model": self.cfg.embed_model, "input": text},
                 timeout=10,
+                proxies={"http": None, "https": None},
             )
             r.raise_for_status()
             return r.json()["data"][0]["embedding"]
         except ImportError:
             pass
         import urllib.request
+        no_proxy = urllib.request.ProxyHandler({})
+        opener = urllib.request.build_opener(no_proxy)
         req = urllib.request.Request(
             self.cfg.embed_url,
             data=json.dumps(
@@ -419,13 +436,59 @@ class _Embedder:
             headers={"Authorization": f"Bearer {self.cfg.embed_api_key}",
                      "Content-Type": "application/json"},
         )
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with opener.open(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             return data["data"][0]["embedding"]
 
 
+class LMStudioEmbedder:
+    """Adapter implementing memvid_sdk.embeddings.EmbeddingProvider.
+
+    Proxies embeddings to the local LM Studio OpenAI-compatible
+    /v1/embeddings endpoint (bge-m3, 1024d) so memvid's vec
+    search works without a managed embedding backend.
+    """
+
+    def __init__(self, cfg: MemvidConfig):
+        self._cfg = cfg
+        self._http = _Embedder(cfg)
+        self._dim: Optional[int] = None
+
+    @property
+    def model_name(self) -> str:
+        return self._cfg.embed_model
+
+    @property
+    def dimension(self) -> int:
+        if self._dim is None:
+            try:
+                v = self._http.embed("dimension-probe")
+                self._dim = len(v) if v else 1024
+            except Exception:
+                self._dim = 1024
+        return self._dim
+
+    def embed_query(self, text: str) -> List[float]:
+        return self._http.embed(text) or [0.0] * self.dimension
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        return [self.embed_query(t) for t in texts]
+
+
 def _cosine(a: List[float], b: List[float]) -> float:
     import math
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(y * y for y in b))
+    if na == 0 or nb == 0:
+        return 0.0
+    return dot / (na * nb)
+
+
+def _attr(obj, name):
+
     if not a or not b or len(a) != len(b):
         return 0.0
     dot = sum(x * y for x, y in zip(a, b))
@@ -493,12 +556,17 @@ class MemvidMemory:
         if not cfg.enabled:
             log.info("memvid disabled (RAG_MEMVID_ENABLED=false) -> noop")
             return _NoopMemvidBackend()
+        # memvid-sdk 2.x exposes the module as `memvid_sdk`; the
+        # legacy package is just `memvid`. Try the SDK first.
         try:
-            import memvid  # noqa: F401
+            import memvid_sdk  # noqa: F401  (primary)
         except ImportError:
-            log.warning("memvid not installed (`pip install memvid-sdk`); "
-                        "running in noop mode. RAG flow unaffected.")
-            return _NoopMemvidBackend()
+            try:
+                import memvid  # noqa: F401  (legacy fallback)
+            except ImportError:
+                log.warning("memvid not installed (`pip install memvid-sdk`); "
+                            "running in noop mode. RAG flow unaffected.")
+                return _NoopMemvidBackend()
         try:
             return _RealMemvidBackend(cfg)
         except Exception as e:

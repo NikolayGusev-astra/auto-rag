@@ -1,2 +1,9 @@
 __pycache__/\n*.pyc\n.env
 *.pyc\n__pycache__/
+.venv-memvid
+
+# test artifacts / caches
+__pycache__/
+*.pyc
+routing_log.jsonl
+.venv-memvid/
