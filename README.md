@@ -1,6 +1,6 @@
 # auto-rag
 
-Production-ready generic RAG pipeline: **ZVec** (vector search, AVX2 required) or **ChromaDB** (fallback for no-AVX2 hosts) + MCP (Confluence, Jira, Context7, Lodestone) + Web fallback (SearXNG).
+Production-ready generic RAG pipeline: **ZVec** (vector search, AVX2 required) or **ChromaDB** (fallback for no-AVX2 hosts) + MCP  + Web fallback
 
 ## Which version?
 
