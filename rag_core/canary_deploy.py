@@ -23,6 +23,8 @@ import tempfile
 import time
 from pathlib import Path
 
+import requests
+
 HERE = Path(__file__).parent
 GOLDEN = HERE / "golden_set.json"
 REPORT_DIR = HERE / "canary_reports"
@@ -39,6 +41,63 @@ WATCHED_FILES = [
 
 # Эталонные файлы для копирования baseline
 BASELINE_FILES = WATCHED_FILES + ["dcd_router.py"]
+
+
+# ── ML metrics (embedding distribution) ────────────────────────────
+EMBEDDING_URL = "http://localhost:1234/v1/embeddings"
+EMBEDDING_MODEL = "text-embedding-multilingual-e5-large-instruct"
+
+
+def get_embedding(text: str) -> list[float] | None:
+    try:
+        r = requests.post(EMBEDDING_URL, json={
+            "model": EMBEDDING_MODEL, "input": [text[:500]]
+        }, timeout=10)
+        return r.json()["data"][0]["embedding"]
+    except Exception:
+        return None
+
+
+def cosine_sim(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    na = sum(x * x for x in a) ** 0.5
+    nb = sum(x * x for x in b) ** 0.5
+    return dot / (na * nb) if na and nb else 0.0
+
+
+def compare_embedding_stability(queries: list[str]) -> dict:
+    """Check embedding model stability: same query → same embedding."""
+    if not queries:
+        return {"error": "no queries", "mean_similarity": 0.0}
+    sims = []
+    errors = 0
+    for q in queries:
+        e1 = get_embedding(q)
+        if e1 is None:
+            errors += 1
+            continue
+        e2 = get_embedding(q)
+        if e2 is None:
+            errors += 1
+            continue
+        sims.append(cosine_sim(e1, e2))
+    if not sims:
+        return {"error": "no embeddings", "mean_similarity": 0.0}
+    return {
+        "mean_similarity": round(sum(sims) / len(sims), 4),
+        "min_similarity": round(min(sims), 4),
+        "n_queries": len(sims),
+        "errors": errors,
+        "delta_from_1.0": round(1.0 - sum(sims) / len(sims), 4),
+    }
+
+
+def collect_queries_from_golden() -> list[str]:
+    try:
+        g = json.load(open(GOLDEN))
+        return [q["query"] for q in g.get("questions", [])]
+    except Exception:
+        return []
 
 
 def file_hash(path: str) -> str:
@@ -242,13 +301,29 @@ def main():
     report = render_report(baseline, canary, changes)
     print("\n" + report)
 
+    # Step 4b: Embedding stability check
+    print("\nStep 4b: Embedding stability ...")
+    queries = collect_queries_from_golden()
+    emb_stability = compare_embedding_stability(queries)
+    emb_warn = ""
+    if emb_stability.get("delta_from_1.0", 0) > 0.05:
+        emb_warn = "⚠ Embedding drift detected!"
+        print(f"  {emb_warn} delta={emb_stability['delta_from_1.0']:.4f}")
+    else:
+        print(f"  OK (delta={emb_stability.get('delta_from_1.0', 0):.4f})")
+
+    verdict = "REGRESSION" if "REGRESSION" in report else "PASS"
+    if emb_warn:
+        verdict += "_EMBEDDING_DRIFT"
+
     # Step 5: Save report
     output = {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "baseline": baseline,
         "canary": canary,
         "changes": changes,
-        "verdict": "REGRESSION" if "REGRESSION" in report else "PASS",
+        "embedding_stability": emb_stability,
+        "verdict": verdict,
         "report": report,
     }
     with open(str(REPORT_PATH), "w", encoding="utf-8") as f:
