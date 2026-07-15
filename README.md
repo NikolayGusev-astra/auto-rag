@@ -56,9 +56,41 @@ python3 canary_deploy.py --quick
 Query → DCD Router (domain classification)
   → [low confidence] → MCP fallback chain (Confluence → Jira → Context7 → Lodestone → Web)
   → [high confidence] → ZVec/Chroma vector search → LLM verify → Answer
+  ↺ memvid episodic memory (short-circuit) — see below
 ```
 
-## Pipeline Features
+### memvid Episodic Memory (semantic cache)
+
+`rag_core/memvid_memory.py` adds a **read-through semantic cache** on top
+of the generic pipeline. It is dependency-optional: if `memvid-sdk` is
+not installed, `_NoopMemvidBackend` is used and the pipeline runs
+unchanged.
+
+```
+async_rag_search(query)
+  ├─ compound split (product + infra → parallel subqueries)
+  ├─ memvid.recall(query, domain)        # short-circuit gate
+  │     if top_score >= recall_threshold (0.75):
+  │        RETURN {answer, sources, from_memory:True}   ← zvec/mcp/web SKIPPED
+  ├─ [miss] generic pipeline (zvec ∥ web → entity_match → mcp → federation)
+  └─ finally:
+        ├─ memvid.record(episode)         # write-through (only if !from_memory)
+        └─ dcd_learner.log_routing(...)   # feed DCD training log
+```
+
+- **Backend**: wired to the real `memvid-sdk` 2.0.160 (`import
+  memvid_sdk`, legacy `memvid` as fallback). SDK `kind="basic"`
+  does **not** build a searchable index from `add_memory_cards`
+  without a managed embedding backend, so recall uses a **local
+  persisted vec index** (`<capsule>.vecidx.jsonl`, cosine-ranked
+  against LM Studio bge-m3 embeddings).
+- **Embeddings**: LM Studio `:1234` (`text-embedding-baai-bge-m3-568m`,
+  1024d). Proxy is force-disabled for localhost (HTTP_PROXY silences loopback).
+- **Recall**: semantic match — finds the prior episode on a *paraphrased*
+  query, not exact string. e2e: ~3× faster than the full pipeline on cache hit.
+- **Degrade**: SDK missing / LM Studio down → noop, pipeline unaffected.
+
+
 
 | Stage | Description |
 |-------|-------------|
@@ -73,6 +105,8 @@ Query → DCD Router (domain classification)
 | **RagTrace** | Structured telemetry: every stage, decision, latency. Saved in eval reports |
 | **Canary Deploy** | Compare baseline vs candidate accuracy, auto-rollback if regression >5% |
 | **Caching** | 100-query LRU cache, evicts stale entries |
+| **Episodic Memory (memvid)** | Read-through semantic cache: recall short-circuits (zvec/mcp/web skipped on score≥0.75), record on miss. Local vec index, noop if SDK absent |
+| **DCD Learning Loop** | Every routing decision logged (`dcd_learner.log_routing` → `routing_log.jsonl`); `analyze()` audits misroutes, `patch_dcd()` retrains router |
 | **RAG v2** | Optional pipeline: LLM decompose → parallel sources → local reranker → LLM fusion |
 | **Streaming** | Async generator + SSE for Tauri/web clients |
 
@@ -101,7 +135,16 @@ RAG_DCD_MODE=keyword
 
 # Optional: local reranker (sentence-transformers)
 RAG_LOCAL_RERANKER=true
-```
+
+# Optional: memvid episodic memory (semantic cache)
+# Instal: pip install memvid-sdk==2.0.160
+# LM Studio must serve bge-m3 embeddings on :1234 (NO_PROXY for localhost)
+RAG_MEMVID_ENABLED=true
+RAG_MEMVID_DIR=./memvid_capsules
+RAG_MEMVID_EMBED_URL=http://localhost:1234/v1/embeddings
+RAG_MEMVID_EMBED_MODEL=text-embedding-baai-bge-m3-568m
+RAG_MEMVID_RECALL_THRESHOLD=0.75
+
 
 ## Evaluation (ZVec)
 
