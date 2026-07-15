@@ -46,6 +46,7 @@ BASELINE_FILES = WATCHED_FILES + ["dcd_router.py"]
 # ── ML metrics (embedding distribution) ────────────────────────────
 EMBEDDING_URL = "http://localhost:1234/v1/embeddings"
 EMBEDDING_MODEL = "text-embedding-multilingual-e5-large-instruct"
+EMBEDDING_DRIFT_THRESHOLD = 0.05  # configurable: delta > this → drift flagged
 
 
 def get_embedding(text: str) -> list[float] | None:
@@ -225,9 +226,15 @@ def render_report(baseline: dict, canary: dict, changes: dict) -> str:
         b_val = baseline.get(key, "?") if baseline else "?"
         c_val = canary.get(key, "?") if canary else "?"
         if isinstance(b_val, (int, float)) and isinstance(c_val, (int, float)):
-            if key in ("answer_accuracy", "answer_accuracy_incl_partial"):
+            if key in ("answer_correct", "answer_partial", "answer_incorrect",
+                       "answer_accuracy", "answer_accuracy_incl_partial",
+                       "source_routing_accuracy", "dcd_collection_accuracy",
+                       "dcd_domain_accuracy"):
                 delta = c_val - b_val
-                delta_str = f"{delta:+.1%}" if isinstance(delta, float) else f"{delta:+d}"
+                if isinstance(delta, float):
+                    delta_str = f"{delta:+.1%}"
+                else:
+                    delta_str = f"{delta:+d}"
                 if key == "answer_accuracy" and delta < -0.05:
                     verdict = "REGRESSION"
             else:
@@ -235,6 +242,10 @@ def render_report(baseline: dict, canary: dict, changes: dict) -> str:
                 delta_str = f"{delta:+.2f}" if isinstance(delta, (int, float)) else "?"
             b_str = fmt(b_val) if callable(fmt) else str(b_val)
             c_str = fmt(c_val) if callable(fmt) else str(c_val)
+            if isinstance(b_str, (int, float)):
+                b_str = str(b_str)
+            if isinstance(c_str, (int, float)):
+                c_str = str(c_str)
             lines.append(f"{label:35s} {b_str:>12s} {c_str:>12s} {delta_str:>10s}")
 
     lines.append(f"\n  Verdict: {verdict}")
@@ -306,7 +317,7 @@ def main():
     queries = collect_queries_from_golden()
     emb_stability = compare_embedding_stability(queries)
     emb_warn = ""
-    if emb_stability.get("delta_from_1.0", 0) > 0.05:
+    if emb_stability.get("delta_from_1.0", 0) > EMBEDDING_DRIFT_THRESHOLD:
         emb_warn = "⚠ Embedding drift detected!"
         print(f"  {emb_warn} delta={emb_stability['delta_from_1.0']:.4f}")
     else:
