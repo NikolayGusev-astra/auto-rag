@@ -242,7 +242,13 @@ class AsyncMCPClient:
                 "id": str(uuid.uuid4())
             }, headers=headers, timeout=aiohttp.ClientTimeout(total=self.timeout)) as resp:
                 data = await resp.json()
-                sid = data.get("sessionId", "") or data.get("result", {}).get("sessionId", "")
+                # MCP spec: sessionId в заголовке Mcp-Session-Id (не в теле!).
+                # Fallback на тело — для tolerant-серверов, кладущих в JSON.
+                sid = (
+                    resp.headers.get("Mcp-Session-Id", "")
+                    or data.get("sessionId", "")
+                    or data.get("result", {}).get("sessionId", "")
+                )
                 return sid, bool(sid)
         except Exception:
             return "", False
