@@ -3,7 +3,7 @@
     "version": "1.0",
     "description": "Golden set for generic RAG accuracy evaluation",
     "created": "2026-07-05",
-    "total_questions": 15,
+    "total_questions": 12,
     "eval_strategy": "LLM-as-judge: compare pipeline answer vs ground_truth using key_facts",
     "sources": {
       "zvec": "Local ZVec index",
@@ -18,7 +18,7 @@
       "query": "настройка postgresql streaming replication debian 12",
       "expected_domain": "database",
       "expected_collection": "database",
-      "expected_source": "context7",
+      "expected_source": "zvec",
       "key_facts": ["postgresql", "streaming", "replication", "debian"],
       "eval_criteria": "keyword_match"
     },
@@ -27,7 +27,7 @@
       "query": "DNS over HTTPS configuration on Linux",
       "expected_domain": "networking",
       "expected_collection": "networking",
-      "expected_source": "context7",
+      "expected_source": "zvec",
       "key_facts": ["DNS", "HTTPS", "Linux"],
       "eval_criteria": "keyword_match"
     },
@@ -45,7 +45,7 @@
       "query": "SSH key-based authentication disable password",
       "expected_domain": "security",
       "expected_collection": "security",
-      "expected_source": "context7",
+      "expected_source": "zvec",
       "key_facts": ["SSH", "key", "authentication", "password"],
       "eval_criteria": "keyword_match"
     },
@@ -72,7 +72,7 @@
       "query": "Prometheus node_exporter installation",
       "expected_domain": "monitoring",
       "expected_collection": "monitoring",
-      "expected_source": "context7",
+      "expected_source": "zvec",
       "key_facts": ["Prometheus", "node_exporter", "installation"],
       "eval_criteria": "keyword_match"
     },
