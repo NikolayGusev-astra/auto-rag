@@ -37,9 +37,47 @@ from rag_config import (
     DCD_PREFERRED_WEB_SOURCE,
     LOCAL_NODE_NAME,
 )
+import socket
+import ipaddress
+
 from dcd_router import classify
 from rag_mcp_client import MCPClient
 from rag_trace import RagTrace
+
+
+# ── SSRF guard ───────────────────────────────────────────────
+# Блокируем fetch URL из внешних результатов (SearXNG и т.п.) в
+# приватные/локальные диапазоны (security MEDIUM: SSRF).
+_PRIVATE_NETS = [
+    ipaddress.ip_network(n) for n in (
+        "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12",
+        "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10",
+        "::1/128", "fc00::/7", "fe80::/10",
+    )
+]
+
+
+def _is_safe_url(url: str) -> bool:
+    """True, если URL резолвится в публичный IP (не приватный/loopback/link-local)."""
+    from urllib.parse import urlparse
+    try:
+        host = urlparse(url).hostname
+        if not host:
+            return False
+        # прямой IP
+        try:
+            ip = ipaddress.ip_address(host)
+        except ValueError:
+            # DNS-имя — резолвим
+            infos = socket.getaddrinfo(host, None)
+            ips = {ipaddress.ip_address(i[4][0]) for i in infos}
+            if not ips:
+                return False
+        else:
+            ips = {ip}
+        return not any(ip in net for ip in ips for net in _PRIVATE_NETS)
+    except Exception:
+        return False
 
 # ── Optional memvid memory layer (T3 integration) ─────────────────
 try:
@@ -308,6 +346,10 @@ def _blocking_web(query: str, domain: str = "", collection: str = "") -> list[di
             text = wr.get("content", "") or wr.get("snippet", "")
             url = wr.get("url", "")
             if text and len(chunks) < 1:
+                # SSRF guard: не фетчим приватные/локальные URL
+                if not _is_safe_url(url):
+                    chunks.append({"text": text[:800], "source": "web", "url": url})
+                    continue
                 try:
                     req = requests.get(url, timeout=8, headers={
                         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
