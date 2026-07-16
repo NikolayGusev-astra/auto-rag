@@ -186,7 +186,6 @@ def _detect_compound(query: str, dcd: dict) -> list[dict]:
 
 # ── Routing log ──
 _ROUTING_LOG = os.path.join(os.path.dirname(__file__), "routing_log.jsonl")
-_LAST_DCD = None  # set by async_rag_search for logging
 
 def _log_routing(query: str, dcd: dict, result: dict):
     """Записать маршрутизацию запроса для DCD Learner."""
@@ -225,7 +224,7 @@ def _cache_set(key: str, result: dict, dcd: dict | None = None):
     while len(_CACHE) > _CACHE_MAX:
         _CACHE.popitem(last=False)
     # Log routing
-    d = dcd or _LAST_DCD
+    d = dcd
     if d is not None:
         query = ""
         trace_val = result.get("_trace", "")
@@ -478,8 +477,6 @@ async def _async_rag_search_impl(
     query: str, dcd_result: dict,
     trace: RagTrace | None = None,
 ) -> dict:
-    global _LAST_DCD
-    _LAST_DCD = dcd_result
     domain = dcd_result.get('domain', '')
     collection = dcd_result.get('collection', '')
     confidence = dcd_result.get('confidence', 0)
