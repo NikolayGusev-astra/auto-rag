@@ -56,7 +56,7 @@ DOMAIN_KEYWORDS = {
     },
     "devops": {
         "weight": 3,
-        "anti_keywords": ["postgresql", "mysql", "redis", "kubernetes", "helm"],
+        "anti_keywords": ["postgresql", "mysql", "redis"],
         "keywords": {
             "docker": 5, "container": 3, "image": 2, "dockerfile": 4,
             "docker compose": 6, "compose": 4, "stack": 3,
@@ -376,9 +376,12 @@ def classify(query: str) -> Dict:
             best_domain = domain
             best_matched = matched
 
-    # Confidence normalization
-    max_possible = max(data.get("weight", 1) * sum(data.get("keywords", {}).values()) for data in DOMAIN_KEYWORDS.values())
-    confidence = min(best_score / max_possible, 1.0) if max_possible > 0 else 0.0
+    # Confidence normalization — нормализуем на максимум ВЫБРАННОГО домена,
+    # а не на глобальный максимум по всем доменам (иначе confidence несопоставим
+    # между запросами и флаг fallback бесполезен — C1).
+    best_data = DOMAIN_KEYWORDS[best_domain]
+    best_max = best_data.get("weight", 1) * sum(best_data.get("keywords", {}).values())
+    confidence = min(best_score / best_max, 1.0) if best_max > 0 else 0.0
 
     domain_data = DOMAIN_KEYWORDS[best_domain]
     collections = domain_data.get("collections", ["general"])

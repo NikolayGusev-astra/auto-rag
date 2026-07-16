@@ -148,7 +148,13 @@ class UnifiedSearcher:
             coll = self._ensure_chroma()
             if coll is None or coll.count() == 0:
                 return []
-            where_filter = {"domain": domain} if domain else None
+            # B2: фильтруем по обоим полям (category И domain пишутся в metadata
+            # chroma-индексатором), т.к. ZVec-ветка использует category, а DCD
+            # передаёт domain — иначе доменная фильтрация на Chroma тихо пуста.
+            where_filter = (
+                {"$or": [{"category": domain}, {"domain": domain}]}
+                if domain else None
+            )
             try:
                 results = coll.query(
                     query_embeddings=[emb],
