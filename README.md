@@ -61,37 +61,32 @@ Query → DCD Router (domain classification)
 
 ### memvid Episodic Memory (semantic cache)
 
-`rag_core/memvid_memory.py` adds a **read-through semantic cache** on top
-of the generic pipeline. It is dependency-optional: if `memvid-sdk` is
-not installed, `_NoopMemvidBackend` is used and the pipeline runs
-unchanged.
+`rag_core/memvid_memory.py` adds a **read-through episodic semantic cache**
+on top of the generic pipeline. On a high-confidence hit it returns the prior
+answer before ZVec/MCP/Web; on a miss it stores the useful RAG chunk content
+and sources for future recall. It is dependency-optional: if `memvid-sdk` is
+not installed, `_NoopMemvidBackend` is used and the pipeline runs unchanged.
 
 ```
 async_rag_search(query)
-  ├─ compound split (product + infra → parallel subqueries)
-  ├─ memvid.recall(query, domain)        # short-circuit gate
+  ├─ memvid.recall(query, domain)        # semantic short-circuit gate
   │     if top_score >= recall_threshold (0.75):
-  │        RETURN {answer, sources, from_memory:True}   ← zvec/mcp/web SKIPPED
-  ├─ [miss] generic pipeline (zvec ∥ web → entity_match → mcp → federation)
-  └─ finally:
-        ├─ memvid.record(episode)         # write-through (only if !from_memory)
-        └─ dcd_learner.log_routing(...)   # feed DCD training log
+  │        RETURN {answer, sources, from_memory:True}   ← ZVec/MCP/Web skipped
+  ├─ [miss] generic pipeline (ZVec ∥ Web → entity match → MCP → federation)
+  └─ memvid.record(episode)              # stores chunk text + sources, only on miss
 ```
 
-- **Backend**: wired to the real `memvid-sdk` 2.0.160 (`import
-  memvid_sdk`, legacy `memvid` as fallback). SDK `kind="basic"`
-  does **not** build a searchable index from `add_memory_cards`
-  without a managed embedding backend, so recall uses a **local
-  persisted vec index** (`<capsule>.vecidx.jsonl`, cosine-ranked
-  against LM Studio bge-m3 embeddings).
-- **Embeddings**: LM Studio `:1234` (`text-embedding-baai-bge-m3-568m`,
-  1024d). Proxy is force-disabled for localhost (HTTP_PROXY silences loopback).
-- **Recall**: semantic match — finds the prior episode on a *paraphrased*
-  query, not exact string. e2e: ~3× faster than the full pipeline on cache hit.
-- **Degrade**: SDK missing / LM Studio down → noop, pipeline unaffected.
-
-
-
+- **Backend**: `memvid-sdk` 2.x (`import memvid_sdk`; legacy `memvid` fallback).
+- **Capsule**: one local `<dir>/memory_<tenant>.mv2` file per tenant.
+- **Semantic index**: `<capsule>.vecidx.jsonl` persists local embedding vectors
+  and cosine-ranks recall hits; it works with `memvid-sdk` basic capsules even
+  when the SDK itself has no local semantic index.
+- **Embeddings**: LM Studio OpenAI-compatible `/v1/embeddings` endpoint. Requests
+  bypass HTTP proxies for `localhost` so an LLM proxy cannot break local recall.
+- **Failure mode**: SDK missing or embedding unavailable means noop/empty recall;
+  the normal RAG pipeline remains available.
+- **Verification**: use `hermes_memory_cli.py stats` and `search` against the
+  capsule; a cache hit returns `from_memory=true` and skips the core pipeline.
 | Stage | Description |
 |-------|-------------|
 | **DCD Router** | Keyword-based domain/collection classifier (15+ domains, anti-keywords for precision) |
@@ -137,13 +132,23 @@ RAG_DCD_MODE=keyword
 RAG_LOCAL_RERANKER=true
 
 # Optional: memvid episodic memory (semantic cache)
-# Instal: pip install memvid-sdk==2.0.160
-# LM Studio must serve bge-m3 embeddings on :1234 (NO_PROXY for localhost)
+# Install: pip install "memvid-sdk>=2.0"
+# LM Studio must serve a 1024d embedding model at /v1/embeddings.
 RAG_MEMVID_ENABLED=true
-RAG_MEMVID_DIR=./memvid_capsules
+RAG_MEMVID_MODE=both                   # off | recall | record | both
+RAG_MEMVID_DIR=./memvid_capsules       # local-only; do not commit capsules
+RAG_MEMVID_TENANT=hermes_default
 RAG_MEMVID_EMBED_URL=http://localhost:1234/v1/embeddings
-RAG_MEMVID_EMBED_MODEL=text-embedding-baai-bge-m3-568m
+RAG_MEMVID_EMBED_MODEL=bge-m3
+RAG_MEMVID_RECALL_TOPK=5
 RAG_MEMVID_RECALL_THRESHOLD=0.75
+RAG_MEMVID_TEMPORAL=true
+
+# Verify a configured capsule
+python3 rag_core/hermes_memory_cli.py --capsule \
+  ./memvid_capsules/memory_hermes_default.mv2 stats
+python3 rag_core/hermes_memory_cli.py --capsule \
+  ./memvid_capsules/memory_hermes_default.mv2 search "known query"
 
 
 ## Evaluation (ZVec)
