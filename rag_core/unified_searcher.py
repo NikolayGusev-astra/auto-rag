@@ -110,8 +110,12 @@ class UnifiedSearcher:
     def search(self, query: str, topk: int = 5, domain: str = None) -> list[dict]:
         """Unified search: same interface as ZVecSearcher/ChromaSearcher."""
         emb = _get_embedding(query)
+        # R1: нулевой вектор = сбой embedding-сервиса (LM Studio недоступен
+        # и т.п.). Раньше молча return [], пользователь видел пустой ответ
+        # без причины. Возвращаем is_error-чанк (rag_async его отфильтрует,
+        # но в логах/ответе причина видна).
         if not emb or sum(abs(v) for v in emb) == 0:
-            return []
+            return [{"text": "embedding service unavailable", "source": "embedding", "score": 0, "is_error": True}]
 
         if self._backend == "zvec":
             coll = self._ensure_zvec()
