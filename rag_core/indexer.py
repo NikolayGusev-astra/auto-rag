@@ -3,7 +3,9 @@
 RAG v2 Indexer — ZVec wiki collection builder for Autolycus.
 Usage: python3 indexer.py [--incremental] [--clear]
 """
-import os, sys, json, hashlib, time, re
+import os, sys, json, hashlib, time, re, logging
+
+logger = logging.getLogger(__name__)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from rag_config import ZVEC_PATH, ZVEC_COLLECTION, EMBEDDING_DIM
 from rag_config import EMBEDDING_URL, EMBEDDING_MODEL
@@ -58,7 +60,8 @@ def load_state():
     if os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE) as f: return json.load(f)
-        except: pass
+        except Exception as e:
+            logger.warning("load_state: не удалось прочитать %s: %s", STATE_FILE, e)
     return {}
 
 def save_state(state):
@@ -75,7 +78,8 @@ def parse_frontmatter(text):
     try:
         import yaml
         meta = yaml.safe_load(text[3:end].strip()) or {}
-    except: pass
+    except Exception as e:
+        logger.warning("parse_frontmatter: битый YAML, используем пустые метаданные: %s", e)
     return (meta if isinstance(meta, dict) else {}), text[end + 3:].strip()
 
 
