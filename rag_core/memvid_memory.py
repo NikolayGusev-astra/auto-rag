@@ -488,18 +488,6 @@ def _cosine(a: List[float], b: List[float]) -> float:
 
 
 def _attr(obj, name):
-
-    if not a or not b or len(a) != len(b):
-        return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
-    na = math.sqrt(sum(x * x for x in a))
-    nb = math.sqrt(sum(y * y for y in b))
-    if na == 0 or nb == 0:
-        return 0.0
-    return dot / (na * nb)
-
-
-def _attr(obj, name):
     if hasattr(obj, name):
         return getattr(obj, name)
     if isinstance(obj, dict):
