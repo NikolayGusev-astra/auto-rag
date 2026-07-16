@@ -98,10 +98,11 @@ async_rag_search(query)
 ```
 
 - **Backend**: `memvid-sdk` 2.x (`import memvid_sdk`; legacy `memvid` fallback).
-- **Capsule**: one local `<dir>/memory_<tenant>.mv2` file per tenant.
-- **Semantic index**: `<capsule>.vecidx.jsonl` persists local embedding vectors
-  and cosine-ranks recall hits; it works with `memvid-sdk` basic capsules even
-  when the SDK itself has no local semantic index.
+- **Capsule**: one local `<dir>/memory_<tenant>.mv2` file per tenant; the
+  native vector index is persisted inside the same file.
+- **Semantic index**: episodes are written with precomputed LM Studio vectors via
+  the memvid native API. Reopen-safe semantic recall uses the native MV2 index,
+  not a JSONL sidecar.
 - **Embeddings**: LM Studio OpenAI-compatible `/v1/embeddings` endpoint. Requests
   bypass HTTP proxies for `localhost` so an LLM proxy cannot break local recall.
 - **Failure mode**: SDK missing or embedding unavailable means noop/empty recall;

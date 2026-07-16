@@ -207,46 +207,115 @@ class _NoopMemvidBackend:
 
 
 class _RealMemvidBackend:
-    """Wraps memvid-sdk. Probes several plausible API shapes because the
-    exact Python API differs across memvid-sdk versions — see notes inline.
-    If a method shape you need is missing, patch it here in ONE place.
-    """
+    """Native single-file memvid backend with external LM Studio embeddings."""
     def __init__(self, cfg: MemvidConfig):
         self.cfg = cfg
-        self._mem = self._open_capsule(cfg)
         self._embed = _Embedder(cfg)
-        self._idx_path = cfg.capsule_path.with_suffix(
-            cfg.capsule_path.suffix + ".vecidx.jsonl")
-        self._idx_path.parent.mkdir(parents=True, exist_ok=True)
-        self._idx_lock = threading.RLock()
-        log.info("memvid backend ready: %s (tenant=%s, mode=%s, vecidx=%s)",
-                 cfg.capsule_path, cfg.tenant, cfg.mode, self._idx_path)
+        self._migrate_legacy_sidecar(cfg)
+        self._mem = self._open_capsule(cfg)
+        log.info("memvid backend ready: %s (tenant=%s, mode=%s, native_vec=true)",
+                 cfg.capsule_path, cfg.tenant, cfg.mode)
+
+    def _sdk(self):
+        try:
+            import memvid_sdk as memvid
+            return memvid
+        except ImportError:
+            import memvid  # type: ignore[no-redef]
+            return memvid
+
+    def _migrate_legacy_sidecar(self, cfg: MemvidConfig) -> None:
+        """Move legacy JSONL vectors into a native, single-file MV2 capsule.
+
+        The first implementation stored embeddings in `<capsule>.vecidx.jsonl`
+        because `add_memory_cards()` does not populate the SDK vector index.
+        The SDK's documented `put_many(..., embeddings=...)` does, so migrate
+        atomically and retain `.legacy.bak` files for rollback.
+        """
+        import json as _json
+        legacy_idx = cfg.capsule_path.with_suffix(cfg.capsule_path.suffix + ".vecidx.jsonl")
+        if not legacy_idx.exists():
+            return
+        rows = []
+        try:
+            for line in legacy_idx.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                row = _json.loads(line)
+                if row.get("payload") and row.get("vec"):
+                    rows.append(row)
+        except Exception as e:
+            log.warning("legacy memvid index unreadable; keeping it untouched: %s", e)
+            return
+        if not rows:
+            return
+
+        cfg.dir.mkdir(parents=True, exist_ok=True)
+        temp = cfg.capsule_path.with_suffix(cfg.capsule_path.suffix + ".native.tmp")
+        for stale in (temp, temp.with_suffix(temp.suffix + ".wal")):
+            try:
+                stale.unlink()
+            except FileNotFoundError:
+                pass
+        memvid = self._sdk()
+        native = None
+        try:
+            native = memvid.create(str(temp), kind="basic", enable_vec=True, enable_lex=True)
+            documents, vectors = [], []
+            for row in rows:
+                ep = row["payload"]
+                documents.append({
+                    "title": str(ep.get("query") or row.get("entity") or "episode")[:120],
+                    "label": str(ep.get("domain") or "general"),
+                    "text": _json.dumps(ep, ensure_ascii=False),
+                    "metadata": {
+                        "domain": str(ep.get("domain") or ""),
+                        "tenant": str(ep.get("tenant") or cfg.tenant),
+                    },
+                })
+                vectors.append(row["vec"])
+            native.put_many(
+                documents,
+                embeddings=vectors,
+                embedding_identity={
+                    "kind": "manual",
+                    "model": cfg.embed_model,
+                    "dimension": len(vectors[0]),
+                },
+            )
+            native.commit()
+            stats = native.stats()
+            if not stats.get("has_vec_index") or not stats.get("vec_index_bytes"):
+                raise RuntimeError("native vector index was not created")
+            native.close()
+            native = None
+            if cfg.capsule_path.exists():
+                cfg.capsule_path.replace(cfg.capsule_path.with_suffix(cfg.capsule_path.suffix + ".legacy.bak"))
+            temp.replace(cfg.capsule_path)
+            legacy_idx.replace(legacy_idx.with_suffix(legacy_idx.suffix + ".legacy.bak"))
+            log.info("migrated %d episodic vectors into native MV2 index", len(rows))
+        except Exception as e:
+            log.warning("native memvid migration failed; retaining legacy sidecar: %s", e)
+            try:
+                if native is not None:
+                    native.close()
+            except Exception:
+                pass
+            try:
+                temp.unlink()
+            except FileNotFoundError:
+                pass
 
     # -- open / create capsule ----------------------------------------------
     def _open_capsule(self, cfg: MemvidConfig):
-        # memvid-sdk 2.x exposes the module as `memvid_sdk` (not `memvid`).
-        # It uses a local capsule file created via memvid_sdk.create().
-        try:
-            import memvid_sdk as memvid  # primary: SDK 2.0.160+
-        except ImportError:
-            try:
-                import memvid  # legacy package fallback
-            except ImportError:
-                raise
         cfg.dir.mkdir(parents=True, exist_ok=True)
         path = str(cfg.capsule_path)
-        exists = cfg.capsule_path.exists()
-        # SDK 2.x: create() builds a local capsule; enable_vec so find()
-        # can do semantic search via the configured embedder.
+        memvid = self._sdk()
         try:
-            if hasattr(memvid, "create"):
-                return memvid.create(
-                    path, kind="basic", apikey=None, enable_vec=True)
-            if hasattr(memvid, "open"):
-                return memvid.open(path)
-            if hasattr(memvid, "MemvidCore"):
-                return memvid.MemvidCore.open_or_create(path)
-            raise RuntimeError("no capsule factory in memvid module")
+            if cfg.capsule_path.exists() and hasattr(memvid, "use"):
+                return memvid.use("basic", path, enable_vec=True, enable_lex=True)
+            return memvid.create(path, kind="basic", apikey=None,
+                                 enable_vec=True, enable_lex=True)
         except Exception as e:
             log.error("memvid capsule open failed (%s): %s", path, e)
             raise
@@ -254,60 +323,36 @@ class _RealMemvidBackend:
     # -- put ---------------------------------------------------------------
     def put(self, payload: bytes, title: str, tags: Dict[str, str],
             uri: Optional[str] = None) -> Optional[str]:
+        """Store an episode and its embedding inside the native MV2 index."""
         try:
-            # memvid-sdk 2.x uses SPO memory cards (entity/slot/value).
-            # Map our Episode payload to a single card.
             import json as _json
             ep = _json.loads(payload.decode("utf-8", "replace"))
-            entity = ep.get("episode_id") or ep.get("query") or title
-            value = ep.get("answer") or ep.get("query") or ""
-            card = {
-                "entity": str(entity)[:120],
-                "slot": "answered",
-                "value": str(value),
-                "kind": "Fact",
-                "tags": tags or {},
-            }
-            result = self._mem.add_memory_cards([card])
-            added = (result or {}).get("added", 0)
-            fid = None
-            if added and (result or {}).get("ids"):
-                fid = str((result or {}).get("ids")[0])
-            # Local vec index: embed the answer and append to our
-            # persisted jsonl index so recall() can cosine-rank
-            # without relying on memvid-sdk's (absent) local index.
-            self._index_append(entity, str(value), fid, ep)
-            return fid or str(entity) if added else None
+            answer = str(ep.get("answer") or ep.get("query") or "")
+            vector = self._embed.embed(answer)
+            if not vector:
+                log.warning("memvid put skipped: embedding unavailable")
+                return None
+            frame_ids = self._mem.put_many(
+                [{
+                    "title": str(ep.get("query") or title or "episode")[:120],
+                    "label": str(ep.get("domain") or "general"),
+                    "text": _json.dumps(ep, ensure_ascii=False),
+                    "metadata": {
+                        "domain": str(ep.get("domain") or ""),
+                        "tenant": str(ep.get("tenant") or tags.get("tenant") or self.cfg.tenant),
+                    },
+                }],
+                embeddings=[vector],
+                embedding_identity={
+                    "kind": "manual",
+                    "model": self.cfg.embed_model,
+                    "dimension": len(vector),
+                },
+            )
+            return str(frame_ids[0]) if frame_ids else None
         except Exception as e:
             log.warning("memvid put failed: %s", e)
             return None
-
-    # -- local vec index (persisted, process-independent) ----------
-    def _index_append(self, entity: str, text: str, frame_id, ep: dict) -> None:
-        """Append {entity, vec, payload} to <capsule>.vecidx.jsonl.
-
-        LM Studio embeds `text` (the episode answer). If embedding
-        fails (LM Studio down / proxy), we skip the index entry but
-        the SPO card is still persisted in the capsule — graceful.
-        """
-        try:
-            vec = self._embed.embed(text)
-            if not vec:
-                return
-            import json as _json
-            row = _json.dumps({
-                "entity": entity,
-                "text": text,
-                "frame_id": frame_id,
-                "vec": vec,
-                "payload": ep,
-            }, ensure_ascii=False)
-            # append under RLock; index file is per-tenant
-            with self._idx_lock:
-                with open(self._idx_path, "a", encoding="utf-8") as f:
-                    f.write(row + "\n")
-        except Exception as e:
-            log.debug("vec index append skipped: %s", e)
 
     # -- commit -------------------------------------------------------------
     def commit(self) -> bool:
@@ -323,56 +368,41 @@ class _RealMemvidBackend:
     # -- search -------------------------------------------------------------
     def search(self, query: str, top_k: int,
                when: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Semantic recall over our local vec index (LM Studio embeds).
-
-        memvid-sdk 2.0.160 (kind="basic") does NOT build a
-        searchable index from add_memory_cards without a managed
-        embedding backend, so find() is empty. We keep our own
-        persisted jsonl vec index (written in put()) and cosine-rank
-        the query embedding against stored episode embeddings.
-        """
+        """Semantic recall from vectors embedded directly in the MV2 capsule."""
         q_vec = self._embed.embed(query)
         if not q_vec:
             return []
-        with self._idx_lock:
-            if not self._idx_path.exists():
-                return []
-            try:
-                import json as _json
-                scored = []
-                with open(self._idx_path, "r", encoding="utf-8") as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line:
-                            continue
-                        try:
-                            row = _json.loads(line)
-                        except Exception:
-                            continue
-                        fvec = row.get("vec")
-                        if not fvec:
-                            continue
-                        s = _cosine(q_vec, fvec)
-                        scored.append((s, row))
-                if not scored:
-                    return []
-                scored.sort(key=lambda x: x[0], reverse=True)
-                out = []
-                for s, row in scored[:top_k]:
-                    payload = row.get("payload") or {}
-                    # recall() calls Episode.from_payload(text) -> we must
-                    # return the FULL Episode JSON, not raw answer.
-                    import json as _json
+        try:
+            result = self._mem.ask(
+                query,
+                k=top_k,
+                mode="semantic",
+                context_only=True,
+                return_sources=True,
+                query_embedding=q_vec,
+                query_embedding_model=self.cfg.embed_model,
+            )
+            hits = result.get("hits", []) if isinstance(result, dict) else []
+            out = []
+            decoder = json.JSONDecoder()
+            for hit in hits:
+                text = _attr(hit, "text") or ""
+                if not text:
+                    continue
+                try:
+                    payload, _ = decoder.raw_decode(text)
                     out.append({
-                        "text": _json.dumps(payload, ensure_ascii=False),
-                        "title": row.get("entity"),
-                        "score": float(s),
-                        "frame_id": row.get("frame_id"),
+                        "text": json.dumps(payload, ensure_ascii=False),
+                        "title": _attr(hit, "title"),
+                        "score": float(_attr(hit, "score") or 0.0),
+                        "frame_id": _attr(hit, "frame_id") or _attr(hit, "id"),
                     })
-                return out
-            except Exception as e:
-                log.debug("local vec search failed: %s", e)
-                return []
+                except (ValueError, TypeError):
+                    log.debug("skip malformed native memvid hit")
+            return out
+        except Exception as e:
+            log.debug("native semantic search failed: %s", e)
+            return []
 
     def close(self):
         try:

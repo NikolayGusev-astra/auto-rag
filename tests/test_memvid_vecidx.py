@@ -1,15 +1,10 @@
-"""RED: local vec index must enable semantic recall over memvid-sdk 2.0.160.
+"""Native MV2 vector index must enable semantic recall over memvid-sdk 2.0.160.
 
-memvid-sdk 2.0.160 (kind="basic") does NOT build a searchable
-index from add_memory_cards without a managed embedding backend,
-so find() returns [] — recall() never surfaces past episodes.
-This test demands semantic recall (different phrasing, same meaning)
-and FAILS on current code.
+The SDK stores precomputed vectors inside the capsule when records are written
+through put_many(..., embeddings=...). This test asserts paraphrased semantic
+recall across the public MemvidMemory facade.
 
-SKIPPED without memvid_sdk (production noop mode).
-
-Run with the memvid venv:
-  .venv-memvid/Scripts/python.exe -m pytest tests/test_memvid_vecidx.py -q
+Skipped without memvid_sdk (production noop mode).
 """
 import os
 import sys

@@ -78,7 +78,7 @@ python rag_core/eval_golden.py
 | Symptom | Check |
 |---|---|
 | `memvid disabled` | Confirm `RAG_MEMVID_ENABLED=true` is loaded by the active process. |
-| No memory recall | Confirm LM Studio embeddings, the capsule path and the `.vecidx.jsonl` sidecar. |
+| No memory recall | Confirm LM Studio embeddings, `RAG_MEMVID_ENABLED=true` and the capsule path; `stats` should report `has_vec_index` through the native MV2 backend. |
 | Empty local search | Check index path, collection name and embedding endpoint. |
 | Federation unavailable | Check the API key, bind address, configured nodes and SSH tunnel state. |
 | Web retrieval empty | Check SearXNG; private targets are intentionally blocked by the SSRF guard. |
@@ -87,7 +87,7 @@ python rag_core/eval_golden.py
 
 Do not commit these local artifacts:
 
-- `memvid_capsules/`
+- `memvid_capsules/` (one `.mv2` capsule contains its native vector index)
 - `.pytest_cache/`
 - `routing_log.jsonl`
 - audit reports and generated review canvases

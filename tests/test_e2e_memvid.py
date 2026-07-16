@@ -45,16 +45,18 @@ import rag_async
 
 
 @pytest.fixture
-def seeded():
+def seeded(monkeypatch):
     d = tempfile.mkdtemp(prefix="e2e_memvid_")
-    os.environ["RAG_MEMVID_DIR"] = d
-    # Seed an episode directly (simulates a prior RAG answer).
-    # Must match the tenant the pipeline reads: RAG_MEMVID_TENANT
-    # or default "hermes_default" (async_rag_search -> _get_memory).
+    monkeypatch.setenv("RAG_MEMVID_DIR", d)
+    monkeypatch.setenv("RAG_MEMVID_ENABLED", "true")
+    # The public pipeline owns a module singleton and LRU cache; isolate both
+    # so prior tests cannot reuse a capsule or an empty cached RAG result.
+    rag_async._memory = None
+    rag_async._CACHE.clear()
     MemvidMemory.reset()
     m = MemvidMemory.for_tenant("hermes_default")
     assert m.active is True
-    m.record(Episode(
+    assert m.record(Episode(
         query="Как сбросить пароль администратора в Astra Linux?",
         answer="Используйте sudo passwd root в recovery mode.",
         sources=[{"uri": "confluence://AL/123"}],
@@ -62,7 +64,10 @@ def seeded():
         tenant="hermes_default",
     ))
     m.close()
+    MemvidMemory.reset()
     yield d
+    rag_async._memory = None
+    rag_async._CACHE.clear()
     MemvidMemory.reset()
     shutil.rmtree(d, ignore_errors=True)
 

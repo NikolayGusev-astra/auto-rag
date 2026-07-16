@@ -36,18 +36,17 @@ Query
 
 ## Episodic Memory
 
-Memvid is opt-in and local-only. A tenant has one capsule file and a persisted
-sidecar vector index:
+Memvid is opt-in and local-only. A tenant has one capsule file with a native
+vector index embedded in the same file:
 
 ```text
 memory_<tenant>.mv2
-memory_<tenant>.mv2.vecidx.jsonl
 ```
 
 On record, `auto-rag` stores the query, useful chunk text, source metadata and
-`RagTrace`. On recall, it embeds the query with LM Studio and cosine-ranks prior
-episodes. A hit at or above `RAG_MEMVID_RECALL_THRESHOLD` short-circuits the
-core retrieval pipeline.
+`RagTrace` using precomputed LM Studio vectors. On recall, it supplies a query
+vector to the native semantic index. A hit at or above
+`RAG_MEMVID_RECALL_THRESHOLD` short-circuits the core retrieval pipeline.
 
 The memory layer fails open: unavailable SDK, capsule or embedding endpoint
 returns an empty recall and leaves the normal RAG pipeline intact.

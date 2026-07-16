@@ -98,22 +98,79 @@ def _frame_episode(f) -> Optional[Episode]:
         return None
 
 
+def _native_episodes(backend) -> List[Episode]:
+    """Recover full Episode payloads from native MV2 search frames.
+
+    Native `frame()` exposes structural metadata but not document text. The
+    lexical index can retrieve the frame by its title; its hit text begins with
+    the original JSON payload followed by SDK-added metadata.
+    """
+    mem = getattr(backend, "_mem", None)
+    if mem is None or not hasattr(mem, "timeline"):
+        return []
+    out: List[Episode] = []
+    decoder = json.JSONDecoder()
+    try:
+        timeline = mem.timeline(limit=100000)
+    except Exception:
+        return []
+    for entry in timeline:
+        frame_id = _attr(entry, "frame_id")
+        uri = _attr(entry, "uri")
+        try:
+            frame = mem.frame(uri) if uri else {}
+            title = _attr(frame, "title") or ""
+            if not title:
+                continue
+            result = mem.find(title, k=20, mode="lex")
+            hits = result.get("hits", []) if isinstance(result, dict) else []
+            hit = next((h for h in hits if _attr(h, "frame_id") == frame_id), None)
+            if hit is None:
+                continue
+            payload, _ = decoder.raw_decode(_frame_text(hit))
+            ep = Episode.from_payload(json.dumps(payload, ensure_ascii=False))
+            ep.frame_id = frame_id
+            ep.score = float(_attr(hit, "score") or 0.0)
+            out.append(ep)
+        except Exception:
+            continue
+    return out
+
+
+def _episodes(backend) -> List[Episode]:
+    """Use native MV2 introspection first, then legacy frame fallbacks."""
+    native = _native_episodes(backend)
+    if native:
+        return native
+    frames = _iter_frames(backend)
+    return [e for e in (_frame_episode(f) for f in frames) if e]
+
+
 # ---------------------------------------------------------------------------
 # commands
 # ---------------------------------------------------------------------------
 def cmd_stats(args):
     p = _resolve_capsule(args)
     mem = _open_backend(p)
-    frames = _iter_frames(mem._backend)
-    eps = [e for e in (_frame_episode(f) for f in frames) if e]
+    eps = _episodes(mem._backend)
     size = p.stat().st_size
+    native_stats = {}
+    try:
+        native_stats = mem._backend._mem.stats()
+    except Exception:
+        pass
+    frame_count = native_stats.get("frame_count", len(eps)) if isinstance(native_stats, dict) else len(eps)
     domains = Counter(e.domain or "-" for e in eps)
     feedback = Counter(e.feedback or "-" for e in eps)
     times = [e.created_at for e in eps if e.created_at]
     times.sort()
     print(f"capsule       : {p}")
     print(f"size          : {size:,} bytes ({size/1024:.1f} KB)")
-    print(f"frames        : {len(frames)}")
+    print(f"frames        : {frame_count}")
+    if isinstance(native_stats, dict):
+        print(f"native vec    : {native_stats.get('has_vec_index', False)} "
+              f"({native_stats.get('effective_vec_dimension', 0)}d, "
+              f"{native_stats.get('vec_index_bytes', 0):,} bytes)")
     print(f"parsed episodes: {len(eps)}")
     if times:
         print(f"time range    : {times[0]} .. {times[-1]}")
@@ -128,8 +185,7 @@ def cmd_stats(args):
 def cmd_inspect(args):
     p = _resolve_capsule(args)
     mem = _open_backend(p)
-    frames = _iter_frames(mem._backend)
-    eps = [e for e in (_frame_episode(f) for f in frames) if e]
+    eps = _episodes(mem._backend)
     # filters
     if args.domain:
         eps = [e for e in eps if e.domain == args.domain]
@@ -176,8 +232,7 @@ def cmd_compact(args):
     """
     p = _resolve_capsule(args)
     mem = _open_backend(p)
-    frames = _iter_frames(mem._backend)
-    eps = [e for e in (_frame_episode(f) for f in frames) if e]
+    eps = _episodes(mem._backend)
     # dedup by (query, answer[:80]) keeping newest
     seen: Dict[str, Episode] = {}
     for e in eps:
@@ -222,8 +277,7 @@ def cmd_branch(args):
     --before. Time-travel snapshot."""
     p = _resolve_capsule(args)
     mem = _open_backend(p)
-    frames = _iter_frames(mem._backend)
-    eps = [e for e in (_frame_episode(f) for f in frames) if e]
+    eps = _episodes(mem._backend)
     if args.at_frame is not None:
         eps = [e for e in eps
                if (e.frame_id is None) or str(e.frame_id) <= str(args.at_frame)]
@@ -270,8 +324,7 @@ def cmd_rewind(args):
 def cmd_export(args):
     p = _resolve_capsule(args)
     mem = _open_backend(p)
-    frames = _iter_frames(mem._backend)
-    eps = [e for e in (_frame_episode(f) for f in frames) if e]
+    eps = _episodes(mem._backend)
     out = Path(args.out)
     with out.open("w", encoding="utf-8") as fh:
         for e in eps:
@@ -298,8 +351,7 @@ def cmd_purge(args):
     if not args.yes:
         sys.exit("purge requires --yes (and is irreversible after .bak rotation)")
     mem = _open_backend(p)
-    frames = _iter_frames(mem._backend)
-    eps = [e for e in (_frame_episode(f) for f in frames) if e]
+    eps = _episodes(mem._backend)
     keep = []
     for e in eps:
         if args.before and e.created_at >= args.before:
