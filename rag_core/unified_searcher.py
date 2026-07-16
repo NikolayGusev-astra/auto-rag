@@ -7,6 +7,9 @@ Drop-in replacement for both ZVecSearcher and ChromaSearcher.
 import os
 import sys
 import subprocess
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ── Config ────────────────────────────────────────────────────────
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-baai-bge-m3-568m")
@@ -102,9 +105,16 @@ class UnifiedSearcher:
 
     def _ensure_chroma(self):
         if self._chroma is None and self._backend == "chroma":
-            import chromadb
-            client = chromadb.PersistentClient(path=CHROMA_PATH)
-            self._chroma = client.get_collection(self._collection)
+            try:
+                import chromadb
+                client = chromadb.PersistentClient(path=CHROMA_PATH)
+                # R3: коллекция может не существовать -> chromadb бросает.
+                # Ловим и возвращаем None (search корректно вернёт []).
+                self._chroma = client.get_collection(self._collection)
+            except Exception as e:
+                logger.warning("_ensure_chroma: нет коллекции %s: %s",
+                             self._collection, e)
+                self._chroma = None
         return self._chroma
 
     def search(self, query: str, topk: int = 5, domain: str = None) -> list[dict]:
