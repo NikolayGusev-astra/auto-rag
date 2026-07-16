@@ -106,6 +106,23 @@ def _get_memory():
             _memory = None
     return _memory
 
+def _episode_answer(result: dict) -> str:
+    """Снимок полезного контента RAG для episodic memory.
+
+    Core-пайплайн возвращает ранжированные chunks, а не готовый LLM-answer.
+    Сохраняем их текст, а не технический trace, чтобы recall возвращал
+    пользователю знания, а не журнал маршрутизации.
+    """
+    if result.get("answer"):
+        return str(result["answer"])
+    parts = []
+    for chunk in result.get("chunks", []):
+        text = chunk.get("text") or chunk.get("content") or ""
+        if text:
+            parts.append(str(text))
+    return "\n\n".join(parts)[:6000]
+
+
 def _record_episode(result: dict, query: str, domain: str, trace: RagTrace) -> None:
     """Best-effort record of a RAG result as a memvid episode. Never raises."""
     if not _MEMVID_AVAILABLE:
@@ -114,11 +131,19 @@ def _record_episode(result: dict, query: str, domain: str, trace: RagTrace) -> N
     if mem is None or not mem.active:
         return
     try:
+        answer = _episode_answer(result)
+        if not answer:
+            return
+        sources = [
+            {"source": chunk.get("source", result.get("source", ""))}
+            for chunk in result.get("chunks", [])
+            if chunk.get("source", result.get("source", ""))
+        ] or [{"source": result.get("source", "")}]
         mem.record(
             Episode(
                 query=query,
-                answer=result.get("trace", "") or "",
-                sources=[{"source": result.get("source", "")}],
+                answer=answer,
+                sources=sources,
                 trace=trace.json() if hasattr(trace, "json") else trace,
                 domain=domain,
                 tenant=os.environ.get("RAG_MEMVID_TENANT", "hermes_default"),

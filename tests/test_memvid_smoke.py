@@ -14,11 +14,11 @@ import pytest
 # ---------------------------------------------------------------------------
 # Test A — Noop when disabled (RAG_MEMVID_ENABLED=false)
 # ---------------------------------------------------------------------------
-def test_noop_when_disabled():
+def test_noop_when_disabled(monkeypatch):
     """Memory must never raise when RAG_MEMVID_ENABLED=false.
     recall returns [], record returns a bool without exception.
     """
-    os.environ["RAG_MEMVID_ENABLED"] = "false"
+    monkeypatch.setenv("RAG_MEMVID_ENABLED", "false")
 
     from memvid_memory import Episode, MemvidMemory
     MemvidMemory.reset()
@@ -32,7 +32,7 @@ def test_noop_when_disabled():
 # ---------------------------------------------------------------------------
 # Test B — Graceful degradation when SDK missing + enabled
 # ---------------------------------------------------------------------------
-def test_graceful_when_sdk_missing():
+def test_graceful_when_sdk_missing(monkeypatch):
     """When memvid-sdk is not installed but RAG_MEMVID_ENABLED=true,
     backend must fall back to _NoopMemvidBackend without crashing.
     """
@@ -40,15 +40,19 @@ def test_graceful_when_sdk_missing():
 
     sdk_available = False
     try:
-        import memvid  # noqa: F401
+        import memvid_sdk  # noqa: F401
         sdk_available = True
     except ImportError:
-        sdk_available = False
+        try:
+            import memvid  # noqa: F401  (legacy fallback)
+            sdk_available = True
+        except ImportError:
+            sdk_available = False
 
     if sdk_available:
         pytest.skip("memvid-sdk is installed — cannot test graceful-missing path")
 
-    os.environ["RAG_MEMVID_ENABLED"] = "true"
+    monkeypatch.setenv("RAG_MEMVID_ENABLED", "true")
 
     from memvid_memory import MemvidMemory, _NoopMemvidBackend
     MemvidMemory.reset()
@@ -63,11 +67,11 @@ def test_graceful_when_sdk_missing():
 # ---------------------------------------------------------------------------
 # Test C — MemvidTraced importable and active reflects disabled state
 # ---------------------------------------------------------------------------
-def test_memvid_traced_active_disabled():
+def test_memvid_traced_active_disabled(monkeypatch):
     """MemvidTraced wraps MemvidMemory; its `active` property must
     correctly reflect that memory is disabled.
     """
-    os.environ["RAG_MEMVID_ENABLED"] = "false"
+    monkeypatch.setenv("RAG_MEMVID_ENABLED", "false")
 
     from memvid_memory import MemvidMemory
     from memvid_trace import MemvidTraced
