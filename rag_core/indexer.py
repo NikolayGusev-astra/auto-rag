@@ -3,10 +3,11 @@
 RAG v2 Indexer — ZVec wiki collection builder for Autolycus.
 Usage: python3 indexer.py [--incremental] [--clear]
 """
-import os, sys, json, hashlib, time, re, logging
+import os, sys, json, hashlib, time, logging
 
 logger = logging.getLogger(__name__)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from index_common import file_hash, parse_frontmatter, _safe_id
 from rag_config import ZVEC_PATH, ZVEC_COLLECTION, EMBEDDING_DIM
 from rag_config import EMBEDDING_URL, EMBEDDING_MODEL
 
@@ -50,12 +51,6 @@ def collect_files():
                     files.append(fp)
     return sorted(files)
 
-def file_hash(path):
-    h = hashlib.md5()
-    with open(path, 'rb') as f:
-        for chunk in iter(lambda: f.read(65536), b''): h.update(chunk)
-    return h.hexdigest()
-
 def load_state():
     if os.path.exists(STATE_FILE):
         try:
@@ -69,20 +64,6 @@ def save_state(state):
     with open(STATE_FILE, 'w') as f: json.dump(state, f)
 
 # ── Chunking ──────────────────────────────────────────────────────
-def parse_frontmatter(text):
-    text = text.lstrip('\ufeff')
-    if not text.startswith('---'): return {}, text
-    end = text.find('---', 3)
-    if end == -1: return {}, text
-    meta = {}
-    try:
-        import yaml
-        meta = yaml.safe_load(text[3:end].strip()) or {}
-    except Exception as e:
-        logger.warning("parse_frontmatter: битый YAML, используем пустые метаданные: %s", e)
-    return (meta if isinstance(meta, dict) else {}), text[end + 3:].strip()
-
-
 def recursive_chunk_text(text, heading="Overview", chunk_size=2000, min_chunk=200):
     """Recursive chunking: paragraphs → sentences → fixed-size.
     Preserves semantic boundaries better than fixed-size splitting."""
@@ -389,21 +370,6 @@ def index(incremental=False, clear=False, chunk_mode="recursive"):
     s = coll.stats
     print(f"\n  ✅ Done: {s.doc_count} docs (embed errors: {emb_errors})")
     coll.flush()
-
-
-import re
-def _safe_id(source, content):
-    """Zvec-safe doc ID: max 64 chars, only alphanumeric and underscore."""
-    raw = f"{source}#{hashlib.md5(content.encode()).hexdigest()[:12]}"
-    safe = re.sub(r'[^a-zA-Z0-9]', '_', raw)
-    if safe[0] == '_':
-        safe = 'doc' + safe
-    # Zvec rejects IDs longer than 64 chars
-    if len(safe) > 64:
-        # Keep first 48 chars + 12-char hash
-        suffix = hashlib.md5(safe.encode()).hexdigest()[:12]
-        safe = safe[:51] + suffix
-    return safe[:64]
 
 
 if __name__ == "__main__":

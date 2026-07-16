@@ -18,6 +18,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from index_common import file_hash, parse_frontmatter, _safe_id
 from rag_config import EMBEDDING_DIM, EMBEDDING_MODEL, EMBEDDING_URL
 from rag_config import EXCLUDE_DIRS, ZVEC_PATH, ZVEC_COLLECTION
 
@@ -58,12 +59,11 @@ def collect_files() -> list[str]:
     return sorted(files)
 
 
-def file_hash(path: str) -> str:
-    h = hashlib.md5()
-    with open(path, 'rb') as f:
-        for chunk in iter(lambda: f.read(65536), b''):
-            h.update(chunk)
-    return h.hexdigest()
+def should_exclude(path: str) -> bool:
+    for pat in EXCLUDE_DIRS:
+        if pat in path:
+            return True
+    return False
 
 
 def load_state() -> dict:
@@ -83,22 +83,6 @@ def save_state(state: dict):
 
 
 # ── Frontmatter + Chunking ────────────────────────────────────────
-
-def parse_frontmatter(text: str) -> tuple[dict, str]:
-    text = text.lstrip('\ufeff')
-    if not text.startswith('---'):
-        return {}, text
-    end = text.find('---', 3)
-    if end == -1:
-        return {}, text
-    meta = {}
-    try:
-        import yaml
-        meta = yaml.safe_load(text[3:end].strip()) or {}
-    except Exception:
-        pass
-    return (meta if isinstance(meta, dict) else {}), text[end + 3:].strip()
-
 
 def chunk_text(text: str, heading: str = "Overview") -> list[dict]:
     chunks = []
@@ -365,21 +349,6 @@ def index(incremental: bool = False, clear: bool = False):
     s = coll.stats
     print(f"\n  ✅ Done: {s.doc_count} docs (embed errors: {emb_errors})")
     coll.flush()
-
-
-import re as _re
-
-
-def _safe_id(source: str, content: str) -> str:
-    """Zvec-safe doc ID: max 64 chars, only alphanumeric and underscore."""
-    raw = f"{source}#{hashlib.md5(content.encode()).hexdigest()[:12]}"
-    safe = _re.sub(r'[^a-zA-Z0-9]', '_', raw)
-    if safe[0] == '_':
-        safe = 'doc' + safe
-    if len(safe) > 64:
-        suffix = hashlib.md5(safe.encode()).hexdigest()[:12]
-        safe = safe[:51] + suffix
-    return safe[:64]
 
 
 if __name__ == "__main__":
