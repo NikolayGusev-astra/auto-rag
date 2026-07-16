@@ -35,8 +35,8 @@ def test_chroma_missing_returns_none():
 def test_chroma_missing_collection_no_crash():
     """R3: отсутствующая chroma-коллекция не ломает search —
     _ensure_chroma ловит исключение, search корректно возвращает []."""
-    with mock.patch.dict("sys.modules", {"chromadb": _FakeChromadb()}):
+    with mock.patch.dict("sys.modules", {"chromadb": _FakeChromadb()}), \
+         mock.patch("unified_searcher._get_embedding", return_value=[1.0] * 1024):
         s = _make_searcher()
-        # monkeypatch _ensure_backend чтобы не пытался детектить zvec
         result = s.search("любой запрос", topk=5)
         assert result == [], f"ожидали [], получили {result}"
