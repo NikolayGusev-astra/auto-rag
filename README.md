@@ -1,8 +1,29 @@
 # auto-rag
 
-Production-ready generic RAG pipeline: **ZVec** (vector search, AVX2 required) or **ChromaDB** (fallback for no-AVX2 hosts) + MCP  + Web fallback
+Local-first RAG for technical knowledge: **ZVec** or **ChromaDB**, LM Studio
+embeddings, MCP sources, guarded web/federation fallback and optional episodic
+memory. It runs locally by default and degrades safely when optional services
+are unavailable.
 
-## Which version?
+## Start Here
+
+| Goal | Entry point |
+|---|---|
+| Run local retrieval | [Quick Start](#quick-start-zvec) |
+| Understand the request flow | [Architecture](docs/ARCHITECTURE.md) |
+| Configure, operate and troubleshoot | [Operations Guide](docs/OPERATIONS.md) |
+| Enable episodic memory | [memvid Episodic Memory](#memvid-episodic-memory-semantic-cache) |
+| Verify changes | [Tests](#tests) |
+
+## Highlights
+
+- Local hybrid retrieval: ZVec vector/FTS search with Chroma fallback.
+- DCD routing, MCP integrations and Web/Federation fallback paths.
+- SSRF-protected web retrieval and authenticated federation endpoints.
+- Persistent episodic semantic memory with LM Studio embeddings.
+- Structured `RagTrace`, golden-set evaluation and canary tooling.
+
+
 
 | | ZVec (default) | ChromaDB (fallback) |
 |---|---|---|
