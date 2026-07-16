@@ -488,7 +488,16 @@ class MCPClient:
             query_first3 = " ".join(words) if words else query[:50]
         else:
             query_first3 = query
-        url = base_url + rest_template.format(query=quote_plus(query), query_first3=quote_plus(query_first3), query_and3=query_and3, max=max_results)
+        # JQL-инъекция: {query} идёт внутрь text~"{query}" — нужен
+        # JQL double-quote escape (_esc) ДО URL-энкодинга, иначе
+        # кавычки в запросе ломают JQL (security MEDIUM).
+        query_safe = quote_plus(_esc(query))
+        url = base_url + rest_template.format(
+            query=query_safe,
+            query_first3=quote_plus(query_first3),
+            query_and3=query_and3,
+            max=max_results,
+        )
         try:
             sess = requests.Session()
             sess.trust_env = False
