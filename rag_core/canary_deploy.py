@@ -275,33 +275,46 @@ def main():
         print("  No changes detected in watched files")
 
     # Step 2: Run baseline
-    print("\nStep 2: Running baseline eval ...")
-    if baseline_dir and Path(baseline_dir).exists():
-        # Run from baseline
-        restore_from_backup(baseline_dir)
-        baseline = run_canary("baseline", "restored from backup")
-        # Restore current
-        # (current files are already in place since we haven't modified anything)
-    else:
-        # No baseline → save current as baseline
-        print("  No baseline found — saving current files as baseline")
-        setup_baseline_backup(args.backup_dir)
-        baseline = run_canary("baseline", "current (first run)")
-        # For first run, canary is same as baseline
-        print("\n⚠ First run — saved baseline. Run again after making changes.")
-        if baseline:
-            output = {
-                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                "baseline": baseline,
-                "canary": None,
-                "changes": changes,
-                "verdict": "BASELINE_SAVED",
-                "report": "First run — baseline saved. Make changes and run again."
-            }
-            with open(str(REPORT_PATH), "w", encoding="utf-8") as f:
-                json.dump(output, f, ensure_ascii=False, indent=2)
-            print(f"\n  Report: {REPORT_PATH}")
-        return
+        print("\nStep 2: Running baseline eval ...")
+        if baseline_dir and Path(baseline_dir).exists():
+            # Run from baseline: save current working files (candidate), restore baseline, run eval,
+            # then restore candidate for canary.
+            import tempfile
+            with tempfile.TemporaryDirectory() as tmpdir:
+                # Save current working files (candidate) to temp
+                for fn in BASELINE_FILES:
+                    src = HERE / fn
+                    if src.exists():
+                        shutil.copy2(str(src), str(Path(tmpdir) / fn))
+                # Restore baseline
+                restore_from_backup(baseline_dir)
+                baseline = run_canary("baseline", "restored from backup")
+                # Restore candidate (current working files) from temp
+                for fn in BASELINE_FILES:
+                    src = Path(tmpdir) / fn
+                    dst = HERE / fn
+                    if src.exists():
+                        shutil.copy2(str(src), str(dst))
+        else:
+            # No baseline → save current as baseline
+            print("  No baseline found — saving current files as baseline")
+            setup_baseline_backup(args.backup_dir)
+            baseline = run_canary("baseline", "current (first run)")
+            # For first run, canary is same as baseline
+            print("\n⚠ First run — saved baseline. Run again after making changes.")
+            if baseline:
+                output = {
+                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "baseline": baseline,
+                    "canary": None,
+                    "changes": changes,
+                    "verdict": "BASELINE_SAVED",
+                    "report": "First run — baseline saved. Make changes and run again."
+                }
+                with open(str(REPORT_PATH), "w", encoding="utf-8") as f:
+                    json.dump(output, f, ensure_ascii=False, indent=2)
+                print(f"\n  Report: {REPORT_PATH}")
+            return
 
     # Step 3: Run canary (current)
     print("\nStep 3: Running canary eval (current code) ...")
