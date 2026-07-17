@@ -47,37 +47,98 @@ from rag_trace import RagTrace
 
 # ── SSRF guard ───────────────────────────────────────────────
 # Блокируем fetch URL из внешних результатов (SearXNG и т.п.) в
-# приватные/локальные диапазоны (security MEDIUM: SSRF).
-_PRIVATE_NETS = [
-    ipaddress.ip_network(n) for n in (
-        "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12",
-        "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10",
-        "::1/128", "fc00::/7", "fe80::/10",
-    )
-]
+# приватные/локальные/link-local диапазоны (security: SSRF).
+#
+# S1-S3 fixes (audit RESULE-FBL.md):
+#   - разрешаем ONLY ipaddress.is_global (инверсия blocklist)
+#   - блок 0.0.0.0/8 и IPv4-mapped IPv6 (::ffff:127.0.0.1 и т.п.)
+#   - редиректы запрещены, после 3xx новый URL перепроверяется
+#   - повторная проверка резолва после редиректа (per-hop)
+import urllib.parse
+
+_MAPPED_IPV4_BAD_PREFIX = ipaddress.ip_network("::ffff:0:0/96")  # IPv4-mapped IPv6
+
+
+def _ip_is_public(ip: "ipaddress.IPv4Address | ipaddress.IPv6Address") -> bool:
+    """True only for globally routable addresses.
+
+    Blocks loopback, private, link-local (incl. 169.254.169.254 cloud
+    metadata), 0.0.0.0/8, multicast, reserved, and IPv4-mapped IPv6 that
+    wrap a non-global IPv4 address.
+    """
+    # IPv4-mapped IPv6 must be unwrapped and checked as the embedded v4.
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return bool(ip.is_global)
+
+
+def _host_ips(host: str) -> "set":
+    """Resolve a hostname to a set of IP addresses (or {ip} if literal)."""
+    try:
+        ip = ipaddress.ip_address(host)
+        return {ip}
+    except ValueError:
+        pass
+    try:
+        infos = socket.getaddrinfo(host, None)
+        return {ipaddress.ip_address(i[4][0]) for i in infos}
+    except Exception:
+        return set()
 
 
 def _is_safe_url(url: str) -> bool:
-    """True, если URL резолвится в публичный IP (не приватный/loopback/link-local)."""
-    from urllib.parse import urlparse
+    """True, если URL разрешается ТОЛЬКО в публичный глобальный IP.
+
+    Any private/loopback/link-local/0.0.0.0/IPv4-mapped result → False.
+    """
     try:
-        host = urlparse(url).hostname
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        host = parsed.hostname
         if not host:
             return False
-        # прямой IP
-        try:
-            ip = ipaddress.ip_address(host)
-        except ValueError:
-            # DNS-имя — резолвим
-            infos = socket.getaddrinfo(host, None)
-            ips = {ipaddress.ip_address(i[4][0]) for i in infos}
-            if not ips:
-                return False
-        else:
-            ips = {ip}
-        return not any(ip in net for ip in ips for net in _PRIVATE_NETS)
+        ips = _host_ips(host)
+        if not ips:
+            return False
+        return all(_ip_is_public(ip) for ip in ips)
     except Exception:
         return False
+
+
+def _safe_get(url: str, **kwargs) -> "object | None":
+    """requests.get with SSRF hardening: no redirects, per-hop re-validation.
+
+    Returns the response, or None if the URL (or any redirect target) is
+    unsafe. Caller must still treat the body as untrusted.
+    """
+    import requests
+
+    # S1-S3: reject unsafe URLs before any network call.
+    if not _is_safe_url(url):
+        return None
+    kwargs.setdefault("timeout", 8)
+    kwargs["allow_redirects"] = False  # S1: stop redirect-based bypass
+    try:
+        resp = requests.get(url, **kwargs)
+    except Exception:
+        return None
+    # Re-validate redirect target through the same guard (per-hop).
+    if resp.is_redirect or resp.status_code in (301, 302, 303, 307, 308):
+        location = resp.headers.get("Location")
+        if not location:
+            return None
+        # Resolve relative redirects against the original URL.
+        target = urllib.parse.urljoin(url, location)
+        if not _is_safe_url(target):
+            return None
+        # One bounded follow with re-validation; no further hops.
+        try:
+            return requests.get(target, allow_redirects=False, **{
+                k: v for k, v in kwargs.items() if k != "allow_redirects"})
+        except Exception:
+            return None
+    return resp
 
 # ── Optional memvid memory layer (T3 integration) ─────────────────
 try:
@@ -375,9 +436,11 @@ def _blocking_web(query: str, domain: str = "", collection: str = "") -> list[di
                     chunks.append({"text": text[:800], "source": "web", "url": url})
                     continue
                 try:
-                    req = requests.get(url, timeout=8, headers={
+                    req = _safe_get(url, headers={
                         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
                     })
+                    if req is None:
+                        continue
                     html = req.text
                     full = trafilatura.extract(html)
                     if full:
