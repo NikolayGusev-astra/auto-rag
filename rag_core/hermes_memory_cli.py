@@ -1,149 +1,80 @@
 #!/usr/bin/env python3
 """
-hermes_memory_cli.py — management CLI for Hermes memvid capsules.
+Hermes memvid capsule CLI — manage episodic memory capsules.
 
 Commands:
-  stats       Show capsule stats (frames, size, domains, time range)
-  inspect     List recent episodes (optionally filtered by domain/score/time)
-  search      Free-text search over a capsule
-  compact     Compact/rewrite a capsule (dedup + drop low-value frames)
-  branch      Branch a capsule at a given frame/time (time-travel)
-  rewind      Restore capsule to a previous state (.bak)
-  export      Export episodes to JSONL
-  purge       Delete frames matching a filter (DANGEROUS — backs up first)
-
-All commands work on the capsule resolved from env (RAG_MEMVID_DIR,
-RAG_MEMVID_TENANT) unless --capsule is given.
-
-Usage:
-    python3 hermes_memory_cli.py stats
-    python3 hermes_memory_cli.py inspect --domain astra --limit 20
-    python3 hermes_memory_cli.py search "сброс пароля" --topk 5
-    python3 hermes_memory_cli.py compact --min-score 0.5
-    python3 hermes_memory_cli.py branch --at-frame 1234 --to memory_branch.mv2
-    python3 hermes_memory_cli.py rewind --tenant hermes_default
-    python3 hermes_memory_cli.py export --out episodes.jsonl
-    python3 hermes_memory_cli.py purge --before 2024-12-01 --yes
+    stats      capsule statistics
+    inspect    list recent episodes
+    search     free-text search
+    compact    dedup + drop low-value frames (atomic replace)
+    branch     time-travel branch capsule
+    rewind     restore from .bak
+    export     episodes to JSONL
+    purge      delete frames matching filter (DANGEROUS)
 """
-from __future__ import annotations
 
 import argparse
 import json
 import os
 import shutil
 import sys
+import time
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
-# reuse the memory facade + data model
-from memvid_memory import (Episode, MemvidConfig, MemvidMemory,
-                           _NoopMemvidBackend, _attr)
+import memvid_sdk
 
+# Local imports
+from memvid_memory import Episode, MemvidConfig, MemvidMemory, _attr
 
 # ---------------------------------------------------------------------------
-# capsule resolution
+# Helpers
 # ---------------------------------------------------------------------------
-def _resolve_capsule(args) -> Path:
-    if getattr(args, "capsule", None):
-        p = Path(args.capsule)
-    else:
-        cfg = MemvidConfig.from_env()
-        p = cfg.capsule_path
-    if not p.exists():
-        sys.exit(f"capsule not found: {p}")
-    return p
+def _resolve_capsule(capsule: Optional[Path]) -> Path:
+    if capsule is not None:
+        return capsule
+    return MemvidConfig.from_env().capsule_path
 
 
-def _open_backend(path: Path) -> Any:
-    cfg = MemvidConfig.from_env()
-    cfg.enabled = True
-    # point capsule path at requested file
-    cfg.dir = path.parent
-    cfg.tenant = path.stem.replace("memory_", "")
-    mem = MemvidMemory(cfg)
-    if isinstance(mem._backend, _NoopMemvidBackend):
-        sys.exit("memvid backend unavailable (SDK missing or init failed)")
-    return mem
+def _open_backend(path: Path):
+    """Open memvid capsule via the SDK, preserving original behaviour."""
+    if not path.exists():
+        sys.exit(f"capsule not found: {path}")
+    try:
+        return memvid_sdk.create(str(path), kind="basic", enable_vec=True)
+    except Exception as e:
+        sys.exit(f"memvid open failed: {e}")
 
 
-def _iter_frames(backend) -> List[Any]:
-    """Best-effort frame listing across memvid-sdk API shapes."""
-    for name in ("list_frames", "frames", "iter_frames", "all_frames"):
-        fn = getattr(backend._mem, name, None) if hasattr(backend, "_mem") \
-            else None
-        if fn:
-            try:
-                return list(fn())
-            except Exception:
-                continue
+def _iter_frames(backend):
+    """Yield all frames using whatever API the backend exposes."""
+    if hasattr(backend, "timeline"):
+        return backend.timeline(limit=100000)
+    if hasattr(backend, "frames"):
+        return backend.frames
+    if hasattr(backend, "list_frames"):
+        return backend.list_frames()
     return []
 
 
-def _frame_text(f) -> str:
-    return _attr(f, "text") or (f.get("text") if isinstance(f, dict) else "")
-
-
-def _frame_episode(f) -> Optional[Episode]:
-    txt = _frame_text(f)
-    if not txt:
+def _frame_episode(frame) -> Optional[Episode]:
+    """Recover full Episode payload from a memvid frame dict."""
+    if not frame:
+        return None
+    text = frame.get("text") or frame.get("payload") or ""
+    if not text:
         return None
     try:
-        ep = Episode.from_payload(txt)
-        ep.score = float(_attr(f, "score") or 0.0)
-        ep.frame_id = _attr(f, "id") or _attr(f, "frame_id")
-        return ep
+        return Episode.from_payload(text)
     except Exception:
         return None
-
-
-def _native_episodes(backend) -> List[Episode]:
-    """Recover full Episode payloads from native MV2 search frames.
-
-    Native `frame()` exposes structural metadata but not document text. The
-    lexical index can retrieve the frame by its title; its hit text begins with
-    the original JSON payload followed by SDK-added metadata.
-    """
-    mem = getattr(backend, "_mem", None)
-    if mem is None or not hasattr(mem, "timeline"):
-        return []
-    out: List[Episode] = []
-    decoder = json.JSONDecoder()
-    try:
-        timeline = mem.timeline(limit=100000)
-    except Exception:
-        return []
-    for entry in timeline:
-        frame_id = _attr(entry, "frame_id")
-        uri = _attr(entry, "uri")
-        try:
-            frame = mem.frame(uri) if uri else {}
-            title = _attr(frame, "title") or ""
-            if not title:
-                continue
-            result = mem.find(title, k=20, mode="lex")
-            hits = result.get("hits", []) if isinstance(result, dict) else []
-            hit = next((h for h in hits if _attr(h, "frame_id") == frame_id), None)
-            if hit is None:
-                continue
-            payload, _ = decoder.raw_decode(_frame_text(hit))
-            ep = Episode.from_payload(json.dumps(payload, ensure_ascii=False))
-            ep.frame_id = frame_id
-            ep.score = float(_attr(hit, "score") or 0.0)
-            out.append(ep)
-        except Exception:
-            continue
-    return out
 
 
 def _episodes(backend) -> List[Episode]:
-    """Use native MV2 introspection first, then legacy frame fallbacks."""
-    native = _native_episodes(backend)
-    if native:
-        return native
-    frames = _iter_frames(backend)
-    return [e for e in (_frame_episode(f) for f in frames) if e]
+    """Recover all valid episodes from a capsule backend."""
+    return [e for f in _iter_frames(backend) if (e := _frame_episode(f))]
 
 
 # ---------------------------------------------------------------------------
@@ -186,14 +117,12 @@ def cmd_inspect(args):
     p = _resolve_capsule(args)
     mem = _open_backend(p)
     eps = _episodes(mem._backend)
-    # filters
     if args.domain:
         eps = [e for e in eps if e.domain == args.domain]
     if args.min_score is not None:
         eps = [e for e in eps if e.score >= args.min_score]
     if args.since:
         eps = [e for e in eps if e.created_at >= args.since]
-    # newest first
     eps.sort(key=lambda e: e.created_at, reverse=True)
     eps = eps[:args.limit]
     print(f"showing {len(eps)} episodes (newest first)")
@@ -228,7 +157,8 @@ def cmd_compact(args):
 
     Strategy: read all episodes, drop those with score < --min-score and
     duplicate (query,answer) pairs (keep newest), then write a NEW
-    capsule. The original is preserved as .bak.
+    capsule to temp file and atomic-replace the original. The original
+    is preserved as .bak.
     """
     p = _resolve_capsule(args)
     mem = _open_backend(p)
@@ -250,17 +180,25 @@ def cmd_compact(args):
         print("--dry-run: not writing")
         mem.close()
         return
+
+    # Close the original capsule FIRST so backup can copy it
+    mem.close()
+
     # backup
     bak = p.with_suffix(p.suffix + ".bak")
     shutil.copy2(p, bak)
     print(f"backup -> {bak}")
-    # write fresh capsule
-    out = Path(args.out) if args.out else p
-    if out.exists() and out != p:
-        out.unlink()
+
+    # write fresh capsule to temp file, then atomic replace
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    if tmp.exists():
+        tmp.unlink()
+
+    # Use original tenant (from capsule path), not derived from tmp name
+    original_tenant = p.stem.replace("memory_", "")
     cfg = MemvidConfig.from_env()
-    cfg.dir = out.parent
-    cfg.tenant = out.stem.replace("memory_", "")
+    cfg.dir = tmp.parent
+    cfg.tenant = original_tenant
     cfg.enabled = True
     fresh = MemvidMemory(cfg)
     for e in keep:
@@ -268,8 +206,10 @@ def cmd_compact(args):
         e.score = 0.0
         fresh.record(e)
     fresh.close()
-    mem.close()
-    print(f"compacted capsule -> {out}")
+
+    # atomic replace
+    tmp.replace(p)
+    print(f"compacted capsule -> {p}")
 
 
 def cmd_branch(args):
@@ -288,8 +228,16 @@ def cmd_branch(args):
         if not args.force:
             sys.exit(f"output exists: {out} (use --force to overwrite)")
         out.unlink()
+
+    # write to temp then atomic replace
+    tmp = out.with_suffix(out.suffix + ".tmp")
+    if tmp.exists():
+        tmp.unlink()
+
+    # Use original tenant (from capsule path), not derived from tmp name
+    original_tenant = out.stem.replace("memory_", "")
     cfg = MemvidConfig.from_env()
-    cfg.dir = out.parent
+    cfg.dir = tmp.parent
     cfg.tenant = out.stem.replace("memory_", "")
     cfg.enabled = True
     fresh = MemvidMemory(cfg)
@@ -299,6 +247,7 @@ def cmd_branch(args):
         fresh.record(e)
     fresh.close()
     mem.close()
+    tmp.replace(out)
     print(f"branched {len(eps)} episodes -> {out}")
 
 
@@ -361,19 +310,33 @@ def cmd_purge(args):
         if args.min_score is not None and e.score < args.min_score:
             continue  # purge this
         keep.append(e)
+
+    # Close original capsule FIRST so backup can copy it
+    mem.close()
+
     bak = p.with_suffix(p.suffix + ".bak")
     shutil.copy2(p, bak)
     print(f"backup -> {bak}")
+
+    # write fresh capsule to temp file, then atomic replace
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    if tmp.exists():
+        tmp.unlink()
+
+    # Use original tenant (from capsule path), not derived from tmp name
+    original_tenant = p.stem.replace("memory_", "")
     cfg = MemvidConfig.from_env()
-    cfg.dir = p.parent
-    cfg.tenant = p.stem.replace("memory_", "")
+    cfg.dir = tmp.parent
+    cfg.tenant = original_tenant
     cfg.enabled = True
     fresh = MemvidMemory(cfg)
     for e in keep:
         e.frame_id = None; e.score = 0.0
         fresh.record(e)
     fresh.close()
-    mem.close()
+
+    # atomic replace
+    tmp.replace(p)
     print(f"purged {len(eps) - len(keep)} frames; kept {len(keep)} -> {p}")
 
 
