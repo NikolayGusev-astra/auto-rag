@@ -45,37 +45,23 @@ class ZVecSearcher:
             try:
                 self._coll = zvec.open(self.coll_path)
             except Exception as e:
-                from rag_config import ZVEC_COLLECTION as coll_name
-                from zvec import CollectionSchema, FieldSchema, VectorSchema, DataType
-                from zvec import FtsIndexParam, HnswIndexParam, InvertIndexParam, CollectionOption, MetricType
-                import shutil
-                shutil.rmtree(self.coll_path, ignore_errors=True)
-                coll_name_clean = os.path.basename(self.coll_path)
-                schema = CollectionSchema(
-                    name=coll_name_clean or "wiki",
-                    fields=[
-                        FieldSchema("source", DataType.STRING, nullable=False, index_param=InvertIndexParam()),
-                        FieldSchema("heading", DataType.STRING, nullable=True),
-                        FieldSchema("category", DataType.STRING, nullable=False, index_param=InvertIndexParam()),
-                        FieldSchema("node", DataType.STRING, nullable=False),
-                        FieldSchema("content_hash", DataType.STRING, nullable=True),
-                        FieldSchema("char_count", DataType.INT32, nullable=True),
-                        FieldSchema("title", DataType.STRING, nullable=True),
-                        FieldSchema("tags", DataType.STRING, nullable=True),
-                        FieldSchema("content", DataType.STRING, nullable=False,
-                                    index_param=FtsIndexParam(tokenizer_name="standard", filters=["lowercase"])),
-                    ],
-                    vectors=[
-                        VectorSchema("embedding", DataType.VECTOR_FP32, dimension=EMBEDDING_DIM,
-                                    index_param=HnswIndexParam(metric_type=MetricType.COSINE)),
-                    ],
-                )
-                self._coll = zvec.create_and_open(
-                    self.coll_path, schema,
-                    CollectionOption(read_only=False, enable_mmap=True),
-                )
+                # C4 fix: never destroy the collection on a read-path open
+                # failure (lock contention, SDK version skew, OOM). Returning
+                # None lets the caller degrade to empty results instead of
+                # wiping the entire knowledge base.
+                logger.error(
+                    "zvec open failed for %s (collection preserved): %s",
+                    self.coll_path, e)
+                self._coll = None
+                return None
         else:
-            self._coll = zvec.open(self.coll_path)
+            try:
+                self._coll = zvec.open(self.coll_path)
+            except Exception as e:
+                logger.error("zvec open failed for missing %s: %s",
+                             self.coll_path, e)
+                self._coll = None
+                return None
         return self._coll
 
     def _get_embedding(self, text: str) -> list[float]:
