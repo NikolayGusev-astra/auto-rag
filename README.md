@@ -1,9 +1,92 @@
 # auto-rag
 
-Local-first RAG for technical knowledge: **ZVec** or **ChromaDB**, LM Studio
-embeddings, MCP sources, guarded web/federation fallback and optional episodic
-memory. It runs locally by default and degrades safely when optional services
-are unavailable.
+**Ask questions about your own technical documentation in plain language, and get
+answers with sources — entirely on your own machine, with no cloud service
+involved.**
+
+## What is this?
+
+You have years of accumulated technical knowledge: a wiki, runbooks, config files,
+scattered notes, tickets. Two things are true about it:
+
+1. **`grep` can't find anything.** It matches letters, not meaning. You have to
+   already know the exact word someone used three years ago.
+2. **ChatGPT can't help.** It has never seen your internal infrastructure, so it
+   confidently invents answers — and sending your documentation to a cloud
+   provider may not be an option anyway.
+
+`auto-rag` fixes both. You point it at your files. It reads them, then answers
+questions like *"how do I add a WireGuard peer to our VPN?"* using **your**
+documents, quoting where each answer came from. Everything runs locally: the
+language models live in [LM Studio](https://lmstudio.ai) on your own hardware, and
+nothing leaves the machine unless you explicitly connect a remote source.
+
+The general technique is called **RAG** (Retrieval-Augmented Generation): find the
+relevant passages in your own documents first, then let a language model answer
+*from those passages* instead of from memory. That is what stops it making things
+up.
+
+## Is this for me?
+
+**Yes, if:**
+
+- You have a real corpus of your own docs — a wiki, runbooks, configs — not a
+  handful of notes.
+- Your data can't go to the cloud (NDA, compliance, regulated industry, or plain
+  preference).
+- You want answers with citations you can verify, not confident guesses.
+- You have a machine that can run a 7B model at a tolerable speed.
+
+**Probably not, if:**
+
+- You have twenty notes. Just read them.
+- Your CPU predates 2014 — the fast backend (ZVec) needs AVX2. There is a
+  ChromaDB fallback, but it's slower.
+- You don't want to run and maintain a local model server.
+
+## Why not just use...?
+
+| Instead of this | Why it doesn't solve the problem |
+|---|---|
+| `grep` / IDE search | Matches exact strings. "How do we do releases?" finds nothing. |
+| ChatGPT / Claude | Has never seen your private docs, and your docs would have to leave your network. |
+| A hosted RAG service | Same problem: your documentation lands on someone else's servers. |
+| A weekend RAG script | Getting retrieval to *work* is easy. Knowing whether it still works after you change a model is the hard part — see below. |
+
+## What makes this different from the other 500 RAG repos
+
+Most RAG projects stop at "chop up documents, embed them, search". This one treats
+retrieval quality as something you **measure**, not something you hope for:
+
+- **Golden-set evaluation** (`eval_golden.py`) — a fixed set of questions with
+  known-good answers. Retrieval accuracy is a number, not a vibe.
+- **Canary deployment** (`canary_deploy.py`) — swap the embedding model, and the
+  new version is scored against the old one on that golden set. Accuracy drops
+  more than 5%? Automatic rollback.
+- **Judge calibration** (`calibrate_judge.py`) — the LLM that grades answer quality
+  is itself checked against human-verified ratings, so you aren't just measuring
+  your measurement.
+- **Fails soft, everywhere** — no memory SDK, no AVX2, no Jira token, no web
+  search? Each part quietly drops out and the rest keeps working.
+
+## How it works
+
+1. **Index.** It walks your files (`.md`, `.txt`, `.py`, `.yaml`, `.conf`, `.sh`,
+   and more), splits them at paragraph boundaries, and converts each piece into a
+   vector — a list of numbers where "close together" means "similar in meaning".
+2. **Route.** A keyword classifier guesses the topic (`linux-admin`, `networking`,
+   `devops`, …) so the search happens in the right section instead of across
+   everything.
+3. **Remember.** An optional episodic cache checks whether a *semantically*
+   similar question was already answered. "How do I set up the VPN?" and
+   "wireguard tunnel configuration" count as the same question, so the answer
+   comes back instantly.
+4. **Search.** Otherwise it searches your local index — and, if configured,
+   Confluence, Jira, Context7 or the web as fallbacks.
+5. **Verify.** A local model judges whether the retrieved passages are actually
+   relevant before you see them.
+6. **Learn.** Every routing decision is logged, so `dcd_learner.py` can find where
+   the router misfired and retune it.
 
 ## Start Here
 
@@ -109,6 +192,9 @@ async_rag_search(query)
   the normal RAG pipeline remains available.
 - **Verification**: use `hermes_memory_cli.py stats` and `search` against the
   capsule; a cache hit returns `from_memory=true` and skips the core pipeline.
+
+### Pipeline Stages
+
 | Stage | Description |
 |-------|-------------|
 | **DCD Router** | Keyword-based domain/collection classifier (15+ domains, anti-keywords for precision) |
@@ -171,7 +257,7 @@ python3 rag_core/hermes_memory_cli.py --capsule \
   ./memvid_capsules/memory_hermes_default.mv2 stats
 python3 rag_core/hermes_memory_cli.py --capsule \
   ./memvid_capsules/memory_hermes_default.mv2 search "known query"
-
+```
 
 ## Evaluation (ZVec)
 
