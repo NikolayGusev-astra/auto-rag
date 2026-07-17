@@ -673,7 +673,7 @@ async def _async_rag_search_impl(
         return result
 
     # ── Federation fallback: опрос других RAG-инстансов ──
-    if not chunks and os.getenv("RAG_FEDERATED_ENABLED", "false").lower() == "true":
+    if federate and not chunks and os.getenv("RAG_FEDERATED_ENABLED", "false").lower() == "true":
         with trace.stage("federation"):
             try:
                 from rag_federated import query_federated_servers
@@ -732,6 +732,7 @@ async def _async_rag_search_impl(
 async def async_rag_search(
     query: str, dcd_result: dict,
     trace: RagTrace | None = None,
+    federate: bool = True,
 ) -> dict:
     """Public RAG entrypoint with optional memvid episodic memory.
 

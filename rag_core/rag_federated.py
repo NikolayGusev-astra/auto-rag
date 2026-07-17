@@ -35,6 +35,9 @@ class FederatedServerConfig:
     use_ssh: bool = True
     endpoint: str = "/rag/search"
     timeout: int = 30
+    # Audit S6: use HTTPS for the direct (non-SSH) mode so the API key is
+    # not sent in cleartext. SSH-tunnelled and localhost paths stay http.
+    use_tls: bool = True
     
     # Runtime fields
     _tunnel_proc: Optional[subprocess.Popen] = field(default=None, init=False)
@@ -205,11 +208,16 @@ class FederatedRAGClient:
         return config._session
     
     def _build_url(self, config: FederatedServerConfig) -> str:
-        """Построить URL для запроса."""
+        """Построить URL для запроса.
+
+        SSH tunnel and localhost paths are already protected, so http:// is
+        fine there. For the direct (non-SSH) mode S6 requires HTTPS so the
+        API key is not sent in cleartext.
+        """
         if config.use_ssh and config.local_port:
             return f"http://localhost:{config.local_port}{config.endpoint}"
-        else:
-            return f"http://{config.host}:{config.remote_port}{config.endpoint}"
+        scheme = "https" if config.use_tls else "http"
+        return f"{scheme}://{config.host}:{config.remote_port}{config.endpoint}"
     
     async def query(self, name: str, query: str, max_results: int = 5) -> list[dict]:
         """Запрос к одному удалённому RAG серверу с circuit breaker."""

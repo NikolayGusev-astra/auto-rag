@@ -8,6 +8,7 @@ Auth: X-API-Key header, value from RAG_FEDERATED_API_KEY env var.
 """
 import os
 import sys
+import hmac
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query, Header
@@ -21,6 +22,8 @@ from rag_async import async_rag_search
 app = FastAPI(title="Federated RAG Endpoint", version="1.1.0")
 
 REQUIRE_AUTH = os.getenv("RAG_FEDERATED_API_KEY", "") != ""
+# Audit S9: cap forwarding depth so two nodes cannot ping-pong forever.
+MAX_FEDERATION_HOPS = int(os.getenv("RAG_FEDERATED_MAX_HOPS", "2"))
 
 
 def get_bind_host() -> str:
@@ -34,7 +37,8 @@ def _check_auth(x_api_key: Optional[str]) -> None:
     if not REQUIRE_AUTH:
         return
     expected = os.getenv("RAG_FEDERATED_API_KEY", "")
-    if not x_api_key or x_api_key != expected:
+    # S6: constant-time compare to avoid timing side-channel on the key.
+    if not x_api_key or not hmac.compare_digest(x_api_key, expected):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
@@ -61,6 +65,9 @@ def _empty_result_hint(dcd_result: dict, query: str) -> dict:
 class SearchRequest(BaseModel):
     query: str
     max_results: int = 5
+    # Audit S9: remaining federation hops. Callers that received a query
+    # with hops=0 must not forward it to other nodes (loop protection).
+    hops: int = MAX_FEDERATION_HOPS
 
 
 class SearchResponse(BaseModel):
@@ -143,7 +150,12 @@ async def search(
     _check_auth(x_api_key)
     try:
         dcd_result = classify(request.query)
-        result = await async_rag_search(request.query, dcd_result)
+        # S9: stop forwarding when hops exhausted.
+        allow_federate = request.hops > 0
+        result = await async_rag_search(
+            request.query, dcd_result,
+            federate=allow_federate,
+        )
         chunks = result.get("chunks", [])[: request.max_results]
 
         empty_hint = {}

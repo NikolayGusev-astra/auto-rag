@@ -231,7 +231,16 @@ class MCPClient:
 
     def _query_stdio(self, name: str, cfg: dict, query: str, max_results: int) -> list[dict]:
         cmd = [cfg["command"]] + cfg.get("args", [])
-        env = {**os.environ, **cfg.get("env", {}), "PYTHONUNBUFFERED": "1"}
+        # Audit S8: do NOT inherit the entire parent environment (it would
+        # leak every secret — API keys, tokens — into the MCP subprocess).
+        # Pass only a minimal safe baseline plus the server's own env.
+        _SAFE_ENV_KEYS = (
+            "PATH", "HOME", "USER", "USERNAME", "LOGNAME", "LANG", "LC_ALL",
+            "SYSTEMROOT", "SYSTEMDRIVE", "TEMP", "TMP", "COMSPEC", "SHELL",
+            "PYTHONPATH", "LD_LIBRARY_PATH", "TERM",
+        )
+        base_env = {k: os.environ[k] for k in _SAFE_ENV_KEYS if k in os.environ}
+        env = {**base_env, **cfg.get("env", {}), "PYTHONUNBUFFERED": "1"}
         try:
             proc = subprocess.Popen(
                 cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
