@@ -473,24 +473,27 @@ class MCPClient:
         headers = cfg.get("headers", {})
         rest_template = cfg.get("rest_query", "/rest/api/2/search?jql=text~\"{query}\"+ORDER+BY+created+DESC&maxResults={max}")
         # Поддержка {query_and3} — первые 3 значимых слова с AND вместо фразы
-        # Escape double quotes inside words to prevent JQL/CQL injection.
+        # Escape backslash BEFORE double quotes to prevent JQL injection:
+        # a trailing "\" would otherwise eat the closing quote (S4).
         def _esc(w: str) -> str:
-            return w.replace('"', '\\"')
+            return w.replace("\\", "\\\\").replace('"', '\\"')
 
         query_and3 = query_first3 = query
         if "{query_and3}" in rest_template:
             words = [w for w in query.split() if len(w) > 2][:3]
             if words:
-                # JQL требует AND с пробелами, encode как %20AND%20
-                query_and3 = "%20AND%20".join(f'text~"{_esc(w)}"' for w in words)
+                # JQL requires AND with spaces; encode as %20AND%20, then
+                # URL-encode the whole clause so it is safe inside the URL (S5).
+                clause = " AND ".join(f'text~"{_esc(w)}"' for w in words)
+                query_and3 = quote_plus(clause)
         elif "{query_first3}" in rest_template:
             words = [w for w in query.split() if len(w) > 2][:3]
             query_first3 = " ".join(words) if words else query[:50]
         else:
             query_first3 = query
         # JQL-инъекция: {query} идёт внутрь text~"{query}" — нужен
-        # JQL double-quote escape (_esc) ДО URL-энкодинга, иначе
-        # кавычки в запросе ломают JQL (security MEDIUM).
+        # JQL double-quote + backslash escape (_esc) ДО URL-энкодинга, иначе
+        # кавычки/бэкслеши в запросе ломают JQL (security MEDIUM, S4).
         query_safe = quote_plus(_esc(query))
         url = base_url + rest_template.format(
             query=query_safe,
