@@ -564,6 +564,7 @@ def _is_noise_chunk(text: str) -> bool:
 async def _async_rag_search_impl(
     query: str, dcd_result: dict,
     trace: RagTrace | None = None,
+    federate: bool = True,
 ) -> dict:
     domain = dcd_result.get('domain', '')
     collection = dcd_result.get('collection', '')
@@ -747,17 +748,27 @@ async def async_rag_search(
         collection = dcd_result.get('collection', '')
         trace = RagTrace(query, domain, collection)
 
-    # 1) recall (short-circuit)
+    # 1) recall (short-circuit) — store result, don't early-return
+    result = None
     if _MEMVID_AVAILABLE:
         mem = _get_memory()
         if mem is not None and mem.active:
             try:
                 priors = mem.recall(query, domain=trace.domain, trace=trace)
                 if priors and priors[0].score >= mem.recall_threshold:
-                    return {
-                        "answer": priors[0].answer,
-                        "sources": priors[0].sources,
-                        "trace": f"memvid.recall(short-circuit, score={priors[0].score:.3f})",
+                    ep = priors[0]
+                    # C6 fix: include synthetic chunk so eval/canary/CLI see
+                    # consistent structure with normal pipeline (has 'chunks')
+                    chunks = [{
+                        "text": ep.answer or "",
+                        "source": ep.sources[0].get("source", "") if ep.sources else "memory",
+                        "score": ep.score,
+                    }]
+                    result = {
+                        "answer": ep.answer,
+                        "sources": ep.sources,
+                        "chunks": chunks,
+                        "trace": f"memvid.recall(short-circuit, score={ep.score:.3f})",
                         "from_memory": True,
                         "_trace": trace.json(),
                     }
@@ -774,12 +785,12 @@ async def async_rag_search(
                 {"domain": sq["domain"], "collection": sq["collection"],
                  "confidence": dcd_result.get("confidence", 0), "fallback": False},
                 trace=RagTrace(sq["query"], sq["domain"], sq["collection"]),
+                federate=federate,
             )
             for sq in subqueries
         ])
-        # Smart fusion: все чанки из всех подзапросов + sources_used
         fused_chunks = []
-        sources_used: dict[str, list] = {}
+        sources_used = {}
         for r in results:
             for c in r.get("chunks", []):
                 fused_chunks.append(c)
@@ -797,8 +808,13 @@ async def async_rag_search(
             _cache_set(_cache_key(query, dcd_result.get("domain", "")), fused, dcd=dcd_result)
             return fused
 
+    # If memory hit, return it
+    if result is not None:
+        return result
+
     # 2) core pipeline
-    result = await _async_rag_search_impl(query, dcd_result, trace=trace)
+    result = await _async_rag_search_impl(query, dcd_result, trace=trace,
+                                          federate=federate)
 
     # 3) record (skip if this was a memory hit)
     if not result.get("from_memory"):
