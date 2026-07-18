@@ -4,6 +4,7 @@ CRAG Search — Autolycus RAG v2.
 Architecture: DCD classify → ZVec search → evaluate → MCP fallback → SearXNG fallback
 """
 import argparse, json, logging, os, sys, time, hashlib, re
+import requests
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from rag_config import (
     EMBEDDING_URL, EMBEDDING_MODEL, EMBEDDING_DIM,
