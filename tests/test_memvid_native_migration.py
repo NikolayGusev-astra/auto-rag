@@ -7,7 +7,7 @@ import pytest
 
 pytest.importorskip("memvid_sdk")
 
-from memvid_memory import Episode, MemvidMemory, MemvidConfig, _Embedder
+from rag_core.memvid_memory import Episode, MemvidMemory, MemvidConfig, _Embedder
 
 
 def test_legacy_sidecar_migrates_to_native_mv2(monkeypatch):

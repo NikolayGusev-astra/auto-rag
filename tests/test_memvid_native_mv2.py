@@ -11,7 +11,7 @@ import pytest
 
 pytest.importorskip("memvid_sdk")
 
-from memvid_memory import Episode, MemvidMemory
+from rag_core.memvid_memory import Episode, MemvidMemory
 
 
 @pytest.fixture

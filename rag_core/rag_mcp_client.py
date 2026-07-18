@@ -62,6 +62,30 @@ class MCPClient:
                 time.sleep(base_delay * (2 ** i))
         raise last
 
+    @staticmethod
+    def format_query(template: str, query: str, max_results: int) -> str:
+        """Legacy-compatible query formatter used by deprecated tests."""
+        words = query.split()
+        query_first3 = " ".join(words[:3]) if len(words) >= 3 else " ".join(words[:2]) if len(words) >= 2 else query
+
+        def _esc(w: str) -> str:
+            return w.replace("\\", "\\\\").replace('"', '\\"')
+
+        non_rus = [w for w in words if not any('\u0400' <= c <= '\u04FF' for c in w)]
+        if len(non_rus) >= 2:
+            query_and3 = " AND ".join(f'text~"{_esc(w)}"' for w in non_rus[:5])
+        elif len(words) >= 2:
+            query_and3 = " AND ".join(f'text~"{_esc(w)}"' for w in words[:5])
+        else:
+            query_and3 = f'text~"{_esc(query)}"'
+
+        result = template.replace("{query_first3}", query_first3)
+        result = result.replace("{query_and3}", query_and3)
+        result = result.replace("{query}", query)
+        result = result.replace("{max}", str(max_results))
+        result = result.replace("__QUOTE__", '"')
+        return result
+
     def query(self, server_name: str, config: dict, query: str, max_results: int = 3) -> list[dict]:
         server_type = config.get("type", "stdio")
         try:
@@ -217,7 +241,13 @@ class MCPClient:
             sess.trust_env = False
             r = sess.post(url, json=init, headers=headers, timeout=self.timeout, stream=True)
             r.raise_for_status()
-            sid = r.headers.get("mcp-session-id", "")
+            sid = r.headers.get("mcp-session-id", "") or r.headers.get("Mcp-Session-Id", "")
+            if not sid:
+                try:
+                    body = r.json()
+                    sid = body.get("sessionId", "") or body.get("result", {}).get("sessionId", "")
+                except Exception:
+                    pass
             r.close()
             return sid, bool(sid)
         except Exception as e:

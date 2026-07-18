@@ -2,7 +2,7 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 from rag_federated import FederatedRAGClient, _ServerHealth
-import federated_endpoint as endpoint
+from rag_core import federated_endpoint as endpoint
 
 
 class TestCircuitBreaker:

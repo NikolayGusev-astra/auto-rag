@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 
 # --- S1: federated_endpoint bind host ---
-import federated_endpoint as fe
+from rag_core import federated_endpoint as fe
 
 
 def test_bind_host_localhost_without_key(monkeypatch):

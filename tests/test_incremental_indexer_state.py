@@ -9,7 +9,7 @@ from unittest import mock
 
 import pytest
 
-import indexer
+import rag_core.indexer as indexer
 import zvec_incremental_indexer
 
 

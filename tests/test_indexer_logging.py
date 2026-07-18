@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 
-import indexer
+import rag_core.indexer as indexer
 
 
 def test_load_state_logs_on_corrupt(tmp_path, caplog):
