@@ -10,6 +10,7 @@ from unittest import mock
 import pytest
 
 import indexer
+import zvec_incremental_indexer
 
 
 class _Stats:
@@ -97,5 +98,34 @@ def test_incremental_does_not_mark_failed_insert_done(tmp_path, monkeypatch):
     monkeypatch.setattr(indexer.os.path, "exists", lambda p: True if p == indexer.COLL_PATH else Path(p).exists())
 
     indexer.index(incremental=True, clear=False)
+
+    assert "retry.md" not in saved
+
+
+def test_zvec_incremental_does_not_mark_failed_insert_done(tmp_path, monkeypatch):
+    """The ZVec-specific incremental indexer also retries a failed batch."""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    pending = _write_doc(docs, "retry.md", "# Retry\ncontent that must retry")
+
+    coll = _FakeCollection(fail_insert=True)
+    saved = {}
+    module = zvec_incremental_indexer
+    monkeypatch.setattr(module, "WIKI_PATHS", [str(docs)])
+    monkeypatch.setattr(module, "COLL_PATH", str(tmp_path / "collection"))
+    monkeypatch.setattr(module, "collect_files", lambda: [pending])
+    monkeypatch.setattr(module, "load_state", lambda: {})
+    monkeypatch.setattr(module, "save_state", lambda s: saved.update(s))
+    monkeypatch.setattr(module, "_embed_batch", lambda texts: [[0.1] * 1024 for _ in texts])
+
+    fake_zvec = mock.MagicMock()
+    fake_zvec.init.return_value = None
+    fake_zvec.open.return_value = coll
+    monkeypatch.setitem(__import__("sys").modules, "zvec", fake_zvec)
+    monkeypatch.setattr(
+        module.os.path, "exists", lambda p: True if p == module.COLL_PATH else Path(p).exists()
+    )
+
+    module.index(incremental=True, clear=False)
 
     assert "retry.md" not in saved
