@@ -17,7 +17,7 @@ pytest.importorskip("memvid_sdk")
 
 os.environ["RAG_MEMVID_ENABLED"] = "true"
 os.environ.setdefault("RAG_MEMVID_EMBED_URL", "http://localhost:1234/v1/embeddings")
-os.environ.setdefault("RAG_MEMVID_EMBED_MODEL", "text-embedding-baai-bge-m3-568m")
+os.environ.setdefault("RAG_MEMVID_EMBED_MODEL", "text-embedding-multilingual-e5-large-instruct")
 
 sys.path.insert(0, os.path.dirname(__file__) + "/..")
 

@@ -28,9 +28,9 @@ pytest.importorskip("memvid_sdk")
 # Enable memvid for the whole module (real backend).
 os.environ["RAG_MEMVID_ENABLED"] = "true"
 os.environ.setdefault("RAG_EMBEDDING_URL", "http://localhost:1234/v1/embeddings")
-os.environ.setdefault("RAG_EMBEDDING_MODEL", "text-embedding-baai-bge-m3-568m")
+os.environ.setdefault("RAG_EMBEDDING_MODEL", "text-embedding-multilingual-e5-large-instruct")
 os.environ.setdefault("RAG_MEMVID_EMBED_URL", "http://localhost:1234/v1/embeddings")
-os.environ.setdefault("RAG_MEMVID_EMBED_MODEL", "text-embedding-baai-bge-m3-568m")
+os.environ.setdefault("RAG_MEMVID_EMBED_MODEL", "text-embedding-multilingual-e5-large-instruct")
 # Speed: disable slow live sources so the test is about memvid, not the net.
 os.environ["RAG_SEARXNG_ENABLED"] = "false"
 os.environ["RAG_WEB_SEARCH_ENABLED"] = "false"

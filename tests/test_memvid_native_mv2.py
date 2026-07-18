@@ -21,7 +21,7 @@ def native_tenant(monkeypatch):
     monkeypatch.setenv("RAG_MEMVID_MODE", "both")
     monkeypatch.setenv("RAG_MEMVID_DIR", directory)
     monkeypatch.setenv("RAG_MEMVID_EMBED_URL", "http://127.0.0.1:1234/v1/embeddings")
-    monkeypatch.setenv("RAG_MEMVID_EMBED_MODEL", "bge-m3")
+    monkeypatch.setenv("RAG_MEMVID_EMBED_MODEL", "text-embedding-multilingual-e5-large-instruct")
     MemvidMemory.reset()
     yield directory
     MemvidMemory.reset()
