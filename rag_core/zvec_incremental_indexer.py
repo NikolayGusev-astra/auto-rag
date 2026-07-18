@@ -319,6 +319,9 @@ def index(incremental: bool = False, clear: bool = False):
 
             docs = []
             for j, c in enumerate(chunks_batch):
+                if not embs or j >= len(embs) or embs[j] is None:
+                    failed_sources.add(c["source"])
+                    continue
                 d = Doc(
                     id=_safe_id(c['source'], c['content']),
                     score=1.0,
@@ -339,8 +342,9 @@ def index(incremental: bool = False, clear: bool = False):
                 docs.append(d)
 
             try:
-                coll.insert(docs)
-                total_docs += len(docs)
+                if docs:
+                    coll.insert(docs)
+                    total_docs += len(docs)
             except Exception as e:
                 failed_sources.update(c["source"] for c in chunks_batch)
                 print(f"  ⚠ Insert error (will retry affected files): {e}")

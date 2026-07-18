@@ -31,8 +31,8 @@ ZVEC_COLLECTION = os.environ.get("ZVEC_COLLECTION", "wiki")
 app_state = {"zvec": None, "started": None, "port": 8678}
 
 
-def _embed_via_lmstudio(text: str) -> list[float]:
-    """LM Studio embedding API — same as rag_async._embed."""
+def _embed_via_lmstudio(text: str) -> list[float] | None:
+    """LM Studio embedding API. Returns None on failure, never fake zeros."""
     payload = json.dumps({
         "model": EMBEDDING_MODEL,
         "input": [text[:2000]],
@@ -47,7 +47,7 @@ def _embed_via_lmstudio(text: str) -> list[float]:
         data = json.loads(resp.read().decode())
         return data["data"][0]["embedding"]
     except Exception:
-        return [0.0] * EMBEDDING_DIM
+        return None
 
 
 def _load_zvec():
@@ -119,6 +119,11 @@ async def search(
     from zvec import Query as ZQ
 
     emb = _embed_via_lmstudio(q)
+    if emb is None:
+        return JSONResponse(
+            {"error": "embedding unavailable", "chunks": [], "max_score": 0},
+            status_code=503,
+        )
     filter_expr = ZVEC_CATEGORY_FILTERS.get(category, ZVEC_CATEGORY_FILTERS["wiki"])
     try:
         doclist = coll.query(

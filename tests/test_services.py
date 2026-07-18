@@ -136,11 +136,16 @@ def test_llm_service(mock_check):
 
 
 def test_embedding_service():
-    """EmbeddingService basic test — doesn't require LM Studio."""
+    """EmbeddingService returns a real vector or explicit None, never zeros."""
     from embedding_service import EmbeddingService
     svc = EmbeddingService.get()
     e = svc.embed("test")
-    assert len(e) == 1024  # dimension correct
+    if e is not None:
+        assert len(e) == 1024
+        assert any(v != 0.0 for v in e)
+    else:
+        # Failure is explicit: callers can skip search/indexing safely.
+        assert e is None
 
 
 def test_reranker_service():

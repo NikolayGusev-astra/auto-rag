@@ -340,10 +340,13 @@ def index(incremental=False, clear=False, chunk_mode="recursive"):
                     embs.append(e)
                 failed = sum(1 for e in embs if e is None)
                 if failed:
-                    print(f"  ⚠ {failed}/{len(texts_batch)} single failed, zeros used")
+                    print(f"  ⚠ {failed}/{len(texts_batch)} single embeddings failed; affected files will retry")
 
             docs = []
             for j, c in enumerate(chunks_batch):
+                if embs[j] is None:
+                    failed_sources.add(c["source"])
+                    continue
                 d = Doc(
                     id=_safe_id(c['source'], c['content']),
                     score=1.0,
@@ -364,8 +367,9 @@ def index(incremental=False, clear=False, chunk_mode="recursive"):
                 docs.append(d)
 
             try:
-                coll.insert(docs)
-                total_docs += len(docs)
+                if docs:
+                    coll.insert(docs)
+                    total_docs += len(docs)
             except Exception as e:
                 # Do not mark these files done in state. They must be retried
                 # on the next incremental run instead of silently disappearing.

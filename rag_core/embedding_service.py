@@ -47,7 +47,7 @@ class EmbeddingService:
     Backend priority:
       1. LM Studio HTTP (если доступен)
       2. sentence-transformers local (CPU/GPU fallback)
-      3. Zero vectors (последний рубеж)
+      3. None (явная ошибка: caller пропускает индексирование/поиск)
     """
     _instance: Optional["EmbeddingService"] = None
     _lock = threading.Lock()
@@ -128,7 +128,7 @@ class EmbeddingService:
             )
             self._cache_conn.commit()
 
-    def embed_batch(self, texts: list[str]) -> list[list[float]]:
+    def embed_batch(self, texts: list[str]) -> list[Optional[list[float]]]:
         """Embed batch of texts with dedup + caching.
 
         Returns: list of embeddings (same order as input).
@@ -137,7 +137,7 @@ class EmbeddingService:
             return []
 
         unique_texts = list(dict.fromkeys(texts))
-        text_to_emb: dict[str, list[float]] = {}
+        text_to_emb: dict[str, Optional[list[float]]] = {}
 
         to_embed: list[str] = []
         for t in unique_texts:
@@ -151,11 +151,12 @@ class EmbeddingService:
             new_embs = self._embed_uncached(to_embed)
             for t, emb in zip(to_embed, new_embs):
                 text_to_emb[t] = emb
-                self._cache_put(t, emb)
+                if emb is not None:
+                    self._cache_put(t, emb)
 
         return [text_to_emb[t] for t in texts]
 
-    def _embed_uncached(self, texts: list[str]) -> list[list[float]]:
+    def _embed_uncached(self, texts: list[str]) -> list[Optional[list[float]]]:
         """Embed texts — LM Studio primary, sentence-transformers fallback."""
         if self.check_lm_studio():
             try:
@@ -169,8 +170,8 @@ class EmbeddingService:
             except Exception as e:
                 print(f"[embedding] sentence-transformers fallback failed: {e}")
 
-        print("[embedding] All backends failed, returning zero vectors")
-        return [[0.0] * EMBEDDING_DIM for _ in texts]
+        print("[embedding] All backends failed; returning None (no fake zero vectors)")
+        return [None] * len(texts)
 
     def _embed_via_lm_studio(self, texts: list[str]) -> list[list[float]]:
         """HTTP к LM Studio с retry."""
@@ -240,8 +241,9 @@ class EmbeddingService:
             all_embs.extend(embs.tolist())
         return all_embs
 
-    def embed(self, text: str) -> list[float]:
-        return self.embed_batch([text])[0]
+    def embed(self, text: str) -> Optional[list[float]]:
+        batch = self.embed_batch([text])
+        return batch[0] if batch else None
 
     @property
     def backend(self) -> str:
@@ -271,9 +273,9 @@ class EmbeddingService:
         }
 
 
-def get_embedding(text: str) -> list[float]:
+def get_embedding(text: str) -> Optional[list[float]]:
     return EmbeddingService.get().embed(text)
 
 
-def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
+def get_embeddings_batch(texts: list[str]) -> list[Optional[list[float]]]:
     return EmbeddingService.get().embed_batch(texts)

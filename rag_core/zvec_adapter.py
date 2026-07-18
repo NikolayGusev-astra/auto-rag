@@ -64,8 +64,8 @@ class ZVecSearcher:
                 return None
         return self._coll
 
-    def _get_embedding(self, text: str) -> list[float]:
-        """LM Studio embedding via curl subprocess (requests fails on localhost:1234)."""
+    def _get_embedding(self, text: str) -> Optional[list[float]]:
+        """LM Studio embedding via curl subprocess; None on failure."""
         import subprocess, json
         try:
             payload = json.dumps({"model": EMBEDDING_MODEL, "input": [text]})
@@ -76,13 +76,15 @@ class ZVecSearcher:
             if r.returncode == 0 and r.stdout:
                 data = json.loads(r.stdout)
                 return data["data"][0]["embedding"]
-        except Exception:
-            pass
-        return [0.0] * EMBEDDING_DIM
+        except Exception as e:
+            logger.warning("embedding failed: %s", e)
+        return None
 
     def search(self, query: str, topk: int = 5, domain: str = None) -> list[dict]:
         """Vector search with domain filter (original API, preserved)."""
         coll = self._ensure_collection()
+        if coll is None:
+            return []
         emb = self._get_embedding(query)
 
         if emb is None or sum(abs(v) for v in emb) == 0:
@@ -130,6 +132,8 @@ class ZVecSearcher:
             List of dicts with score, content, metadata.
         """
         coll = self._ensure_collection()
+        if coll is None:
+            return []
         emb = self._get_embedding(query)
 
         if emb is None or sum(abs(v) for v in emb) == 0:
