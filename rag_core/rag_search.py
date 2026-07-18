@@ -103,7 +103,6 @@ def searxng_search(query: str, max_results: int = 5) -> list[dict]:
                     if text: results[-1]["content"] = text[:WEB_SEARCH_MAX_CHARS]
                 except Exception:
                     pass
-            return results
         return results
     except Exception as e:
         logger.warning(f"SearXNG error: {e}")
