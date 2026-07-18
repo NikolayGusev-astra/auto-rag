@@ -363,7 +363,7 @@ def _get_zvec_collection():
 
 # ── Blocking helpers (thread pool) ───────────────────────────────
 def _blocking_zvec(query: str) -> dict:
-    """ZVec search — tries FastAPI server first, falls back to direct ZVec."""
+    """ZVec search — prefers FastAPI server, falls back to direct ZVec."""
     # Try FastAPI server (persistent, no init overhead)
     try:
         import urllib.request
@@ -459,6 +459,16 @@ def _blocking_web(query: str, domain: str = "", collection: str = "") -> list[di
 
 
 # ── LLM Verify (fast) ────────────────────────────────────────────
+_LLM_VERIFY_CACHE: dict[str, tuple[float, float]] = {}
+_LLM_VERIFY_CACHE_MAX = 256
+_LLM_VERIFY_CACHE_TTL = 120.0
+
+
+def _llm_verify_cache_key(query: str, chunks: list[dict]) -> str:
+    texts = "||".join((c.get("text") or "")[:180] for c in chunks[:3])
+    return hashlib.md5(f"{query}||{texts}".encode()).hexdigest()
+
+
 def _llm_verify(query: str, chunks: list[dict]) -> float:
     """Soft verification: returns 0.0-1.0 relevance score.
     ≥ 0.3 = pass (chunks are relevant enough).
@@ -466,6 +476,14 @@ def _llm_verify(query: str, chunks: list[dict]) -> float:
     """
     if not chunks or not LLM_VERIFY_ENABLED:
         return 0.0
+    cache_key = _llm_verify_cache_key(query, chunks)
+    now = time.time()
+    cached = _LLM_VERIFY_CACHE.get(cache_key)
+    if cached:
+        score, ts = cached
+        if now - ts < _LLM_VERIFY_CACHE_TTL:
+            return score
+        _LLM_VERIFY_CACHE.pop(cache_key, None)
     import re
     top = '\n\n'.join(
         [f'[{i}] {c["text"][:500].replace(chr(10), " ")}'
@@ -476,16 +494,25 @@ def _llm_verify(query: str, chunks: list[dict]) -> float:
         f'Query: {query[:200]}\nDocuments:\n{top}'
     )
     try:
-        r = requests.post(LLM_VERIFY_URL, json={
-            'model': LLM_VERIFY_MODEL,
-            'messages': [{'role': 'user', 'content': prompt}],
-            'temperature': 0.0, 'max_tokens': 10,
-        }, timeout=LLM_VERIFY_TIMEOUT)
+        def _post():
+            return requests.post(LLM_VERIFY_URL, json={
+                'model': LLM_VERIFY_MODEL,
+                'messages': [{'role': 'user', 'content': prompt}],
+                'temperature': 0.0, 'max_tokens': 10,
+            }, timeout=LLM_VERIFY_TIMEOUT)
+        r = _post()
         answer = r.json()['choices'][0]['message']['content'].strip()
         nums = re.findall(r'0\.\d+|1\.0', answer)
-        return float(nums[0]) if nums else 0.3  # default pass on parse error
+        score = float(nums[0]) if nums else 0.3
     except Exception:
-        return 0.5  # pass on error (don't block)
+        score = 0.5
+    try:
+        _LLM_VERIFY_CACHE[cache_key] = (score, now)
+        while len(_LLM_VERIFY_CACHE) > _LLM_VERIFY_CACHE_MAX:
+            _LLM_VERIFY_CACHE.pop(next(iter(_LLM_VERIFY_CACHE)), None)
+    except Exception:
+        pass
+    return score
 
 
 # ── LLM Eval (for borderline scores) ─────────────────────────────

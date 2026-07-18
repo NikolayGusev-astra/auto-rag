@@ -1,6 +1,7 @@
 """
 MCP Client for RAG fallback chain — queries MCP servers (stdio/http/rest).
 """
+import hashlib
 import json
 import os
 import subprocess
@@ -17,26 +18,74 @@ class MCPClient:
 
     _session_cache: dict[str, dict] = {}  # server_name -> {sid, url, headers, ts}
     _lib_cache: dict[str, str] = {}       # library_name -> library_id
+    _circuit: dict[str, dict] = {}        # server_name -> {fails, last_fail, opened}
 
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
         self.last_error = None
+
+    @classmethod
+    def _circuit_open(cls, name: str) -> bool:
+        state = cls._circuit.get(name)
+        if not state:
+            return False
+        fails = state.get("fails", 0)
+        last = state.get("last_fail", 0)
+        opened = state.get("opened", 0)
+        if fails >= 3 and time.time() - opened < 60 and time.time() - last < 60:
+            return True
+        return False
+
+    @classmethod
+    def _circuit_record_success(cls, name: str) -> None:
+        cls._circuit.pop(name, None)
+
+    @classmethod
+    def _circuit_record_failure(cls, name: str) -> None:
+        now = time.time()
+        state = cls._circuit.get(name, {"fails": 0, "opened": now})
+        state["fails"] = state.get("fails", 0) + 1
+        state["last_fail"] = now
+        state["opened"] = state.get("opened") or now
+        cls._circuit[name] = state
+
+    @staticmethod
+    def _retry_request(fn, retries=2, base_delay=0.4):
+        last = None
+        for i in range(retries + 1):
+            try:
+                return fn()
+            except Exception as exc:
+                last = exc
+                if i == retries:
+                    break
+                time.sleep(base_delay * (2 ** i))
+        raise last
 
     def query(self, server_name: str, config: dict, query: str, max_results: int = 3) -> list[dict]:
         server_type = config.get("type", "stdio")
         try:
             if server_name == "context7":
                 return self._query_context7(server_name, config, query, max_results)
+            if self._circuit_open(server_name):
+                self.last_error = f"{server_name}: circuit open"
+                return []
             if server_type == "stdio":
-                return self._query_stdio(server_name, config, query, max_results)
+                result = self._query_stdio(server_name, config, query, max_results)
             elif server_type == "http":
-                return self._query_http(server_name, config, query, max_results)
+                result = self._query_http(server_name, config, query, max_results)
             elif server_type == "rest":
-                return self._query_rest(server_name, config, query, max_results)
+                result = self._query_rest(server_name, config, query, max_results)
             else:
                 self.last_error = f"Unknown MCP type: {server_type}"
                 return []
+            if result:
+                self._circuit_record_success(server_name)
+            else:
+                self._circuit_record_failure(server_name)
+            return result
         except Exception as e:
+            self._circuit_record_failure(server_name)
             self.last_error = f"{server_name}: {e}"
             return []
 
@@ -242,10 +291,16 @@ class MCPClient:
         base_env = {k: os.environ[k] for k in _SAFE_ENV_KEYS if k in os.environ}
         env = {**base_env, **cfg.get("env", {}), "PYTHONUNBUFFERED": "1"}
         try:
-            proc = subprocess.Popen(
-                cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, env=env, text=True, bufsize=1,
-            )
+            def _spawn():
+                return subprocess.Popen(
+                    cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE, env=env, text=True, bufsize=1,
+                )
+            try:
+                proc = self._retry_request(_spawn, retries=1, base_delay=0.2)
+            except Exception as e:
+                self.last_error = f"{name}: binary not found: {e}"
+                return []
         except FileNotFoundError as e:
             self.last_error = f"{name}: binary not found: {e}"
             return []
