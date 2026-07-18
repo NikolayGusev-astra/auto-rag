@@ -137,7 +137,7 @@ class MemvidConfig:
     recall_topk: int = 5
     recall_threshold: float = 0.75
     embed_url: str = "http://localhost:1234/v1/embeddings"
-    embed_model: str = "bge-m3"
+    embed_model: str = "text-embedding-multilingual-e5-large-instruct"
     embed_api_key: str = "lm-studio"
     encryption_key: Optional[str] = None
     temporal: bool = True
@@ -174,7 +174,7 @@ class MemvidConfig:
                 "RAG_MEMVID_EMBED_URL",
                 os.environ.get("RAG_EMBEDDING_URL",
                                "http://localhost:1234/v1/embeddings")),
-            embed_model=os.environ.get("RAG_MEMVID_EMBED_MODEL", "bge-m3"),
+            embed_model=os.environ.get("RAG_MEMVID_EMBED_MODEL", "text-embedding-multilingual-e5-large-instruct"),
             embed_api_key=os.environ.get(
                 "RAG_MEMVID_EMBED_API_KEY", "lm-studio"),
             encryption_key=os.environ.get("RAG_MEMVID_ENCRYPTION_KEY") or None,

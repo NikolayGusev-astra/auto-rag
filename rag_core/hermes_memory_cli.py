@@ -43,7 +43,11 @@ def _open_backend(path: Path):
     if not path.exists():
         sys.exit(f"capsule not found: {path}")
     try:
-        return memvid_sdk.create(str(path), kind="basic", enable_vec=True)
+        cfg = MemvidConfig.from_env()
+        cfg.dir = path.parent
+        cfg.tenant = path.stem.replace("memory_", "")
+        cfg.enabled = True
+        return MemvidMemory(cfg)
     except Exception as e:
         sys.exit(f"memvid open failed: {e}")
 
@@ -81,7 +85,7 @@ def _episodes(backend) -> List[Episode]:
 # commands
 # ---------------------------------------------------------------------------
 def cmd_stats(args):
-    p = _resolve_capsule(args)
+    p = _resolve_capsule(args.capsule)
     mem = _open_backend(p)
     eps = _episodes(mem._backend)
     size = p.stat().st_size
@@ -114,7 +118,7 @@ def cmd_stats(args):
 
 
 def cmd_inspect(args):
-    p = _resolve_capsule(args)
+    p = _resolve_capsule(args.capsule)
     mem = _open_backend(p)
     eps = _episodes(mem._backend)
     if args.domain:
@@ -137,7 +141,7 @@ def cmd_inspect(args):
 
 
 def cmd_search(args):
-    p = _resolve_capsule(args)
+    p = _resolve_capsule(args.capsule)
     mem = _open_backend(p)
     eps = mem.recall(args.query, top_k=args.topk, when=args.when)
     if not eps:
@@ -160,7 +164,7 @@ def cmd_compact(args):
     capsule to temp file and atomic-replace the original. The original
     is preserved as .bak.
     """
-    p = _resolve_capsule(args)
+    p = _resolve_capsule(args.capsule)
     mem = _open_backend(p)
     eps = _episodes(mem._backend)
     # dedup by (query, answer[:80]) keeping newest
@@ -211,11 +215,11 @@ def cmd_compact(args):
     tmp.replace(p)
     print(f"compacted capsule -> {p}")
 
-
 def cmd_branch(args):
     """Create a branch capsule containing only frames up to --at-frame or
-    --before. Time-travel snapshot."""
-    p = _resolve_capsule(args)
+    --before. Time-travel snapshot.
+    """
+    p = _resolve_capsule(args.capsule)
     mem = _open_backend(p)
     eps = _episodes(mem._backend)
     if args.at_frame is not None:
@@ -271,7 +275,7 @@ def cmd_rewind(args):
 
 
 def cmd_export(args):
-    p = _resolve_capsule(args)
+    p = _resolve_capsule(args.capsule)
     mem = _open_backend(p)
     eps = _episodes(mem._backend)
     out = Path(args.out)
@@ -296,7 +300,7 @@ def cmd_export(args):
 
 def cmd_purge(args):
     """Delete frames matching filter. ALWAYS backs up first."""
-    p = _resolve_capsule(args)
+    p = _resolve_capsule(args.capsule)
     if not args.yes:
         sys.exit("purge requires --yes (and is irreversible after .bak rotation)")
     mem = _open_backend(p)
