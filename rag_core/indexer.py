@@ -247,8 +247,9 @@ def index(incremental=False, clear=False, chunk_mode="recursive"):
 
     state = load_state() if incremental else {}
     to_index = []
+    deleted_sources = set()
+    changed_sources = set()
     if incremental:
-        tracked = set(state.keys())
         current = set()
         for fp in files:
             rel = os.path.relpath(fp, os.path.commonpath(WIKI_PATHS))
@@ -256,12 +257,28 @@ def index(incremental=False, clear=False, chunk_mode="recursive"):
             current.add(rel)
             if state.get(rel) != fh:
                 to_index.append(fp)
-        print(f"  📝 To index: {len(to_index)}")
+                changed_sources.add(rel)
+        deleted_sources = set(state) - current
+        print(f"  📝 To index: {len(to_index)}; deleted: {len(deleted_sources)}")
     else:
         to_index = files
         print(f"  📝 Full reindex: {len(to_index)} files")
 
+    # Incremental correctness: delete old chunks before inserting the changed
+    # version. IDs are content-derived, so without this old chunks survive edits.
+    if incremental:
+        for source in sorted(changed_sources | deleted_sources):
+            safe_source = source.replace('"', '\\"')
+            try:
+                coll.delete_by_filter(f'source = "{safe_source}"')
+            except Exception as e:
+                print(f"  ⚠ Delete old chunks for {source} failed: {e}")
+
     if not to_index:
+        if incremental and deleted_sources:
+            new_state = {k: v for k, v in state.items() if k not in deleted_sources}
+            save_state(new_state)
+            coll.flush()
         print("  ✅ Nothing to index")
         return
 
@@ -308,6 +325,7 @@ def index(incremental=False, clear=False, chunk_mode="recursive"):
     emb_errors = 0
     texts_batch = []
     chunks_batch = []
+    failed_sources = set()
 
     for i, chunk in enumerate(all_chunks):
         texts_batch.append(chunk["content"])
@@ -349,7 +367,10 @@ def index(incremental=False, clear=False, chunk_mode="recursive"):
                 coll.insert(docs)
                 total_docs += len(docs)
             except Exception as e:
-                print(f"  ⚠ Insert error: {e}")
+                # Do not mark these files done in state. They must be retried
+                # on the next incremental run instead of silently disappearing.
+                failed_sources.update(c["source"] for c in chunks_batch)
+                print(f"  ⚠ Insert error (will retry affected files): {e}")
 
             if i > 0 and (i % (BATCH_SIZE * 10) == 0 or i == len(all_chunks) - 1):
                 pct = (i + 1) * 100 // len(all_chunks)
@@ -359,16 +380,20 @@ def index(incremental=False, clear=False, chunk_mode="recursive"):
             texts_batch = []
             chunks_batch = []
 
-    # Update state
+    # Update state only for files whose every chunk inserted successfully.
     new_state = dict(state)
+    for rel in deleted_sources:
+        new_state.pop(rel, None)
     for fp in to_index:
         rel = file_to_rel.get(fp)
-        if rel:
+        if rel and rel not in failed_sources:
             new_state[rel] = file_hash(fp)
+        elif rel:
+            new_state.pop(rel, None)
     save_state(new_state)
 
     s = coll.stats
-    print(f"\n  ✅ Done: {s.doc_count} docs (embed errors: {emb_errors})")
+    print(f"\n  ✅ Done: {s.doc_count} docs (embed errors: {emb_errors}, retry files: {len(failed_sources)})")
     coll.flush()
 
 
