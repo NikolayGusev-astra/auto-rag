@@ -299,8 +299,8 @@ def _log_routing(query: str, dcd: dict, result: dict):
 _CACHE = OrderedDict()
 _CACHE_MAX = 100
 
-def _cache_key(query: str, domain: str) -> str:
-    return hashlib.md5(f"{query}|{domain}".encode()).hexdigest()
+def _cache_key(query: str, domain: str, max_results: int = 5) -> str:
+    return hashlib.md5(f"{query}|{domain}|{max_results}".encode()).hexdigest()
 
 def _cache_get(key: str) -> dict | None:
     if key in _CACHE:
@@ -600,7 +600,7 @@ async def _async_rag_search_impl(
     domain = dcd_result.get('domain', '')
     collection = dcd_result.get('collection', '')
     confidence = dcd_result.get('confidence', 0)
-    ck = _cache_key(query, domain)
+    ck = _cache_key(query, domain, max_results)
     loop = asyncio.get_event_loop()
 
     if trace is None:
@@ -709,7 +709,7 @@ async def _async_rag_search_impl(
         with trace.stage("federation"):
             try:
                 from rag_federated import query_federated_servers
-                fed_results = await query_federated_servers(query, max_results=5, domain=domain)
+                fed_results = await query_federated_servers(query, max_results=max_results, domain=domain)
             except Exception as fed_err:
                 trace.error("federation", str(fed_err))
                 fed_results = {}
@@ -830,6 +830,7 @@ async def async_rag_search(
             src = r.get("source", "?")
             sources_used.setdefault(src, []).extend(r.get("chunks", []))
         if fused_chunks:
+            fused_chunks = fused_chunks[:max_results]
             fused = {
                 "source": "compound",
                 "chunks": fused_chunks,
@@ -838,7 +839,7 @@ async def async_rag_search(
                 "_trace": trace.json(),
                 "sources_used": list(sources_used.keys()),
             }
-            _cache_set(_cache_key(query, dcd_result.get("domain", "")), fused, dcd=dcd_result)
+            _cache_set(_cache_key(query, dcd_result.get("domain", ""), max_results), fused, dcd=dcd_result)
             return fused
 
     # If memory hit, return it

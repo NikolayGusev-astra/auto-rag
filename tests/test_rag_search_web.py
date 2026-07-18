@@ -1,6 +1,6 @@
 from unittest import mock
 
-import rag_search
+import rag_core.rag_search as rag_search
 
 
 def test_web_enrichment_returns_all_search_candidates(monkeypatch):

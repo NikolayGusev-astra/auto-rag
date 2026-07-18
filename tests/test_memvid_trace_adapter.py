@@ -8,7 +8,7 @@ import pytest
 
 # conftest adds rag_core to sys.path
 from rag_core.memvid_memory import Episode
-from rag_trace import RagTrace
+from rag_core.rag_trace import RagTrace
 
 
 # ---------------------------------------------------------------------------

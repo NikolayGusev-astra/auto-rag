@@ -42,7 +42,7 @@ os.environ["RAG_FEDERATED_ENABLED"] = "false"
 os.environ["RAG_EMBEDDING_URL"] = "http://localhost:1234/v1/embeddings"
 
 from rag_core.memvid_memory import Episode, MemvidMemory
-import rag_async
+import rag_core.rag_async as rag_async
 
 
 @pytest.fixture
