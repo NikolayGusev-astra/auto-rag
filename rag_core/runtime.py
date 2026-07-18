@@ -56,7 +56,7 @@ class RagRuntime:
                 return self._zvec
             import os
             import zvec  # lazy
-            from rag_config import ZVEC_PATH, ZVEC_COLLECTION
+            from rag_core.rag_config import ZVEC_PATH, ZVEC_COLLECTION
             zpath = os.path.join(ZVEC_PATH, ZVEC_COLLECTION)
             lock_path = zpath + "/LOCK"
             try:

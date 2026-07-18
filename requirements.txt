@@ -2,10 +2,24 @@
 # Install with the extras you need, e.g.:
 #   pip install -e ".[dev,web,chroma,memory,reranker]"
 #
-# This file is a thin alias for backwards compatibility only.
+# This file is a thin, VALID pip requirements alias for backwards
+# compatibility (the old project used `pip install -r requirements.txt`).
+# We pin the base deps here mirroring pyproject [project].dependencies and
+# pull the optional heavy deps as comments so a plain `pip install -r
+# requirements.txt` gives a working minimal local-first install.
 
--r pyproject.toml
+# --- base (matches pyproject [project].dependencies) ---
+zvec>=0.5.0
+trafilatura>=2.0
+aiohttp>=3.9.0
+requests>=2.31.0
+numpy>=1.24.0
+pyyaml>=6.0
+fastapi>=0.104.0
+uvicorn>=0.24.0
+psutil>=5.9.0
 
-# NOTE: chromadb / sentence-transformers / memvid-sdk are OPTIONAL extras
-# (chroma / reranker / memory). They are intentionally NOT in the base
-# dependency set to keep the minimal local-first install lean.
+# --- optional extras (uncomment if you need them) ---
+# chromadb>=0.4.0          # [chroma]
+# memvid-sdk>=2.0          # [memory]
+# sentence-transformers>=3.0  # [reranker]

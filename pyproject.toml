@@ -30,7 +30,9 @@ reranker = [
     "sentence-transformers>=3.0",
 ]
 web = [
-    "trafilatura>=2.0",
+    # trafilatura is already in the base deps; this extra is a marker for
+    # environments that want explicit web-retrieval capability enabled.
+    "requests>=2.31.0",
 ]
 
 [project.scripts]

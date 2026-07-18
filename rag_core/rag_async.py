@@ -179,12 +179,6 @@ def _rt():
     return default_runtime()
 
 
-def _cache_key(query: str, domain: str, max_results: int = 5,
-               tenant_id: str = "default", acl_hash: str = "none") -> str:
-    """Cache key with tenant + ACL isolation (P0 fix: prevents cross-tenant leak)."""
-    raw = "|".join([query, domain, str(max_results), tenant_id, acl_hash])
-    return hashlib.md5(raw.encode("utf-8")).hexdigest()
-
 def _cache_get(key: str) -> dict | None:
     return _rt().cache_get(key)
 
@@ -458,7 +452,14 @@ async def _async_rag_search_impl(
     confidence = dcd_result.get('confidence', 0)
     tenant_id = dcd_result.get('tenant_id', os.environ.get("RAG_TENANT_ID", "default"))
     acl_hash = dcd_result.get('acl_hash', os.environ.get("RAG_ACL_HASH", "none"))
-    ck = _cache_key(query, domain, max_results, tenant_id, acl_hash)
+    # Single cache-key source of truth: QueryContext (includes tenant/ACL/
+    # collection/index-rev). Replaces the split _cache_key() helper.
+    from rag_core.query_context import QueryContext
+    ctx = QueryContext(
+        query=query, domain=domain, collection=collection,
+        max_results=max_results, tenant_id=tenant_id, principal_acl_hash=acl_hash,
+    )
+    ck = ctx.cache_key()
     loop = asyncio.get_event_loop()
 
     if trace is None:
@@ -708,7 +709,7 @@ async def async_rag_search(
                 "_trace": trace.json(),
                 "sources_used": list(sources_used.keys()),
             }
-            _cache_set(_cache_key(query, dcd_result.get("domain", ""), max_results), fused, dcd=dcd_result)
+            _cache_set(ctx.cache_key(), fused, dcd=dcd_result)
             return fused
 
     # If memory hit, return it
