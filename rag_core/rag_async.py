@@ -736,7 +736,7 @@ async def _async_rag_search_impl(
 
         if deduped:
             deduped.sort(key=lambda x: x["score"], reverse=True)
-            chunks = deduped[:k]
+            chunks = deduped[:max_results]
             fallback_used = "federated"
             trace.event("federation_result",
                         servers=len(fed_results),

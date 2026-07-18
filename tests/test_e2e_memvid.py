@@ -1,3 +1,34 @@
+
+import os
+import sys
+
+# Добавляем корень репо в путь, чтобы tests.conftest из проекта шел первым.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+try:
+    from tests.conftest import skip_if_no_chromadb, skip_if_no_embedding
+except Exception:
+    import pytest as _pytest_mod
+
+    def _has_mod(name):
+        try:
+            __import__(name)
+            return True
+        except Exception:
+            return False
+
+    def _embedding_available():
+        url = os.environ.get("RAG_EMBEDDING_URL", "") or os.environ.get("RAG_MEMVID_EMBED_URL", "")
+        model = os.environ.get("RAG_EMBEDDING_MODEL", "") or os.environ.get("RAG_MEMVID_EMBED_MODEL", "")
+        return bool(url) and bool(model)
+
+    skip_if_no_chromadb = _pytest_mod.mark.skipif(
+        not _has_mod("chromadb"), reason="chromadb not installed"
+    )
+    skip_if_no_embedding = _pytest_mod.mark.skipif(
+        not _embedding_available(), reason="no embedding service configured"
+    )
+
 """E2E: memvid short-circuit — speed + accuracy, ON vs OFF.
 
 Drives the REAL pipeline entrypoint `async_rag_search` (with compound
@@ -40,7 +71,7 @@ os.environ["RAG_EMBEDDING_URL"] = "http://localhost:1234/v1/embeddings"
 
 sys.path.insert(0, os.path.dirname(__file__) + "/..")
 
-from memvid_memory import Episode, MemvidMemory
+from rag_core.memvid_memory import Episode, MemvidMemory
 import rag_async
 
 
@@ -80,6 +111,8 @@ def _run(query: str, domain: str):
     return res, time.perf_counter() - t0
 
 
+@skip_if_no_chromadb
+@skip_if_no_embedding
 def test_memvid_shortcircuit_on_vs_off(seeded):
     """ON must short-circuit (from_memory) and beat OFF on latency."""
     paraphrased = "восстановление доступа к root через recovery mode в астре"

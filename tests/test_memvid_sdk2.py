@@ -36,7 +36,7 @@ os.environ.setdefault("RAG_MEMVID_EMBED_MODEL", "text-embedding-baai-bge-m3-568m
 
 sys.path.insert(0, os.path.dirname(__file__) + "/..")
 
-from memvid_memory import Episode, MemvidMemory
+from rag_core.memvid_memory import Episode, MemvidMemory
 
 
 @pytest.fixture

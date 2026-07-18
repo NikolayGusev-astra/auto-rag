@@ -1,5 +1,5 @@
 import pytest
-from indexer import chunk_text, parse_frontmatter, recursive_chunk_text, fixed_chunk_text
+from rag_core.indexer import chunk_text, parse_frontmatter, recursive_chunk_text, fixed_chunk_text
 
 
 class TestChunkText:

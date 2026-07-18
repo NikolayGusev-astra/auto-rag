@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-import rag_mcp_client
+import rag_core.rag_mcp_client as rag_mcp_client
 
 
 def _make_client():

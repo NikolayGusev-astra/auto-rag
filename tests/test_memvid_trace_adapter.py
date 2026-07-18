@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 import pytest
 
 # conftest adds rag_core to sys.path
-from memvid_memory import Episode
+from rag_core.memvid_memory import Episode
 from rag_trace import RagTrace
 
 

@@ -24,6 +24,10 @@ memory = [
     "memvid-sdk>=2.0",
 ]
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["rag_core*", "rag_v2*"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

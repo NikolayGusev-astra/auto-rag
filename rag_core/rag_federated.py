@@ -432,16 +432,17 @@ async def shutdown_federated() -> None:
         _CLIENT = None
 
 
-# ── Helper для интеграции в rag_async ──
-
+# ── Helper для интеграции в rag_async ────────────────────────────
+# Использует persistent singleton клиент, чтобы не разрывать SSH-туннели
+# между последовательными запросами. Закрывается через shutdown_federated().
 async def query_federated_servers(query: str, max_results: int = 3, domain: str = "") -> dict[str, list[dict]]:
     """Удобная функция для вызова из rag_async."""
-    client = FederatedRAGClient.from_env()
+    client = await get_federated_client()
     if not client.configs:
         return {}
     try:
         if domain:
             return await client.query_routed(query, domain, max_results)
         return await client.query_all(query, max_results)
-    finally:
-        await client.close()
+    except Exception:
+        return {}
