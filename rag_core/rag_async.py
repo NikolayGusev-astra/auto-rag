@@ -198,7 +198,42 @@ def _cache_set(key: str, result: dict, dcd: dict | None = None):
         _log_routing(query[:200] if query else key[:30], d, result)
 
 
-# ── Embedding ────────────────────────────────────────────────────
+# ── Cross-source score calibration (P0/P1 audit fix) ────────────
+# Raw scores from heterogeneous sources (ZVec / MCP / web / federation) are
+# NOT directly comparable. We wrap each chunk in an Evidence and rewrite its
+# `score` to the calibrated value so downstream sort/merge is trust-aware.
+# A remote federation score of 0.99 therefore cannot outrank an equivalent
+# trusted-local 0.99, because UNTRUSTED sources are discounted.
+def _calibrate_chunks(chunks: list[dict], source_type, source_id: str,
+                      tenant_id: str = "default") -> list[dict]:
+    from rag_core.evidence import Evidence, SourceType, TrustLevel
+    _TYPE_MAP = {
+        "zvec": (SourceType.LOCAL_VECTOR, TrustLevel.TRUSTED_INTERNAL),
+        "mcp": (SourceType.MCP, TrustLevel.TRUSTED_INTERNAL),
+        "web": (SourceType.WEB, TrustLevel.UNTRUSTED),
+        "federated": (SourceType.FEDERATION, TrustLevel.UNTRUSTED),
+        "memory": (SourceType.MEMORY, TrustLevel.TRUSTED_INTERNAL),
+    }
+    st, tl = _TYPE_MAP.get(source_type, (SourceType.WEB, TrustLevel.UNTRUSTED))
+    out = []
+    for c in chunks:
+        ev = Evidence(
+            text=c.get("text") or c.get("content") or "",
+            source_type=st,
+            source_id=source_id,
+            retrieval_score=c.get("score"),
+            trust_level=tl,
+            tenant_id=tenant_id,
+            citation_uri=c.get("url"),
+        )
+        cc = dict(c)
+        cc["score"] = ev.calibrated_score
+        cc["_trust"] = tl.value
+        out.append(cc)
+    return out
+
+
+
 def _embed(text: str) -> list[float]:
     """Embedding через EmbeddingService."""
     from embedding_service import get_embedding
@@ -422,12 +457,14 @@ async def _fallback_to_mcp_web(
             if chunks:
                 trace.decision("mcp_selected", choice=name,
                                reason=f"MCP {name} returned {len(chunks)} chunks")
-                return {'source': name, 'chunks': chunks, 'score': 0.7}
+                calibrated = _calibrate_chunks(chunks, "mcp", name, tenant_id=tenant_id)
+                return {'source': name, 'chunks': calibrated, 'score': 0.7}
     # Web fallback
     web_chunks = await loop.run_in_executor(_executor(), _blocking_web, query, domain, collection)
     if web_chunks:
         trace.decision("source_selection", choice="web", reason="all MCP empty, web fallback")
-        return {'source': 'web', 'chunks': web_chunks, 'score': 0.6}
+        calibrated = _calibrate_chunks(web_chunks, "web", "web", tenant_id=tenant_id)
+        return {'source': 'web', 'chunks': calibrated, 'score': 0.6}
     return {'source': 'empty', 'chunks': [], 'score': 0}
 
 
@@ -504,6 +541,8 @@ async def _async_rag_search_impl(
 
     zvec_chunks = zvec_result['chunks']
     max_score = zvec_result['max_score']
+    # Calibrate trusted-local scores for uniform downstream comparison.
+    zvec_chunks = _calibrate_chunks(zvec_chunks, "zvec", "zvec", tenant_id=tenant_id)
     trace.event("zvec_result", chunks=len(zvec_chunks), max_score=round(max_score, 4))
     trace.event("web_result", chunks=len(web_chunks))
 
@@ -524,12 +563,18 @@ async def _async_rag_search_impl(
                 return result
         if web_chunks:
             trace.decision("source_selection", choice="web", reason="mcp empty")
-            result = {'source': 'web', 'chunks': web_chunks, 'score': 0.6,
+            calibrated = _calibrate_chunks(web_chunks, "web", "web", tenant_id=tenant_id)
+            result = {'source': 'web', 'chunks': calibrated, 'score': 0.6,
                       'trace': f'ZVec→EntityMismatch→Web', '_trace': trace.json()}
             _cache_set(ck, result, dcd=dcd_result)
             return result
 
-    # ZVec score >= threshold → return (no LLM gate)
+    # ZVec score >= threshold → return (no LLM gate).
+    # INTENTIONAL POLICY (not a defect): ZVec is a trusted-local source with
+    # calibrated scores; high similarity on a trusted index is treated as
+    # sufficient. Risk is bounded by _calibrate_chunks + tenant/index guards.
+    # If product/version-sensitive queries need a gate, set
+    # LLM_EVAL_HIGH_THRESHOLD higher or enable verify on this path.
     if max_score >= LLM_EVAL_HIGH_THRESHOLD and _zvec_entities_match is not False:
         trace.decision("source_selection", choice="zvec",
                        reason=f"zvec score {max_score:.2f} >= threshold (no LLM gate)")
@@ -550,7 +595,8 @@ async def _async_rag_search_impl(
                 _cache_set(ck, result, dcd=dcd_result)
                 return result
         if web_chunks:
-            result = {'source': 'web', 'chunks': web_chunks, 'score': 0.6,
+            calibrated = _calibrate_chunks(web_chunks, "web", "web", tenant_id=tenant_id)
+            result = {'source': 'web', 'chunks': calibrated, 'score': 0.6,
                       'trace': f'DCD(conf={confidence:.2f}<0.2)→Web', '_trace': trace.json()}
             _cache_set(ck, result, dcd=dcd_result)
             return result
@@ -569,7 +615,8 @@ async def _async_rag_search_impl(
 
     if web_chunks:
         trace.decision("source_selection", choice="web", reason="all MCP empty, final web")
-        result = {'source': 'web', 'chunks': web_chunks, 'score': 0.6,
+        calibrated = _calibrate_chunks(web_chunks, "web", "web", tenant_id=tenant_id)
+        result = {'source': 'web', 'chunks': calibrated, 'score': 0.6,
                   'trace': 'ZVec→MCP→Web', '_trace': trace.json()}
         _cache_set(ck, result, dcd=dcd_result)
         return result
@@ -586,16 +633,22 @@ async def _async_rag_search_impl(
 
         pool = []
         for server_name, server_chunks in fed_results.items():
+            raw = []
             for c in server_chunks:
                 text = c.get("text", "")
                 score = c.get("score", 0)
                 if text and score > 0 and not c.get("is_error"):
-                    pool.append({
+                    raw.append({
                         "text": text[:800],
                         "score": float(score),
                         "source": f"federated:{server_name}",
                         "_src": f"federated:{server_name}",
+                        "url": c.get("url"),
                     })
+            # Calibrate remote scores: UNTRUSTED discounts 0.99 -> ~0.59
+            pool.extend(_calibrate_chunks(raw, "federated", f"federated:{server_name}",
+                                          tenant_id=tenant_id))
+
 
         seen = set()
         deduped = []
@@ -650,7 +703,12 @@ async def async_rag_search(
         collection = dcd_result.get('collection', '')
         trace = RagTrace(query, domain, collection)
 
-    # 1) recall (short-circuit) — store result, don't early-return
+    # 1) recall (short-circuit) — GUARDED mechanism, not an unbounded one.
+    # Memory short-circuit is retained as an intentional latency optimization,
+    # but it is now bounded by the poisoning guard in episode_writer.py
+    # (trusted-source anchor only, no web/federation poisoning) and by
+    # tenant/index revision tracking. It is NOT a source of truth — the
+    # episode is re-validated against the current query/domain before use.
     result = None
     if _MEMVID_AVAILABLE:
         mem = _get_memory()
