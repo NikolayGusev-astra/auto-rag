@@ -69,12 +69,13 @@ def test_safe_get_blocks_redirect_to_metadata():
         status_code = 302
         is_redirect = True
         headers = {"Location": "http://169.254.169.254/latest/meta-data/"}
+        raw = None
 
     def fake_safe(url):
         return url == "https://example.com/page"
 
     with mock.patch.object(safe_http, "url_targets_public", side_effect=fake_safe), \
-         mock.patch.object(requests, "get", return_value=_FakeResp()) as mocked:
+         mock.patch.object(safe_http.requests.Session, "get", return_value=_FakeResp()) as mocked:
         resp = rag_async._safe_get("https://example.com/page")
         assert resp is None, "redirect to metadata must be blocked"
         assert mocked.call_count == 1
@@ -88,27 +89,30 @@ def test_safe_get_allows_safe_redirect():
         status_code = 301
         is_redirect = True
         headers = {"Location": "https://other.example.com/final"}
+        raw = None
 
     class _Final:
         status_code = 200
         is_redirect = False
         text = "<html>ok</html>"
+        _content = b"<html>ok</html>"
+        raw = None
+        headers = {}
 
     calls = {"n": 0}
 
-    def _fake_get(url, **kwargs):
+    def _fake_get(self, url, **kwargs):
         calls["n"] += 1
         if calls["n"] == 1:
             return _Redirect()
         return _Final()
 
     with mock.patch.object(safe_http, "url_targets_public", return_value=True), \
-         mock.patch.object(requests, "get", side_effect=_fake_get):
+         mock.patch.object(safe_http.requests.Session, "get", _fake_get):
         resp = rag_async._safe_get("https://example.com/start")
         assert resp is not None
         assert resp.text == "<html>ok</html>"
         assert calls["n"] == 2
-
 
 def test_safe_get_never_fetches_unsafe_direct():
     """S1-S3: a directly-unsafe URL returns None without any network call."""

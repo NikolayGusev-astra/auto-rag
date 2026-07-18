@@ -14,8 +14,34 @@ import socket
 import urllib.parse
 
 import requests
+from requests.adapters import HTTPAdapter
 
 logger = logging.getLogger(__name__)
+
+
+class _HostnameAdapter(HTTPAdapter):
+    """Force TLS hostname validation against the original host, not the IP.
+
+    `requests` derives server_hostname from the URL (the IP literal we connect
+    to). This adapter binds a pre-configured SSLContext that asserts the real
+    hostname, so public HTTPS certificates validate correctly even when we
+    connect by resolved IP (TOCTOU-safe SSRF hardening).
+    """
+
+    def __init__(self, ssl_context, assert_hostname: str, *args, **kwargs):
+        self._ssl_context = ssl_context
+        self._assert_hostname = assert_hostname
+        super().__init__(*args, **kwargs)
+
+    def init_poolmanager(self, *args, **kwargs):
+        kwargs["ssl_context"] = self._ssl_context
+        kwargs["assert_hostname"] = self._assert_hostname
+        return super().init_poolmanager(*args, **kwargs)
+
+    def proxy_manager_for(self, *args, **kwargs):
+        kwargs["ssl_context"] = self._ssl_context
+        kwargs["assert_hostname"] = self._assert_hostname
+        return super().proxy_manager_for(*args, **kwargs)
 
 _MAPPED_IPV4_BAD_PREFIX = ipaddress.ip_network("::ffff:0:0/96")
 
@@ -64,7 +90,9 @@ def safe_get(url: str, *,
     """GET a URL with SSRF hardening + TOCTOU fix.
 
     Resolves the host ONCE, validates all IPs are public, then connects by IP
-    with the original host sent as `Host`. No redirects (per-hop re-check).
+    while validating the TLS certificate against the ORIGINAL hostname (not
+    the IP literal) via a custom SSL context with assert_hostname. No
+    redirects (per-hop re-check). Response body is capped at `max_bytes`.
     Returns None if the URL or any redirect target is unsafe, or on error.
     Caller must still treat the body as untrusted.
     """
@@ -77,7 +105,6 @@ def safe_get(url: str, *,
     ips = _host_ips(host)
     if not ips:
         return None
-    # connect to the first validated public IP; keep original Host header
     ip = next(iter(ips))
     connect_url = f"{parsed.scheme}://{ip}:{port}{parsed.path or '/'}"
     if parsed.query:
@@ -87,11 +114,36 @@ def safe_get(url: str, *,
     if headers:
         _headers.update(headers)
 
+    # TLS: validate cert against ORIGINAL hostname, not the IP literal.
+    # requests derives server_hostname from the URL (the IP), so we inject a
+    # custom urllib3 adapter that forces assert_hostname=host.
+    session = requests.Session()
+    if parsed.scheme == "https":
+        try:
+            from urllib3.util.ssl_ import create_urllib3_context
+            ctx = create_urllib3_context()
+            ctx.check_hostname = True
+            ctx.verify_mode = __import__("ssl").CERT_REQUIRED
+            ctx.assert_hostname = host
+            session.mount("https://", _HostnameAdapter(ctx, host))
+        except Exception:
+            pass
+
     try:
-        resp = requests.get(connect_url, headers=_headers, timeout=timeout,
-                            allow_redirects=False, stream=True)
+        resp = session.get(connect_url, headers=_headers, timeout=timeout,
+                           allow_redirects=False, stream=True)
     except Exception:
         return None
+
+    # Enforce max_bytes: read at most max_bytes from the stream.
+    if resp.raw is not None:
+        try:
+            body = resp.raw.read(max_bytes + 1, decode_content=True)
+            if len(body) > max_bytes:
+                body = body[:max_bytes]
+            resp._content = body
+        except Exception:
+            pass
 
     if resp.is_redirect or resp.status_code in (301, 302, 303, 307, 308):
         location = resp.headers.get("Location")
@@ -101,8 +153,10 @@ def safe_get(url: str, *,
         if not url_targets_public(target):
             return None
         try:
-            return requests.get(target, headers={"User-Agent": user_agent},
-                                timeout=timeout, allow_redirects=False, stream=True)
+            # Follow via the same hardened session (hostname-validating adapter
+            # applies only to https; plain http re-validates via url_targets_public).
+            return session.get(target, headers={"User-Agent": user_agent},
+                               timeout=timeout, allow_redirects=False, stream=True)
         except Exception:
             return None
     return resp
