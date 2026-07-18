@@ -40,8 +40,6 @@ from rag_config import (
     DCD_PREFERRED_WEB_SOURCE,
     LOCAL_NODE_NAME,
 )
-import socket
-import ipaddress
 
 from dcd_router import classify
 from rag_mcp_client import MCPClient
@@ -49,99 +47,18 @@ from rag_trace import RagTrace
 
 
 # ── SSRF guard ───────────────────────────────────────────────
-# Блокируем fetch URL из внешних результатов (SearXNG и т.п.) в
-# приватные/локальные/link-local диапазоны (security: SSRF).
-#
-# S1-S3 fixes (audit RESULE-FBL.md):
-#   - разрешаем ONLY ipaddress.is_global (инверсия blocklist)
-#   - блок 0.0.0.0/8 и IPv4-mapped IPv6 (::ffff:127.0.0.1 и т.п.)
-#   - редиректы запрещены, после 3xx новый URL перепроверяется
-#   - повторная проверка резолва после редиректа (per-hop)
-import urllib.parse
-
-_MAPPED_IPV4_BAD_PREFIX = ipaddress.ip_network("::ffff:0:0/96")  # IPv4-mapped IPv6
-
-
-def _ip_is_public(ip: "ipaddress.IPv4Address | ipaddress.IPv6Address") -> bool:
-    """True only for globally routable addresses.
-
-    Blocks loopback, private, link-local (incl. 169.254.169.254 cloud
-    metadata), 0.0.0.0/8, multicast, reserved, and IPv4-mapped IPv6 that
-    wrap a non-global IPv4 address.
-    """
-    # IPv4-mapped IPv6 must be unwrapped and checked as the embedded v4.
-    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
-        ip = ip.ipv4_mapped
-    return bool(ip.is_global)
-
-
-def _host_ips(host: str) -> "set":
-    """Resolve a hostname to a set of IP addresses (or {ip} if literal)."""
-    try:
-        ip = ipaddress.ip_address(host)
-        return {ip}
-    except ValueError:
-        pass
-    try:
-        infos = socket.getaddrinfo(host, None)
-        return {ipaddress.ip_address(i[4][0]) for i in infos}
-    except Exception:
-        return set()
-
-
-def _is_safe_url(url: str) -> bool:
-    """True, если URL разрешается ТОЛЬКО в публичный глобальный IP.
-
-    Any private/loopback/link-local/0.0.0.0/IPv4-mapped result → False.
-    """
-    try:
-        parsed = urllib.parse.urlparse(url)
-        if parsed.scheme not in ("http", "https"):
-            return False
-        host = parsed.hostname
-        if not host:
-            return False
-        ips = _host_ips(host)
-        if not ips:
-            return False
-        return all(_ip_is_public(ip) for ip in ips)
-    except Exception:
-        return False
+# Delegates to rag_core.security.safe_http (TOCTOU-resistant: resolve once,
+# connect by validated IP, send original Host). Kept here as thin wrappers so
+# existing call sites (_blocking_web) are unchanged.
+from rag_core.security.safe_http import (
+    url_targets_public as _is_safe_url,
+    safe_get as _safe_get_impl,
+)
 
 
 def _safe_get(url: str, **kwargs) -> "object | None":
-    """requests.get with SSRF hardening: no redirects, per-hop re-validation.
-
-    Returns the response, or None if the URL (or any redirect target) is
-    unsafe. Caller must still treat the body as untrusted.
-    """
-    import requests
-
-    # S1-S3: reject unsafe URLs before any network call.
-    if not _is_safe_url(url):
-        return None
-    kwargs.setdefault("timeout", 8)
-    kwargs["allow_redirects"] = False  # S1: stop redirect-based bypass
-    try:
-        resp = requests.get(url, **kwargs)
-    except Exception:
-        return None
-    # Re-validate redirect target through the same guard (per-hop).
-    if resp.is_redirect or resp.status_code in (301, 302, 303, 307, 308):
-        location = resp.headers.get("Location")
-        if not location:
-            return None
-        # Resolve relative redirects against the original URL.
-        target = urllib.parse.urljoin(url, location)
-        if not _is_safe_url(target):
-            return None
-        # One bounded follow with re-validation; no further hops.
-        try:
-            return requests.get(target, allow_redirects=False, **{
-                k: v for k, v in kwargs.items() if k != "allow_redirects"})
-        except Exception:
-            return None
-    return resp
+    """SSRF-hardened GET. See rag_core.security.safe_http.safe_get."""
+    return _safe_get_impl(url, **kwargs)
 
 # ── Optional memvid memory layer (T3 integration) ─────────────────
 try:
@@ -188,89 +105,50 @@ def _episode_answer(result: dict) -> str:
 
 
 def _record_episode(result: dict, query: str, domain: str, trace: RagTrace) -> None:
-    """Best-effort record of a RAG result as a memvid episode. Never raises."""
+    """Best-effort record of a RAG result as a memvid episode (guarded).
+
+    Delegates to rag_core.memory.episode_writer, which enforces the
+    poisoning guard: web/federation-only results are NOT recorded, and the
+    tenant is taken explicitly rather than silently from env.
+    """
     if not _MEMVID_AVAILABLE:
         return
     mem = _get_memory()
     if mem is None or not mem.active:
         return
+    from rag_core.memory.episode_writer import build_episode
+    tenant = os.environ.get("RAG_MEMVID_TENANT", "hermes_default")
+    index_rev = os.environ.get("RAG_INDEX_REVISION", "unknown")
     try:
-        answer = _episode_answer(result)
-        if not answer:
+        ep = build_episode(result, query, domain, tenant, index_rev, trace)
+        if ep is None:
             return
-        sources = [
-            {"source": chunk.get("source", result.get("source", ""))}
-            for chunk in result.get("chunks", [])
-            if chunk.get("source", result.get("source", ""))
-        ] or [{"source": result.get("source", "")}]
-        mem.record(
-            Episode(
-                query=query,
-                answer=answer,
-                sources=sources,
-                trace=trace.json() if hasattr(trace, "json") else trace,
-                domain=domain,
-                tenant=os.environ.get("RAG_MEMVID_TENANT", "hermes_default"),
-            ),
-            trace=trace,
-        )
+        mem.record(ep, trace=trace)
     except Exception as exc:
         logger.debug("memvid record failed: %s", exc)
 
 _AsyncMCPClient = None  # lazy import to avoid circular deps
 
-_EXECUTOR = ThreadPoolExecutor(max_workers=6)
+_EXECUTOR = None  # lazily bound to default_runtime() to allow DI / test isolation
+
+
+def _executor():
+    global _EXECUTOR
+    if _EXECUTOR is None:
+        from rag_core.runtime import default_runtime
+        _EXECUTOR = default_runtime().executor
+    return _EXECUTOR
 
 # ── Compound query detection ──
 # Составные запросы: продукт Astra (ALD/РуПост/...) + инфраструктурная штука.
 # "альд postgresql репликация" → и продукт, и инфра. Дробим на 2 подзапроса
 # без LLM, гоним параллельно и сливаем чанки через smart fusion.
-_COMPOUND_PRODUCT_WORDS = {"ald", "aldpro", "ald pro", "rupost", "termidesk",
-                           "workspad", "ddo", "msad", "keycloak", "alse",
-                           "astra linux", "astra",
-                           # кириллические варианты (русскоязычные запросы)
-                           "альд", "альд про", "рупост", "термидеск",
-                           "воркспад", "астра линукс", "астра", "кейклок"}
-_COMPOUND_INFRA_WORDS = {"postgresql", "postgres", "nginx", "redis", "docker",
-                         "kubernetes", "k8s", "patroni", "etcd", "haproxy",
-                         "prometheus", "grafana", "rabbitmq", "kafka", "ansible",
-                         "terraform", "salt", "saltstack", "sssd", "freeipa",
-                         "ipa", "msad", "ad", "active directory", "samba",
-                         "kerberos", "hbac", "rbac", "zabbix", "monitoring",
-                         "миграц", "доверен", "trust", "dhcp", "dns",
-                         "automation", "web оснастк", "web интерфейс",
-                         "web консоль",
-                         # кириллические варианты инфра-терминов
-                         "постгрес", "постгре", "нжинкс", "докер", "кубер",
-                         "кубернетес", "патрони", "реплик", "репликация",
-                         "бд", "база данных", "резервн", "бэкап"}
-
+# (keyword tables live in rag_core.compound)
 
 def _detect_compound(query: str, dcd: dict) -> list[dict]:
-    """Detect compound queries with keywords from multiple domains.
-
-    Returns list of sub-queries, or empty list if not compound.
-    Each sub-query: {"query": str, "domain": str, "collection": str}
-    """
-    ql = query.lower()
-    has_product = any(w in ql for w in _COMPOUND_PRODUCT_WORDS)
-    has_infra = any(w in ql for w in _COMPOUND_INFRA_WORDS)
-
-    if not (has_product and has_infra):
-        return []
-
-    subqueries = []
-    # Product part → rusbitech domain
-    if has_product:
-        subqueries.append({"query": query, "domain": "rusbitech",
-                           "collection": "rusbitech-products"})
-    # Infra part → devops
-    if has_infra:
-        infra_terms = [w for w in _COMPOUND_INFRA_WORDS if w in ql]
-        infra_query = f"{query} {' '.join(infra_terms[:3])}" if infra_terms else query
-        subqueries.append({"query": infra_query, "domain": "devops",
-                           "collection": "deployment"})
-    return subqueries
+    """Detect compound queries (delegates to rag_core.compound)."""
+    from rag_core.compound import detect_compound
+    return detect_compound(query, dcd)
 
 
 # ── Routing log ──
@@ -295,23 +173,23 @@ def _log_routing(query: str, dcd: dict, result: dict):
         logger.debug("routing log write failed: %s", exc)
 
 
-# ── LRU cache: 100 last queries ──────────────────────────────────
-_CACHE = OrderedDict()
-_CACHE_MAX = 100
+# ── LRU cache: 100 last queries (backed by RagRuntime for DI/test isolation) ──
+def _rt():
+    from rag_core.runtime import default_runtime
+    return default_runtime()
 
-def _cache_key(query: str, domain: str, max_results: int = 5) -> str:
-    return hashlib.md5(f"{query}|{domain}|{max_results}".encode()).hexdigest()
+
+def _cache_key(query: str, domain: str, max_results: int = 5,
+               tenant_id: str = "default", acl_hash: str = "none") -> str:
+    """Cache key with tenant + ACL isolation (P0 fix: prevents cross-tenant leak)."""
+    raw = "|".join([query, domain, str(max_results), tenant_id, acl_hash])
+    return hashlib.md5(raw.encode("utf-8")).hexdigest()
 
 def _cache_get(key: str) -> dict | None:
-    if key in _CACHE:
-        _CACHE.move_to_end(key)
-        return _CACHE[key]
-    return None
+    return _rt().cache_get(key)
 
 def _cache_set(key: str, result: dict, dcd: dict | None = None):
-    _CACHE[key] = result
-    while len(_CACHE) > _CACHE_MAX:
-        _CACHE.popitem(last=False)
+    _rt().cache_set(key, result)
     # Log routing
     d = dcd
     if d is not None:
@@ -471,48 +349,26 @@ def _llm_verify_cache_key(query: str, chunks: list[dict]) -> str:
 
 def _llm_verify(query: str, chunks: list[dict]) -> float:
     """Soft verification: returns 0.0-1.0 relevance score.
-    ≥ 0.3 = pass (chunks are relevant enough).
-    Uses local LM Studio qwen2.5-7b-instruct (~2.7s).
+
+    Back-compat wrapper. Internally uses rag_core.verification which is
+    fail-closed: a verifier failure yields UNAVAILABLE and this wrapper maps
+    it to 0.0 (irrelevant) rather than the old 0.5 fail-open default.
     """
-    if not chunks or not LLM_VERIFY_ENABLED:
-        return 0.0
-    cache_key = _llm_verify_cache_key(query, chunks)
-    now = time.time()
-    cached = _LLM_VERIFY_CACHE.get(cache_key)
-    if cached:
-        score, ts = cached
-        if now - ts < _LLM_VERIFY_CACHE_TTL:
-            return score
-        _LLM_VERIFY_CACHE.pop(cache_key, None)
-    import re
-    top = '\n\n'.join(
-        [f'[{i}] {c["text"][:500].replace(chr(10), " ")}'
-         for i, c in enumerate(chunks[:3])]
+    from rag_core.verification import verify_relevance
+    from rag_config import (
+        LLM_VERIFY_ENABLED, LLM_VERIFY_URL, LLM_VERIFY_MODEL, LLM_VERIFY_TIMEOUT,
     )
-    prompt = (
-        f'Rate relevance 0.0-1.0. Reply ONLY a number.\n'
-        f'Query: {query[:200]}\nDocuments:\n{top}'
+    res = verify_relevance(
+        query, chunks,
+        enabled=LLM_VERIFY_ENABLED,
+        url=LLM_VERIFY_URL,
+        model=LLM_VERIFY_MODEL,
+        timeout=LLM_VERIFY_TIMEOUT,
     )
-    try:
-        def _post():
-            return requests.post(LLM_VERIFY_URL, json={
-                'model': LLM_VERIFY_MODEL,
-                'messages': [{'role': 'user', 'content': prompt}],
-                'temperature': 0.0, 'max_tokens': 10,
-            }, timeout=LLM_VERIFY_TIMEOUT)
-        r = _post()
-        answer = r.json()['choices'][0]['message']['content'].strip()
-        nums = re.findall(r'0\.\d+|1\.0', answer)
-        score = float(nums[0]) if nums else 0.3
-    except Exception:
-        score = 0.5
-    try:
-        _LLM_VERIFY_CACHE[cache_key] = (score, now)
-        while len(_LLM_VERIFY_CACHE) > _LLM_VERIFY_CACHE_MAX:
-            _LLM_VERIFY_CACHE.pop(next(iter(_LLM_VERIFY_CACHE)), None)
-    except Exception:
-        pass
-    return score
+    if res.status in (res.status.RELEVANT, res.status.IRRELEVANT):
+        return res.score or 0.0
+    # UNAVAILABLE / INVALID -> treat as "not verified relevant"
+    return 0.0
 
 
 # ── LLM Eval (for borderline scores) ─────────────────────────────
@@ -567,14 +423,14 @@ async def _fallback_to_mcp_web(
     for name in ['context7', 'jira', 'confluence', 'lodestone', 'protopack']:
         if name in MCP_SERVERS:
             with trace.stage(f"mcp_{name}"):
-                chunks = await loop.run_in_executor(_EXECUTOR, _blocking_mcp_single, name, query)
+                chunks = await loop.run_in_executor(_executor(), _blocking_mcp_single, name, query)
                 trace.event("mcp_result", source=name, chunks=len(chunks))
             if chunks:
                 trace.decision("mcp_selected", choice=name,
                                reason=f"MCP {name} returned {len(chunks)} chunks")
                 return {'source': name, 'chunks': chunks, 'score': 0.7}
     # Web fallback
-    web_chunks = await loop.run_in_executor(_EXECUTOR, _blocking_web, query, domain, collection)
+    web_chunks = await loop.run_in_executor(_executor(), _blocking_web, query, domain, collection)
     if web_chunks:
         trace.decision("source_selection", choice="web", reason="all MCP empty, web fallback")
         return {'source': 'web', 'chunks': web_chunks, 'score': 0.6}
@@ -600,7 +456,9 @@ async def _async_rag_search_impl(
     domain = dcd_result.get('domain', '')
     collection = dcd_result.get('collection', '')
     confidence = dcd_result.get('confidence', 0)
-    ck = _cache_key(query, domain, max_results)
+    tenant_id = dcd_result.get('tenant_id', os.environ.get("RAG_TENANT_ID", "default"))
+    acl_hash = dcd_result.get('acl_hash', os.environ.get("RAG_ACL_HASH", "none"))
+    ck = _cache_key(query, domain, max_results, tenant_id, acl_hash)
     loop = asyncio.get_event_loop()
 
     if trace is None:
@@ -622,15 +480,26 @@ async def _async_rag_search_impl(
     chunks = []  # populated by federation fallback if all other sources empty
 
     # ── Generic RAG pipeline: ZVec → MCP → web ──
+    # Web is started speculatively ONLY when RAG_WEB_SPECULATIVE=1 (opt-in).
+    # By default web runs only after local sources prove insufficient
+    # (local-first semantics; avoids leaking query to SearXNG for purely
+    # local questions). See audit P1.
+    _speculative_web = os.environ.get("RAG_WEB_SPECULATIVE", "0") == "1"
 
-    trace.event("parallel_start", sources="zvec+web")
+    trace.event("parallel_start",
+                sources="zvec+web" if _speculative_web else "zvec")
 
     with trace.stage("zvec_search"):
-        zvec_task = loop.run_in_executor(_EXECUTOR, _blocking_zvec, query)
-        web_task = loop.run_in_executor(_EXECUTOR, _blocking_web, query, domain, collection)
+        zvec_task = loop.run_in_executor(_executor(), _blocking_zvec, query)
+        web_task = (loop.run_in_executor(_executor(), _blocking_web, query, domain, collection)
+                    if _speculative_web else None)
 
     with trace.stage("gather_parallel"):
-        zvec_result, web_chunks = await asyncio.gather(zvec_task, web_task)
+        if _speculative_web:
+            zvec_result, web_chunks = await asyncio.gather(zvec_task, web_task)
+        else:
+            zvec_result = await zvec_task
+            web_chunks = []
 
     zvec_chunks = zvec_result['chunks']
     max_score = zvec_result['max_score']

@@ -23,6 +23,20 @@ are unavailable.
 - Persistent episodic semantic memory with LM Studio embeddings.
 - Structured `RagTrace`, golden-set evaluation and canary tooling.
 
+## Guarantees & Limitations
+
+**What it guarantees**
+- Local-first: runs without any cloud LLM; graceful degradation when MCP/web/memory are absent.
+- SSRF-hardened web fetch (resolve-once, connect-by-IP, no redirect bypass).
+- Fail-closed verification: a broken verifier is reported as "unknown", never as "half-relevant".
+- Tenant/ACL isolation in the response cache (no cross-tenant leakage in server mode).
+- Episodic memory records only results anchored by a trusted local source (no web/federation poisoning).
+
+**What it does NOT guarantee (yet)**
+- Not a universal self-optimizing RAG — routing is policy/keyword-driven, tuned for the Astra technical domain.
+- No calibrated cross-source scoring: ZVec / MCP / web / federation scores are not directly comparable without trust weighting.
+- Memory short-circuit is a cache, not a source of truth; stale episodes possible if index revision changes.
+- Single reference pipeline (`rag_async`); `rag_v2` and adapters are experimental.
 
 
 | | ZVec (default) | ChromaDB (fallback) |

@@ -33,4 +33,5 @@ def test_record_episode_stores_content_and_sources():
     episode = memory.record.call_args.args[0]
     assert episode.answer == "Настоящий ответ из индекса"
     assert episode.answer != result["trace"]
-    assert episode.sources == [{"source": "wiki"}]
+    # new episode_writer format: sources carry trust flag (poisoning guard)
+    assert episode.sources == [{"source": "wiki", "trusted": True}]

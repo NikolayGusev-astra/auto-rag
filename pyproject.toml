@@ -23,6 +23,18 @@ dev = [
 memory = [
     "memvid-sdk>=2.0",
 ]
+chroma = [
+    "chromadb>=0.4.0",
+]
+reranker = [
+    "sentence-transformers>=3.0",
+]
+web = [
+    "trafilatura>=2.0",
+]
+
+[project.scripts]
+auto-rag = "rag_core.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
