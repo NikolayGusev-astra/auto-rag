@@ -102,8 +102,8 @@ def searxng_search(query: str, max_results: int = 5) -> list[dict]:
                     resp = requests.get(item["url"], timeout=10)
                     text = trafilatura.extract(resp.text)
                     if text: results[-1]["content"] = text[:WEB_SEARCH_MAX_CHARS]
-                except Exception:
-                    pass
+                except (requests.RequestException, ValueError, TypeError) as exc:
+                    logger.debug("web page enrichment failed for %s: %s", item["url"], exc)
         return results
     except Exception as e:
         logger.warning(f"SearXNG error: {e}")

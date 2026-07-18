@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import sys
 import time
@@ -21,6 +22,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from index_common import file_hash, parse_frontmatter, _safe_id
 from rag_config import EMBEDDING_DIM, EMBEDDING_MODEL, EMBEDDING_URL
 from rag_config import EXCLUDE_DIRS, ZVEC_PATH, ZVEC_COLLECTION
+
+logger = logging.getLogger(__name__)
 
 # ── Config ────────────────────────────────────────────────────────
 COLL_PATH = os.path.join(ZVEC_PATH, ZVEC_COLLECTION)
@@ -71,8 +74,8 @@ def load_state() -> dict:
         try:
             with open(STATE_FILE, encoding='utf-8') as f:
                 return json.load(f)
-        except Exception:
-            pass
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning("Could not load index state for retry: %s", exc)
     return {}
 
 
@@ -137,8 +140,8 @@ def _embed_batch(texts: list[str]) -> list[list[float]] | None:
         }, timeout=120)
         if r.status_code == 200:
             return [d["embedding"] for d in r.json()["data"]]
-    except Exception:
-        pass
+    except req.RequestException as exc:
+        logger.warning("Embedding batch request failed: %s", exc)
     return None
 
 

@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import re
 import sys
@@ -25,6 +26,8 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 sys.path.insert(0, os.path.dirname(__file__))
 from rag_config import (
@@ -211,8 +214,8 @@ def _record_episode(result: dict, query: str, domain: str, trace: RagTrace) -> N
             ),
             trace=trace,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("memvid record failed: %s", exc)
 
 _AsyncMCPClient = None  # lazy import to avoid circular deps
 
@@ -288,8 +291,8 @@ def _log_routing(query: str, dcd: dict, result: dict):
         }
         with open(_ROUTING_LOG, "a") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("routing log write failed: %s", exc)
 
 
 # ── LRU cache: 100 last queries ──────────────────────────────────
@@ -318,8 +321,8 @@ def _cache_set(key: str, result: dict, dcd: dict | None = None):
             try:
                 td = json.loads(trace_val)
                 query = td.get("query", "")
-            except Exception:
-                pass
+            except (json.JSONDecodeError, TypeError, ValueError) as exc:
+                logger.debug("cached trace was not valid JSON: %s", exc)
         _log_routing(query[:200] if query else key[:30], d, result)
 
 
@@ -352,8 +355,8 @@ def _get_zvec_collection():
         try:
             with open(lock_path, 'w') as f:
                 f.write(str(os.getpid()))
-        except Exception:
-            pass
+        except OSError as exc:
+            logger.debug("could not create ZVec lock file: %s", exc)
         _ZVEC_COLLECTION = zvec.open(zpath)
         return _ZVEC_COLLECTION
 
@@ -372,8 +375,8 @@ def _blocking_zvec(query: str) -> dict:
         if data.get("chunks"):
             return {"chunks": data["chunks"], "max_score": data["max_score"],
                     "source": "zvec_fastapi"}
-    except Exception:
-        pass  # FastAPI unavailable, try direct ZVec
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        logger.debug("ZVec FastAPI unavailable: %s", exc)
 
     # Fallback to direct ZVec
     try:
@@ -395,8 +398,8 @@ def _blocking_zvec(query: str) -> dict:
                 chunks.append({"text": txt, "score": d.score, "source": "zvec/wiki"})
         if chunks:
             return {"chunks": chunks, "max_score": max(c["score"] for c in chunks), "source": "zvec_direct"}
-    except Exception:
-        pass
+    except (OSError, ValueError, TypeError, AttributeError) as exc:
+        logger.debug("direct ZVec search unavailable: %s", exc)
     return {"chunks": [], "max_score": 0, "source": "zvec_unavailable"}
 
 
@@ -445,8 +448,8 @@ def _blocking_web(query: str, domain: str = "", collection: str = "") -> list[di
                     full = trafilatura.extract(html)
                     if full:
                         text = full[:2000]
-                except Exception:
-                    pass
+                except (requests.RequestException, ValueError, TypeError) as exc:
+                    logger.debug("web page enrichment failed for %s: %s", url, exc)
             if text:
                 chunks.append({"text": text[:800], "source": "web", "url": url})
         return chunks
@@ -772,8 +775,8 @@ async def async_rag_search(
                         "from_memory": True,
                         "_trace": trace.json(),
                     }
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("memvid recall failed: %s", exc)
 
     # 1.5) compound query split (product + infra) → parallel subqueries
     subqueries = _detect_compound(query, dcd_result)

@@ -9,11 +9,14 @@ LM Studio может работать с reranker моделями:
 from __future__ import annotations
 
 import os
+import logging
 import threading
 import time
 from typing import Optional
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 RERANKER_URL = os.getenv("RAG_RERANK_URL", "http://localhost:1234/v1/embeddings")
 RERANKER_MODEL = os.getenv("RAG_RERANKER_MODEL", "text-embedding-bge-reranker-v2-m3")
@@ -50,8 +53,8 @@ class RerankerService:
             if r.status_code in (200, 204, 405):
                 self._api_format = "cohere"
                 return "cohere"
-        except Exception:
-            pass
+        except requests.RequestException as exc:
+            logger.debug("Cohere-style reranker endpoint unavailable: %s", exc)
 
         self._api_format = "jina"
         return "jina"
