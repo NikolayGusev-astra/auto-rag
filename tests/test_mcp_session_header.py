@@ -1,9 +1,11 @@
 import asyncio
+import os
 from unittest import mock
 
 import pytest
 
 from rag_v2.mcp import AsyncMCPClient
+from rag_mcp_client import MCPClient
 
 
 class _FakeResp:
@@ -54,3 +56,24 @@ async def test_session_id_fallback_to_body():
     sid, ok = await c._http_mcp_init("http://x/init", {})
     assert ok is True
     assert sid == "body-sid"
+
+
+def test_stdio_mcp_does_not_inherit_parent_secrets(monkeypatch):
+    """S8: stdio MCP processes receive an allowlisted environment only."""
+    captured = {}
+
+    def fake_popen(*args, **kwargs):
+        captured.update(kwargs["env"])
+        raise FileNotFoundError("test binary is intentionally absent")
+
+    monkeypatch.setenv("JIRA_PAT", "must-not-reach-child")
+    monkeypatch.setattr("rag_mcp_client.subprocess.Popen", fake_popen)
+
+    result = MCPClient()._query_stdio(
+        "test", {"command": "missing-mcp", "env": {"MCP_TOKEN": "allowed"}}, "q", 1
+    )
+
+    assert result == []
+    assert "JIRA_PAT" not in captured
+    assert captured["MCP_TOKEN"] == "allowed"
+    assert captured["PYTHONUNBUFFERED"] == "1"
