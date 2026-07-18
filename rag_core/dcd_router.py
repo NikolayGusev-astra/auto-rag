@@ -102,6 +102,7 @@ DOMAIN_KEYWORDS = {
         "anti_keywords": ["kubernetes", "ansible", "docker compose", "terraform"],
         "keywords": {
             "postgresql": 7, "postgres": 6, "pg": 4,
+            "база данных": 5, "бд": 4, "репликация": 5,
             "mysql": 5, "mariadb": 4,
             "redis": 5, "key-value": 3,
             "replication": 5, "streaming": 4, "wal": 5, "walreceiver": 5,
@@ -158,6 +159,7 @@ DOMAIN_KEYWORDS = {
         "anti_keywords": ["kubernetes", "ansible", "terraform"],
         "keywords": {
             "zfs": 6, "pool": 4, "dataset": 3, "raidz": 5, "raidz2": 5, "mirror": 4,
+            "диск": 4, "диски": 4, "рейд": 5, "массив": 4, "хранилище": 4,
             "snapshot": 5, "send": 4, "receive": 4, "incremental": 4,
             "lvm": 4, "vg": 3, "lv": 3, "pv": 3,
             "ext4": 3, "xfs": 3, "btrfs": 4,
@@ -193,6 +195,7 @@ DOMAIN_KEYWORDS = {
         "anti_keywords": ["kubernetes", "ansible", "terraform"],
         "keywords": {
             "postfix": 6, "dovecot": 6, "smtp": 4, "imap": 4, "pop3": 3,
+            "почта": 5, "почтовый": 5, "спам": 5, "спам фильтр": 6,
             "sieve": 5, "filter": 3, "spam": 3, "rspamd": 4,
             "dkim": 5, "spf": 5, "dmarc": 5, "mx": 3,
             "mail": 2, "mailbox": 2, "maildir": 3,
@@ -291,15 +294,41 @@ DOMAIN_KEYWORDS = {
 
 # ─── Helper Functions ──────────────────────────────────────────────
 
+# Keep this deliberately small and domain-specific. It handles the common
+# inflections of the Russian keywords below without introducing a morphology
+# dependency or broad, error-prone suffix stripping.
+CYRILLIC_TOKEN_ALIASES = {
+    "базы": "база",
+    "базе": "база",
+    "базу": "база",
+    "базой": "база",
+    "данные": "данных",
+    "данными": "данных",
+    "репликации": "репликация",
+    "репликацию": "репликация",
+    "репликацией": "репликация",
+    "почты": "почта",
+    "почте": "почта",
+    "почту": "почта",
+    "почтой": "почта",
+    "диска": "диск",
+    "диске": "диск",
+    "дисков": "диск",
+    "диском": "диск",
+    "рейда": "рейд",
+    "рейде": "рейд",
+    "рейдом": "рейд",
+}
+
 def _stem(word: str) -> str:
-    return word.lower().strip()
+    return CYRILLIC_TOKEN_ALIASES.get(word.lower().strip(), word.lower().strip())
 
 def _normalize(text: str) -> str:
     return re.sub(r'[^\w\s\-]', ' ', text.lower())
 
 def _extract_tokens(text: str) -> List[str]:
     normalized = _normalize(text)
-    tokens = normalized.split()
+    tokens = [_stem(token) for token in normalized.split()]
     bigrams = [f"{tokens[i]} {tokens[i+1]}" for i in range(len(tokens)-1)]
     return tokens + bigrams
 
@@ -368,20 +397,28 @@ def classify(query: str) -> Dict:
     best_domain = "software-dev"
     best_score = 0.0
     best_matched = []
+    runner_up_score = 0.0
 
     for domain, data in DOMAIN_KEYWORDS.items():
         score, matched = _score_domain(tokens, data)
         if score > best_score:
+            runner_up_score = best_score
             best_score = score
             best_domain = domain
             best_matched = matched
+        elif score > runner_up_score:
+            runner_up_score = score
 
-    # Confidence normalization — нормализуем на максимум ВЫБРАННОГО домена,
-    # а не на глобальный максимум по всем доменам (иначе confidence несопоставим
-    # между запросами и флаг fallback бесполезен — C1).
+    # Confidence is evidence-based, not dictionary-size-based. The previous
+    # denominator was the sum of every keyword in a domain, so even a precise
+    # "postgresql streaming replication" routed with 0.098 confidence.
+    # Strong/multiple matches raise confidence; a close runner-up lowers it.
     best_data = DOMAIN_KEYWORDS[best_domain]
-    best_max = best_data.get("weight", 1) * sum(best_data.get("keywords", {}).values())
-    confidence = min(best_score / best_max, 1.0) if best_max > 0 else 0.0
+    domain_weight = best_data.get("weight", 1)
+    strength = min(best_score / max(domain_weight * 8, 1), 1.0)
+    coverage = min(len(best_matched) / 3.0, 1.0)
+    margin = (best_score - runner_up_score) / best_score if best_score else 0.0
+    confidence = (0.5 * strength + 0.5 * coverage) * (0.7 + 0.3 * margin)
 
     domain_data = DOMAIN_KEYWORDS[best_domain]
     collections = domain_data.get("collections", ["general"])

@@ -28,6 +28,13 @@ class TestDCDRouter:
         result = classify("random text about nothing specific")
         assert result["confidence"] < 0.3 or result["fallback"] is True
 
+    def test_cyrillic_inflections_match_database_keywords(self):
+        result = classify("как настроить репликацию базы данных")
+        assert result["domain"] == "database"
+        assert result["confidence"] > 0.0
+        assert "репликация" in result["keywords_matched"]
+        assert "база данных" in result["keywords_matched"]
+
     def test_no_substring_false_positives(self):
         result = classify("ssh connection timeout")
         assert result["domain"] != "scripting", \
