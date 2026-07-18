@@ -1,38 +1,75 @@
+import re
+from urllib.parse import unquote_plus
+
 import pytest
-from rag_core.rag_mcp_client import MCPClient
+
+import rag_core.rag_mcp_client as rag_mcp_client
 
 
-class TestFormatQuery:
-    @pytest.fixture
-    def client(self):
-        return MCPClient()
+@pytest.fixture
+def client():
+    return rag_mcp_client.MCPClient()
 
-    @pytest.fixture
-    def jira_template(self):
-        return '/rest/api/2/search?jql={query_and3}&maxResults={max}'
 
-    def test_benign_query(self, client, jira_template):
-        result = client.format_query(jira_template, "postgresql config", 5)
-        assert 'text~"postgresql"' in result
-        assert 'text~"config"' in result
-        assert "AND" in result
+def format_rest_query(monkeypatch, client, template, query, max_results=5):
+    captured = {}
 
-    def test_jql_injection_attempt(self, client, jira_template):
-        malicious = 'foo" OR summary!="'
-        result = client.format_query(jira_template, malicious, 5)
-        assert '\\"' in result, f"Quotes not escaped: {result}"
-        jql = result.split("jql=")[1].split("&")[0]
-        import re
-        opens = jql.count('text~"')
-        matches = re.findall(r'text~"((?:[^"\\]|\\.)*)"', jql)
-        assert opens == len(matches), f"Unbalanced quotes in: {jql}"
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
 
-    def test_single_word_query(self, client, jira_template):
-        result = client.format_query(jira_template, "postgresql", 5)
-        assert 'text~"postgresql"' in result
+        def json(self):
+            return {"issues": []}
 
-    def test_confluence_template(self, client):
-        template = '/rest/api/content/search?cql=text~"{query_first3}"&limit={max}'
-        result = client.format_query(template, "nginx reverse proxy ssl", 5)
-        assert "nginx" in result
-        assert "reverse" in result
+    class FakeSession:
+        trust_env = True
+
+        def get(self, url, headers=None, timeout=None):
+            captured["url"] = url
+            return FakeResponse()
+
+    monkeypatch.setattr(rag_mcp_client.requests, "Session", FakeSession)
+    client._query_rest(
+        "test",
+        {"base_url": "http://example.test", "rest_query": template},
+        query,
+        max_results,
+    )
+    return captured["url"]
+
+
+def test_benign_query(monkeypatch, client):
+    url = format_rest_query(
+        monkeypatch, client, "/rest/api/2/search?jql={query_and3}&maxResults={max}", "postgresql config"
+    )
+    jql = unquote_plus(url.split("jql=")[1].split("&")[0])
+    assert 'text~"postgresql"' in jql
+    assert 'text~"config"' in jql
+    assert " AND " in jql
+
+
+def test_jql_injection_attempt(monkeypatch, client):
+    url = format_rest_query(
+        monkeypatch, client, "/rest/api/2/search?jql={query_and3}&maxResults={max}", 'foo" OR summary!="'
+    )
+    jql = unquote_plus(url.split("jql=")[1].split("&")[0])
+    assert '\\"' in jql
+    matches = re.findall(r'text~"((?:[^"\\]|\\.)*)"', jql)
+    assert jql.count('text~"') == len(matches)
+
+
+def test_single_word_query(monkeypatch, client):
+    url = format_rest_query(
+        monkeypatch, client, "/rest/api/2/search?jql={query_and3}&maxResults={max}", "postgresql"
+    )
+    assert 'text~"postgresql"' in unquote_plus(url)
+
+
+def test_confluence_template(monkeypatch, client):
+    url = format_rest_query(
+        monkeypatch,
+        client,
+        '/rest/api/content/search?cql=text~"{query_first3}"&limit={max}',
+        "nginx reverse proxy ssl",
+    )
+    assert 'text~"nginx+reverse+proxy"' in url

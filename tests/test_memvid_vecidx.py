@@ -1,33 +1,4 @@
 
-import os
-import sys
-
-# Добавляем корень репо в путь, чтобы tests.conftest из проекта шел первым.
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-try:
-    from tests.conftest import skip_if_no_chromadb, skip_if_no_embedding
-except Exception:
-    import pytest as _pytest_mod
-
-    def _has_mod(name):
-        try:
-            __import__(name)
-            return True
-        except Exception:
-            return False
-
-    def _embedding_available():
-        url = os.environ.get("RAG_EMBEDDING_URL", "") or os.environ.get("RAG_MEMVID_EMBED_URL", "")
-        model = os.environ.get("RAG_EMBEDDING_MODEL", "") or os.environ.get("RAG_MEMVID_EMBED_MODEL", "")
-        return bool(url) and bool(model)
-
-    skip_if_no_chromadb = _pytest_mod.mark.skipif(
-        not _has_mod("chromadb"), reason="chromadb not installed"
-    )
-    skip_if_no_embedding = _pytest_mod.mark.skipif(
-        not _embedding_available(), reason="no embedding service configured"
-    )
 
 """Native MV2 vector index must enable semantic recall over memvid-sdk 2.0.160.
 
@@ -38,19 +9,18 @@ recall across the public MemvidMemory facade.
 Skipped without memvid_sdk (production noop mode).
 """
 import os
-import sys
 import tempfile
 import shutil
 
 import pytest
+
+from conftest import skip_if_no_chromadb, skip_if_no_embedding
 
 pytest.importorskip("memvid_sdk")
 
 os.environ["RAG_MEMVID_ENABLED"] = "true"
 os.environ.setdefault("RAG_MEMVID_EMBED_URL", "http://localhost:1234/v1/embeddings")
 os.environ.setdefault("RAG_MEMVID_EMBED_MODEL", "text-embedding-multilingual-e5-large-instruct")
-
-sys.path.insert(0, os.path.dirname(__file__) + "/..")
 
 from rag_core.memvid_memory import Episode, MemvidMemory
 

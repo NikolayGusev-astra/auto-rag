@@ -1,38 +1,11 @@
 
-import os
-import sys
-
-# Добавляем корень репо в путь, чтобы tests.conftest из проекта шел первым.
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-try:
-    from tests.conftest import skip_if_no_chromadb, skip_if_no_embedding
-except Exception:
-    import pytest as _pytest_mod
-
-    def _has_mod(name):
-        try:
-            __import__(name)
-            return True
-        except Exception:
-            return False
-
-    def _embedding_available():
-        url = os.environ.get("RAG_EMBEDDING_URL", "") or os.environ.get("RAG_MEMVID_EMBED_URL", "")
-        model = os.environ.get("RAG_EMBEDDING_MODEL", "") or os.environ.get("RAG_MEMVID_EMBED_MODEL", "")
-        return bool(url) and bool(model)
-
-    skip_if_no_chromadb = _pytest_mod.mark.skipif(
-        not _has_mod("chromadb"), reason="chromadb not installed"
-    )
-    skip_if_no_embedding = _pytest_mod.mark.skipif(
-        not _embedding_available(), reason="no embedding service configured"
-    )
 
 import os
 from unittest import mock
 
 import pytest
+
+from conftest import skip_if_no_chromadb, skip_if_no_embedding
 
 os.environ.setdefault("RAG_FEDERATED_ENABLED", "true")
 
@@ -45,7 +18,7 @@ from rag_core.unified_searcher import UnifiedSearcher
 def test_embedding_failure_visible_in_search():
     """R1: сбой embedding (нулевой вектор) не молчит, а возвращает
     is_error-чанк — иначе пользователь видит пустой ответ без причины."""
-    with mock.patch("unified_searcher._get_embedding", return_value=[0.0] * 1024):
+    with mock.patch("rag_core.unified_searcher._get_embedding", return_value=[0.0] * 1024):
         searcher = UnifiedSearcher(collection="wiki")
         results = searcher.search("любой запрос")
         assert len(results) == 1
@@ -68,7 +41,7 @@ async def test_embedding_failure_excluded_from_pool():
     async def fake_mcp(q, domain, collection, loop, trace):
         return {"chunks": []}
 
-    with mock.patch("unified_searcher._get_embedding", return_value=[0.0] * 1024), \
+    with mock.patch("rag_core.unified_searcher._get_embedding", return_value=[0.0] * 1024), \
          mock.patch.object(rag_async, "_blocking_zvec", side_effect=fake_zvec), \
          mock.patch.object(rag_async, "_blocking_web", side_effect=fake_web), \
          mock.patch.object(rag_async, "_check_entities_in_query", side_effect=fake_entities), \

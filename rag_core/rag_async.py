@@ -595,6 +595,7 @@ async def _async_rag_search_impl(
     query: str, dcd_result: dict,
     trace: RagTrace | None = None,
     federate: bool = True,
+    max_results: int = 5,
 ) -> dict:
     domain = dcd_result.get('domain', '')
     collection = dcd_result.get('collection', '')
@@ -764,6 +765,7 @@ async def async_rag_search(
     query: str, dcd_result: dict,
     trace: RagTrace | None = None,
     federate: bool = True,
+    max_results: int = 5,
 ) -> dict:
     """Public RAG entrypoint with optional memvid episodic memory.
 
@@ -816,6 +818,7 @@ async def async_rag_search(
                  "confidence": dcd_result.get("confidence", 0), "fallback": False},
                 trace=RagTrace(sq["query"], sq["domain"], sq["collection"]),
                 federate=federate,
+                max_results=max_results,
             )
             for sq in subqueries
         ])
@@ -844,7 +847,8 @@ async def async_rag_search(
 
     # 2) core pipeline
     result = await _async_rag_search_impl(query, dcd_result, trace=trace,
-                                          federate=federate)
+                                          federate=federate,
+                                          max_results=max_results)
 
     # 3) record (skip if this was a memory hit)
     if not result.get("from_memory"):

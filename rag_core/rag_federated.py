@@ -16,6 +16,7 @@
 import asyncio
 from contextlib import contextmanager
 from contextvars import ContextVar
+import logging
 import os
 import subprocess
 import time
@@ -24,6 +25,8 @@ from dataclasses import dataclass, field
 
 import aiohttp
 
+
+logger = logging.getLogger(__name__)
 
 MAX_FEDERATION_HOPS = 3
 _federation_hop_count: ContextVar[int] = ContextVar("federation_hop_count", default=0)
@@ -58,7 +61,6 @@ class FederatedServerConfig:
     # Runtime fields
     _tunnel_proc: Optional[subprocess.Popen] = field(default=None, init=False)
     local_port: Optional[int] = field(default=None, init=False)
-    _session: Optional[aiohttp.ClientSession] = field(default=None, init=False)
     accept_new_host: bool = False  # автоматически добавлять новые хосты в known_hosts
 
 
@@ -216,12 +218,8 @@ class FederatedRAGClient:
         return config.local_port
     
     def _get_session(self, config: FederatedServerConfig) -> aiohttp.ClientSession:
-        """Получить или создать aiohttp сессию."""
-        if config._session is None or config._session.closed:
-            config._session = aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=config.timeout)
-            )
-        return config._session
+        """Create a request-scoped session on the current event loop."""
+        return aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=config.timeout))
     
     def _build_url(self, config: FederatedServerConfig) -> str:
         """Построить URL для запроса.
@@ -279,42 +277,45 @@ class FederatedRAGClient:
         max_retries = 2
         last_error = None
 
-        for attempt in range(max_retries + 1):
-            try:
-                async with session.post(url, json=payload, headers=headers) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        chunks = data.get("chunks", data.get("results", []))
-                        normalized = []
-                        for c in chunks[:max_results]:
-                            if isinstance(c, dict):
-                                text = c.get("text", c.get("content", c.get("body", "")))
-                                if text:
-                                    normalized.append({
-                                        "text": text[:800],
-                                        "score": c.get("score", 0.5),
-                                        "source": c.get("source", name),
-                                        "metadata": c.get("metadata", {}),
-                                    })
-                        return normalized
-                    elif resp.status >= 500:
-                        last_error = RuntimeError(f"HTTP {resp.status}")
-                        if attempt < max_retries:
-                            await asyncio.sleep(0.5 * (attempt + 1))
-                            continue
-                        text = await resp.text()
-                        return [{"text": f"Remote RAG {name} error {resp.status}: {text}", "source": name, "score": 0, "is_error": True}]
-                    else:
-                        text = await resp.text()
-                        return [{"text": f"Remote RAG {name} error {resp.status}: {text}", "source": name, "score": 0, "is_error": True}]
-            except (asyncio.TimeoutError, aiohttp.ClientError) as e:
-                last_error = e
-                if attempt < max_retries:
-                    await asyncio.sleep(0.5 * (attempt + 1))
-                    continue
-                raise
+        try:
+            for attempt in range(max_retries + 1):
+                try:
+                    async with session.post(url, json=payload, headers=headers) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            chunks = data.get("chunks", data.get("results", []))
+                            normalized = []
+                            for c in chunks[:max_results]:
+                                if isinstance(c, dict):
+                                    text = c.get("text", c.get("content", c.get("body", "")))
+                                    if text:
+                                        normalized.append({
+                                            "text": text[:800],
+                                            "score": c.get("score", 0.5),
+                                            "source": c.get("source", name),
+                                            "metadata": c.get("metadata", {}),
+                                        })
+                            return normalized
+                        elif resp.status >= 500:
+                            last_error = RuntimeError(f"HTTP {resp.status}")
+                            if attempt < max_retries:
+                                await asyncio.sleep(0.5 * (attempt + 1))
+                                continue
+                            text = await resp.text()
+                            return [{"text": f"Remote RAG {name} error {resp.status}: {text}", "source": name, "score": 0, "is_error": True}]
+                        else:
+                            text = await resp.text()
+                            return [{"text": f"Remote RAG {name} error {resp.status}: {text}", "source": name, "score": 0, "is_error": True}]
+                except (asyncio.TimeoutError, aiohttp.ClientError) as e:
+                    last_error = e
+                    if attempt < max_retries:
+                        await asyncio.sleep(0.5 * (attempt + 1))
+                        continue
+                    raise
 
-        raise last_error or RuntimeError("Unknown error after retries")
+            raise last_error or RuntimeError("Unknown error after retries")
+        finally:
+            await session.close()
     
     async def query_all(self, query: str, max_results: int = 5) -> dict[str, list[dict]]:
         """Параллельный запрос ко всем настроенным серверам."""
@@ -347,9 +348,12 @@ class FederatedRAGClient:
             if api_key:
                 headers["X-API-Key"] = api_key
 
-            async with session.get(url, headers=headers) as resp:
-                if resp.status == 200:
-                    return await resp.json()
+            try:
+                async with session.get(url, headers=headers) as resp:
+                    if resp.status == 200:
+                        return await resp.json()
+            finally:
+                await session.close()
         except Exception:
             return None
         return None
@@ -403,9 +407,6 @@ class FederatedRAGClient:
             if config._tunnel_proc:
                 config._tunnel_proc.terminate()
                 config._tunnel_proc = None
-            if config._session and not config._session.closed:
-                await config._session.close()
-                config._session = None
 
 
 # ── Singleton client (persistent tunnels) ──────────────────────────
@@ -444,5 +445,13 @@ async def query_federated_servers(query: str, max_results: int = 3, domain: str 
         if domain:
             return await client.query_routed(query, domain, max_results)
         return await client.query_all(query, max_results)
-    except Exception:
-        return {}
+    except Exception as exc:
+        logger.exception("Federated query failed")
+        return {
+            "federation": [{
+                "text": f"Federated query error: {exc}",
+                "source": "federation",
+                "score": 0,
+                "is_error": True,
+            }]
+        }
