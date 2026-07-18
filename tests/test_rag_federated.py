@@ -2,6 +2,7 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 from rag_federated import FederatedRAGClient, _ServerHealth
+import federated_endpoint as endpoint
 
 
 class TestCircuitBreaker:
@@ -32,3 +33,15 @@ class TestCircuitBreaker:
 
         result = await client.query("bad", "test", 3)
         assert "cooldown" in result[0]["text"].lower()
+
+
+@pytest.mark.asyncio
+async def test_federation_rejects_requests_beyond_hop_limit():
+    """S9: a ping-pong request cannot exceed three federation hops."""
+    with pytest.raises(endpoint.HTTPException) as exc:
+        await endpoint.search(
+            endpoint.SearchRequest(query="test"), x_federation_hop="4"
+        )
+
+    assert exc.value.status_code == 400
+    assert "hop limit" in exc.value.detail.lower()

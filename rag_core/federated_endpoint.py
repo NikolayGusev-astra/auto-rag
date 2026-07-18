@@ -18,12 +18,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from dcd_router import classify, DOMAIN_KEYWORDS
 from rag_async import async_rag_search
+from rag_federated import MAX_FEDERATION_HOPS, federation_hop_context
 
 app = FastAPI(title="Federated RAG Endpoint", version="1.1.0")
 
 REQUIRE_AUTH = os.getenv("RAG_FEDERATED_API_KEY", "") != ""
-# Audit S9: cap forwarding depth so two nodes cannot ping-pong forever.
-MAX_FEDERATION_HOPS = int(os.getenv("RAG_FEDERATED_MAX_HOPS", "2"))
 
 
 def get_bind_host() -> str:
@@ -65,9 +64,6 @@ def _empty_result_hint(dcd_result: dict, query: str) -> dict:
 class SearchRequest(BaseModel):
     query: str
     max_results: int = 5
-    # Audit S9: remaining federation hops. Callers that received a query
-    # with hops=0 must not forward it to other nodes (loop protection).
-    hops: int = MAX_FEDERATION_HOPS
 
 
 class SearchResponse(BaseModel):
@@ -146,16 +142,19 @@ async def warmup(x_api_key: Optional[str] = Header(None, alias="X-API-Key")):
 async def search(
     request: SearchRequest,
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    x_federation_hop: Optional[str] = Header(None, alias="X-Federation-Hop"),
 ):
     _check_auth(x_api_key)
     try:
+        hop_count = int(x_federation_hop or "0")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid X-Federation-Hop header")
+    if hop_count < 0 or hop_count > MAX_FEDERATION_HOPS:
+        raise HTTPException(status_code=400, detail="Federation hop limit exceeded")
+    try:
         dcd_result = classify(request.query)
-        # S9: stop forwarding when hops exhausted.
-        allow_federate = request.hops > 0
-        result = await async_rag_search(
-            request.query, dcd_result,
-            federate=allow_federate,
-        )
+        with federation_hop_context(hop_count):
+            result = await async_rag_search(request.query, dcd_result)
         chunks = result.get("chunks", [])[: request.max_results]
 
         empty_hint = {}

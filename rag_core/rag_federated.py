@@ -14,6 +14,8 @@
 """
 
 import asyncio
+from contextlib import contextmanager
+from contextvars import ContextVar
 import os
 import subprocess
 import time
@@ -21,6 +23,20 @@ from typing import Any, Optional
 from dataclasses import dataclass, field
 
 import aiohttp
+
+
+MAX_FEDERATION_HOPS = 3
+_federation_hop_count: ContextVar[int] = ContextVar("federation_hop_count", default=0)
+
+
+@contextmanager
+def federation_hop_context(hop_count: int):
+    """Propagate an inbound federation hop count to downstream requests."""
+    token = _federation_hop_count.set(hop_count)
+    try:
+        yield
+    finally:
+        _federation_hop_count.reset(token)
 
 
 @dataclass
@@ -252,6 +268,9 @@ class FederatedRAGClient:
         session = self._get_session(config)
         url = self._build_url(config)
         headers = {}
+        # S9: each forwarded request increments the bounded hop count.  The
+        # receiving endpoint rejects values above MAX_FEDERATION_HOPS.
+        headers["X-Federation-Hop"] = str(_federation_hop_count.get() + 1)
         api_key = os.getenv("RAG_FEDERATED_API_KEY")
         if api_key:
             headers["X-API-Key"] = api_key
