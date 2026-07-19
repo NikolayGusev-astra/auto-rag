@@ -9,6 +9,8 @@ from rag_core.gateway.connector import SourceConnector
 from rag_core.gateway.models import SyncBatch
 from rag_core.gateway.sync.manifest_store import CorruptManifestError, MissingRevisionError, RevisionManifestStore
 from rag_core.gateway.sync.status import read_sync_status
+from rag_core.gateway.sync.index_builder import build_revision
+from rag_core.gateway.model_providers import EmbeddingProfile
 
 
 @dataclass(frozen=True)
@@ -29,13 +31,19 @@ class SyncEngine:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
 
-    def stage_sync(self, source: str, batch: SyncBatch) -> Revision:
+    def stage_sync(
+        self,
+        source: str,
+        batch: SyncBatch,
+        embed_provider: object | None = None,
+        active_profile: EmbeddingProfile | None = None,
+    ) -> Revision:
         documents = {document["id"]: document for document in self._previous_active_documents(source)}
         documents.update({document.id: asdict(document) for document in batch.added})
         documents.update({document.id: asdict(document) for document in batch.changed})
         for document_id in batch.deleted:
             documents.pop(document_id, None)
-        return self._stage_documents(source, documents, batch)
+        return self._stage_documents(source, documents, batch, embed_provider, active_profile)
 
     def full_rebuild(self, source: str, batch: SyncBatch) -> Revision:
         documents = {document.id: asdict(document) for document in batch.added}
@@ -46,13 +54,24 @@ class SyncEngine:
         self.publish(source, revision)
         return revision
 
-    def _stage_documents(self, source: str, documents: dict[str, dict], batch: SyncBatch) -> Revision:
+    def _stage_documents(
+        self,
+        source: str,
+        documents: dict[str, dict],
+        batch: SyncBatch,
+        embed_provider: object | None = None,
+        active_profile: EmbeddingProfile | None = None,
+    ) -> Revision:
         source_root = self.root / source
         source_root.mkdir(parents=True, exist_ok=True)
         revision_path = Path(tempfile.mkdtemp(dir=source_root, prefix="revision-"))
-        with (revision_path / "docs.jsonl").open("w", encoding="utf-8") as handle:
-            for document in documents.values():
-                handle.write(json.dumps(document, default=str) + "\n")
+        build_revision(
+            revision_path,
+            batch,
+            embed_provider=embed_provider,
+            active_profile=active_profile,
+            documents=documents.values(),
+        )
         if batch.deleted:
             with (revision_path / "tombstones.jsonl").open("w", encoding="utf-8") as handle:
                 for document_id in batch.deleted:
@@ -125,6 +144,36 @@ class SyncEngine:
                 for line in handle:
                     if line.strip():
                         json.loads(line)
+            for filename in ("chunks.jsonl", "vectors.jsonl"):
+                artifact = revision.path / filename
+                if artifact.exists():
+                    with artifact.open(encoding="utf-8") as handle:
+                        for line in handle:
+                            if line.strip():
+                                json.loads(line)
+            lexical_file = revision.path / "lexical.json"
+            manifest_file = revision.path / "manifest.json"
+            if not lexical_file.is_file() or not manifest_file.is_file():
+                raise OSError("staged index artifacts are incomplete")
+            lexical = json.loads(lexical_file.read_text(encoding="utf-8"))
+            manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+            if not isinstance(lexical, dict) or not isinstance(manifest, dict):
+                raise ValueError("staged index artifacts have invalid structure")
+            with (revision.path / "chunks.jsonl").open(encoding="utf-8") as handle:
+                chunks = [json.loads(line) for line in handle if line.strip()]
+            document_ids = {document["id"] for document in SyncEngine._read_jsonl(docs_file)}
+            chunk_ids = {item["id"] for item in chunks}
+            if any(item.get("document_id") not in document_ids for item in chunks):
+                raise ValueError("chunk references a missing document")
+            if any(not set(ids).issubset(chunk_ids) for ids in lexical.values() if isinstance(ids, list)):
+                raise ValueError("lexical index references a missing chunk")
+            vectors_file = revision.path / "vectors.jsonl"
+            if vectors_file.exists():
+                vectors = SyncEngine._read_jsonl(vectors_file)
+                if any(item.get("id") not in chunk_ids or item.get("document_id") not in document_ids for item in vectors):
+                    raise ValueError("vector references a missing document or chunk")
+            if set(manifest) != {"embedding_profile", "embedding_failures"}:
+                raise ValueError("staged index manifest has invalid schema")
             tombstones_file = revision.path / "tombstones.jsonl"
             if tombstones_file.exists():
                 with tombstones_file.open(encoding="utf-8") as handle:
@@ -132,3 +181,8 @@ class SyncEngine:
                         pass
         except (json.JSONDecodeError, OSError, UnicodeDecodeError) as error:
             raise ValueError("staged revision failed integrity validation") from error
+
+    @staticmethod
+    def _read_jsonl(path: Path) -> list[dict]:
+        with path.open(encoding="utf-8") as handle:
+            return [json.loads(line) for line in handle if line.strip()]
