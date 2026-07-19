@@ -23,6 +23,8 @@ class RetrievalCoordinator:
     async def search(self, request: SearchRequest) -> list[Evidence]:
         evidence = []
         for connector in self._connectors.values():
+            if self._is_web_connector(connector) and not request.include_web:
+                continue
             if not await self._is_available(connector):
                 continue
             evidence.extend(await connector.search_live(request))
@@ -30,6 +32,10 @@ class RetrievalCoordinator:
         if self._reranker is not None:
             fused = await self._reranker.rerank(request.query, fused, request.topk)
         return fused[:request.topk]
+
+    @staticmethod
+    def _is_web_connector(connector: SourceConnector) -> bool:
+        return getattr(connector, "source", "").lower() in {"web", "public_web"}
 
     @staticmethod
     async def _is_available(connector: SourceConnector) -> bool:

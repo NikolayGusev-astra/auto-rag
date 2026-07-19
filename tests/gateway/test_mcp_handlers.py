@@ -30,3 +30,21 @@ async def test_handler_returns_results_and_trace():
     assert "results" in response
     assert "trace" in response
     assert response["results"][0]["document_id"] == "doc"
+
+
+@pytest.mark.asyncio
+async def test_web_connector_not_called_when_include_web_is_false():
+    class WebConnector:
+        source = "web"
+
+        async def health(self):
+            return {"available": True}
+
+        async def search_live(self, request):
+            raise AssertionError("web connector must not be searched by default")
+
+    response = await handle_search(
+        SearchRequest(query="q", include_web=False), {"web": WebConnector()}
+    )
+
+    assert response["results"] == []
