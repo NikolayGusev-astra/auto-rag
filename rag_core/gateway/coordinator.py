@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import replace
 import logging
@@ -24,10 +25,12 @@ class RetrievalCoordinator:
         self._reranker = reranker
         self.last_failed_sources: list[str] = []
         self.last_successful_sources: list[str] = []
+        self.last_timed_out_sources: list[str] = []
 
     async def search(self, request: SearchRequest) -> list[Evidence]:
         self.last_failed_sources = []
         self.last_successful_sources = []
+        self.last_timed_out_sources = []
         health = await self.health_map()
         evidence = []
         for name, connector in self._connectors.items():
@@ -37,6 +40,9 @@ class RetrievalCoordinator:
                 continue
             try:
                 results = await connector.search_live(request)
+            except asyncio.CancelledError:
+                self.last_timed_out_sources.append(name)
+                raise
             except Exception as error:
                 self._record_failure(name, error)
                 continue
@@ -60,7 +66,10 @@ class RetrievalCoordinator:
 
     @staticmethod
     def _is_web_connector(connector: SourceConnector) -> bool:
-        return getattr(connector, "source", "").lower() in {"web", "public_web"}
+        return (
+            getattr(connector, "retrieval_kind", None) == "web"
+            or getattr(connector, "source", "").lower() in {"web", "public_web"}
+        )
 
     @staticmethod
     async def _is_available(connector: SourceConnector) -> bool:

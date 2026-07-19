@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import inspect
 import time
 
@@ -19,33 +20,60 @@ class AdaptiveLoop:
     ) -> dict:
         started_at = time.perf_counter()
         available_connectors = dict(connectors)
+        memory_key = getattr(memory, "source", "agent_memory") if memory is not None else None
         if self.enabled and memory is not None:
-            available_connectors.setdefault(getattr(memory, "source", "agent_memory"), memory)
+            available_connectors[memory_key] = memory
         plan = None
         coordinator = RetrievalCoordinator(available_connectors)
         availability = await coordinator.health_map()
         failed_sources: set[str] = set(coordinator.last_failed_sources)
+        kind_availability = {
+            kind: any(
+                available for name, available in availability.items()
+                if getattr(available_connectors[name], "retrieval_kind", "live") == kind
+            )
+            for kind in {
+                getattr(connector, "retrieval_kind", "live")
+                for connector in available_connectors.values()
+            }
+        }
         if self.enabled and planner is not None:
-            plan = planner.plan(request.query, availability, {})
+            plan = planner.plan(request.query, kind_availability, {})
 
-        selected_connectors = self._selected_connectors(available_connectors, plan)
+        selected_connectors = self._selected_connectors(connectors, plan)
         if self.enabled and memory is not None:
-            selected_connectors.setdefault(getattr(memory, "source", "agent_memory"), memory)
+            memory_requested = plan is not None and (
+                plan.include_local or plan.include_live or plan.include_web or bool(plan.sources)
+            )
+            if availability.get(memory_key, False) and memory_requested:
+                selected_connectors[memory_key] = memory
         include_web = plan.include_web if plan is not None else request.include_web
         top_k = plan.top_k if plan is not None else request.topk
         queries = plan.queries if plan is not None else (request.query,)
         coordinator = RetrievalCoordinator(selected_connectors)
         evidence = []
         successful_sources: set[str] = set()
+        timed_out_sources: set[str] = set()
         for query in queries:
-            evidence.extend(await coordinator.search(SearchRequest(
+            search_request = SearchRequest(
                 query=query,
                 topk=top_k,
                 domain=request.domain,
                 collection=request.collection,
                 include_web=include_web,
                 continuation_token=request.continuation_token,
-            )))
+            )
+            try:
+                if plan is not None and plan.retrieval_budget_ms is not None:
+                    async with asyncio.timeout(plan.retrieval_budget_ms / 1000):
+                        results = await coordinator.search(search_request)
+                else:
+                    results = await coordinator.search(search_request)
+            except TimeoutError:
+                timed_out_sources.update(coordinator.last_timed_out_sources or selected_connectors)
+                failed_sources.update(timed_out_sources)
+                continue
+            evidence.extend(results)
             failed_sources.update(coordinator.last_failed_sources)
             successful_sources.update(coordinator.last_successful_sources)
 
@@ -72,7 +100,10 @@ class AdaptiveLoop:
         return {
             "results": [item.__dict__ for item in fused],
             "mode": "adaptive" if self.enabled else "reference",
-            "metadata": {"failed_sources": sorted(failed_sources)},
+            "metadata": {
+                "failed_sources": sorted(failed_sources),
+                "timed_out_sources": sorted(timed_out_sources),
+            },
         }
 
     @staticmethod
@@ -82,5 +113,21 @@ class AdaptiveLoop:
         selected_sources = set(plan.sources)
         return {
             name: connector for name, connector in connectors.items()
-            if name in selected_sources or getattr(connector, "source", None) in selected_sources
+            if (
+                name in selected_sources
+                or getattr(connector, "source", None) in selected_sources
+                or (
+                    getattr(connector, "retrieval_kind", "live") == "local"
+                    and plan.include_local
+                )
+                or (
+                    getattr(connector, "retrieval_kind", "live") == "live"
+                    and plan.include_live
+                )
+                or (
+                    getattr(connector, "retrieval_kind", "live") == "web"
+                    and plan.include_web
+                )
+                or getattr(connector, "retrieval_kind", "live") == "memory"
+            )
         }

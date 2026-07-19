@@ -20,6 +20,7 @@ class LocalSnapshotConnector(SourceConnector):
     """Search the immutable artifacts of a source's active revision."""
 
     source = "local_snapshot"
+    retrieval_kind = "local"
 
     def __init__(self, engine: SyncEngine, source: str) -> None:
         self._engine = engine

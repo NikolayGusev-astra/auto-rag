@@ -7,6 +7,7 @@ from rag_core.zvec_adapter import ZVecSearcher
 
 class ZvecConnector:
     source = "local_zvec"
+    retrieval_kind = "local"
 
     def __init__(self, zvec: ZVecSearcher | None = None) -> None:
         self._zvec = zvec or ZVecSearcher()

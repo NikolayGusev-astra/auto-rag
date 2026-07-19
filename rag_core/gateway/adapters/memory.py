@@ -9,6 +9,7 @@ class MemoryConnector(SourceConnector):
     """Expose explicitly recalled episodic memory as gateway evidence."""
 
     source = "agent_memory"
+    retrieval_kind = "memory"
 
     def __init__(self, episodes: list[dict] | None = None) -> None:
         self._episodes = episodes or []

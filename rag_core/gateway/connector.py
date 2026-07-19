@@ -16,6 +16,7 @@ class SearchRequest:
 @runtime_checkable
 class SourceConnector(Protocol):
     source: str
+    retrieval_kind: str = "live"
 
     async def search_live(self, request: SearchRequest) -> list:
         ...
