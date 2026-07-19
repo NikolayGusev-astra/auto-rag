@@ -23,11 +23,23 @@ class RetrievalCoordinator:
     async def search(self, request: SearchRequest) -> list[Evidence]:
         evidence = []
         for connector in self._connectors.values():
+            if not await self._is_available(connector):
+                continue
             evidence.extend(await connector.search_live(request))
         fused = self.fuse(evidence)
         if self._reranker is not None:
             fused = await self._reranker.rerank(request.query, fused, request.topk)
         return fused[:request.topk]
+
+    @staticmethod
+    async def _is_available(connector: SourceConnector) -> bool:
+        try:
+            health = await connector.health()
+        except Exception:
+            return False
+        if isinstance(health, Mapping):
+            return bool(health.get("available", False))
+        return bool(getattr(health, "available", False))
 
     def fuse(self, evidence: Iterable[Evidence]) -> list[Evidence]:
         best_by_document: dict[str, Evidence] = {}
