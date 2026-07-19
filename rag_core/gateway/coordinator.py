@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import replace
+import logging
 
 from rag_core.gateway.connector import SearchRequest, SourceConnector
 from rag_core.gateway.models import Evidence
 
 
 EvidenceFilter = Callable[[Evidence], bool]
+logger = logging.getLogger(__name__)
 
 
 class RetrievalCoordinator:
@@ -20,19 +22,41 @@ class RetrievalCoordinator:
         self._connectors = dict(connectors or {})
         self._filters = tuple(filters)
         self._reranker = reranker
+        self.last_failed_sources: list[str] = []
+        self.last_successful_sources: list[str] = []
 
     async def search(self, request: SearchRequest) -> list[Evidence]:
+        self.last_failed_sources = []
+        self.last_successful_sources = []
+        health = await self.health_map()
         evidence = []
-        for connector in self._connectors.values():
+        for name, connector in self._connectors.items():
             if self._is_web_connector(connector) and not request.include_web:
                 continue
-            if not await self._is_available(connector):
+            if not health.get(name, False):
                 continue
-            evidence.extend(await connector.search_live(request))
+            try:
+                results = await connector.search_live(request)
+            except Exception as error:
+                self._record_failure(name, error)
+                continue
+            if results:
+                self.last_successful_sources.append(name)
+                evidence.extend(results)
         fused = self.fuse(evidence)
         if self._reranker is not None:
             fused = await self._reranker.rerank(request.query, fused, request.topk)
         return fused[:request.topk]
+
+    async def health_map(self) -> dict[str, bool]:
+        availability: dict[str, bool] = {}
+        for name, connector in self._connectors.items():
+            try:
+                availability[name] = await self._is_available(connector)
+            except Exception as error:
+                self._record_failure(name, error)
+                availability[name] = False
+        return availability
 
     @staticmethod
     def _is_web_connector(connector: SourceConnector) -> bool:
@@ -40,13 +64,18 @@ class RetrievalCoordinator:
 
     @staticmethod
     async def _is_available(connector: SourceConnector) -> bool:
-        try:
-            health = await connector.health()
-        except Exception:
-            return False
+        health = await connector.health()
         if isinstance(health, Mapping):
             return bool(health.get("available", False))
         return bool(getattr(health, "available", False))
+
+    def _record_failure(self, source: str, error: Exception) -> None:
+        if source not in self.last_failed_sources:
+            self.last_failed_sources.append(source)
+        logger.warning(
+            "retrieval connector failed",
+            extra={"source": source, "error_type": type(error).__name__, "error_message": str(error)},
+        )
 
     def fuse(self, evidence: Iterable[Evidence]) -> list[Evidence]:
         best_by_document: dict[str, Evidence] = {}

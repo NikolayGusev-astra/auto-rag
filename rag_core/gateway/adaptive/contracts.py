@@ -18,6 +18,10 @@ class QueryPlan:
     retrieval_budget_ms: int | None = None
     hints: dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def top_k(self) -> int:
+        return self.max_results
+
 
 @dataclass(frozen=True)
 class RoutingFeedback:

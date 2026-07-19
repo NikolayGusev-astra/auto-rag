@@ -5,6 +5,13 @@ from rag_core.gateway.models import Evidence
 
 
 class MemvidEnricher:
+    def __init__(self) -> None:
+        self._episodes: list[MemoryEpisode] = []
+
+    @property
+    def episodes(self) -> tuple[MemoryEpisode, ...]:
+        return tuple(self._episodes)
+
     def build_episode(
         self,
         query: str,
@@ -14,7 +21,7 @@ class MemvidEnricher:
         index_revision: str | None = None,
         embedding_profile_id: str | None = None,
     ) -> MemoryEpisode:
-        return MemoryEpisode(
+        episode = MemoryEpisode(
             id=f"ep-{abs(hash(query))}",
             query=query,
             summary=query[:200],
@@ -27,3 +34,7 @@ class MemvidEnricher:
             index_revision=index_revision,
             embedding_profile_id=embedding_profile_id,
         )
+        return episode
+
+    def persist_episode(self, episode: MemoryEpisode) -> None:
+        self._episodes.append(episode)
