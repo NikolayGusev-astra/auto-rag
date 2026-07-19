@@ -26,6 +26,12 @@ class MemoryConnector(SourceConnector):
             embedding_profile_id=episode.get("embedding_profile_id"),
         )
 
+    def is_compatible(self, active_profile_id: str | None) -> bool:
+        return all(
+            episode.get("embedding_profile_id") in (None, active_profile_id)
+            for episode in self._episodes
+        )
+
     async def search_live(self, request: SearchRequest) -> list[Evidence]:
         return [
             Evidence(

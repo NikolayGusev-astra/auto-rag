@@ -47,3 +47,10 @@ def test_memory_connector_exposes_memory_evidence():
     assert evidence.episode_id == "e1"
     assert evidence.source_document_ids == ("d1",)
     assert evidence.embedding_profile_id is None
+
+
+def test_memory_skipped_on_profile_mismatch():
+    connector = MemoryConnector(episodes=[{
+        "episode_id": "e1", "score": 0.9, "embedding_profile_id": "prof-B",
+    }])
+    assert connector.is_compatible("prof-A") is False
