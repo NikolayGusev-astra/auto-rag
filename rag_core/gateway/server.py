@@ -6,6 +6,7 @@ small line-delimited JSON request/response protocol required by local clients.
 from __future__ import annotations
 
 import asyncio
+import argparse
 import json
 import os
 import sys
@@ -93,3 +94,13 @@ def serve_stdio(
             response = {"error": {"message": str(error)}}
         print(json.dumps(response, default=_json_value), flush=True)
 
+
+def main() -> None:
+    """Start the local gateway's stdio transport."""
+    parser = argparse.ArgumentParser(description="Run the auto-rag gateway over stdio JSON-RPC.")
+    parser.parse_args()
+    serve_stdio()
+
+
+if __name__ == "__main__":
+    main()
