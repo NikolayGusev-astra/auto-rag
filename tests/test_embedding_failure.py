@@ -38,7 +38,7 @@ async def test_embedding_failure_excluded_from_pool():
     def fake_entities(q, chunks):
         return True
 
-    async def fake_mcp(q, domain, collection, loop, trace):
+    async def fake_mcp(q, domain, collection, loop, trace, tenant_id="default"):
         return {"chunks": []}
 
     with mock.patch("rag_core.unified_searcher._get_embedding", return_value=[0.0] * 1024), \

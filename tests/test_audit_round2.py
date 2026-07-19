@@ -46,7 +46,7 @@ async def test_federated_error_chunk_excluded_from_pool():
     def fake_entities(q, chunks):
         return True
 
-    async def fake_mcp(q, domain, collection, loop, trace):
+    async def fake_mcp(q, domain, collection, loop, trace, tenant_id="default"):
         return {"chunks": []}
 
     with mock.patch("rag_federated.query_federated_servers", side_effect=fake_fed), \

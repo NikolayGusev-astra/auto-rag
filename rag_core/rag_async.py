@@ -69,23 +69,33 @@ except Exception:
     _MEMVID_AVAILABLE = False
 
 _memory = None
+# P0 fix (audit): request-level tenant isolation for episodic memory.
+# Previously a single process-wide singleton was selected by env var, so a
+# later request from a different tenant could recall another tenant's episode.
+# Now memory instances are keyed by tenant_id.
+_memories: dict[str, object] = {}
 
-def _get_memory():
-    """Lazy singleton for the memvid memory layer.
 
-    Returns a MemvidTraced wrapper, or None when the layer is disabled
-    (RAG_MEMVID_ENABLED != true) or import failed. Never raises.
+def _get_memory(tenant_id: str | None = None) -> object | None:
+    """Lazy, tenant-keyed accessor for the memvid memory layer.
+
+    Returns a MemvidTraced wrapper for `tenant_id`, or None when the layer is
+    disabled (RAG_MEMVID_ENABLED != true) or import failed. Never raises.
+    Each tenant gets its own capsule/instance; cross-tenant recall is impossible.
     """
-    global _memory
-    if _memory is None and _MEMVID_AVAILABLE:
-        try:
-            from memvid_config_bridge import bridge_memvid_env
-            bridge_memvid_env()
-            _memory = MemvidTraced(MemvidMemory.for_tenant(
-                os.environ.get("RAG_MEMVID_TENANT", "hermes_default")))
-        except Exception:
-            _memory = None
-    return _memory
+    if not _MEMVID_AVAILABLE:
+        return None
+    tid = tenant_id or os.environ.get("RAG_MEMVID_TENANT", "hermes_default")
+    if tid in _memories:
+        return _memories[tid]
+    try:
+        from memvid_config_bridge import bridge_memvid_env
+        bridge_memvid_env()
+        inst = MemvidTraced(MemvidMemory.for_tenant(tid))
+        _memories[tid] = inst
+        return inst
+    except Exception:
+        return None
 
 def _episode_answer(result: dict) -> str:
     """Снимок полезного контента RAG для episodic memory.
@@ -104,7 +114,8 @@ def _episode_answer(result: dict) -> str:
     return "\n\n".join(parts)[:6000]
 
 
-def _record_episode(result: dict, query: str, domain: str, trace: RagTrace) -> None:
+def _record_episode(result: dict, query: str, domain: str, trace: RagTrace,
+                   tenant_id: str = "default") -> None:
     """Best-effort record of a RAG result as a memvid episode (guarded).
 
     Delegates to rag_core.memory.episode_writer, which enforces the
@@ -113,11 +124,11 @@ def _record_episode(result: dict, query: str, domain: str, trace: RagTrace) -> N
     """
     if not _MEMVID_AVAILABLE:
         return
-    mem = _get_memory()
+    mem = _get_memory(tenant_id)
     if mem is None or not mem.active:
         return
     from rag_core.memory.episode_writer import build_episode
-    tenant = os.environ.get("RAG_MEMVID_TENANT", "hermes_default")
+    tenant = tenant_id or os.environ.get("RAG_MEMVID_TENANT", "hermes_default")
     index_rev = os.environ.get("RAG_INDEX_REVISION", "unknown")
     try:
         ep = build_episode(result, query, domain, tenant, index_rev, trace)
@@ -445,7 +456,8 @@ def _check_entities_in_query(query: str, chunks: list[dict]) -> bool | None:
 
 # ── MCP Fallback ────────────────────────────────────────────────
 async def _fallback_to_mcp_web(
-    query: str, domain: str, collection: str, loop: asyncio.AbstractEventLoop, trace: RagTrace
+    query: str, domain: str, collection: str, loop: asyncio.AbstractEventLoop,
+    trace: RagTrace, tenant_id: str = "default",
 ) -> dict:
     """Try MCP servers in priority order."""
     mcp = MCPClient(timeout=15)
@@ -458,13 +470,15 @@ async def _fallback_to_mcp_web(
                 trace.decision("mcp_selected", choice=name,
                                reason=f"MCP {name} returned {len(chunks)} chunks")
                 calibrated = _calibrate_chunks(chunks, "mcp", name, tenant_id=tenant_id)
-                return {'source': name, 'chunks': calibrated, 'score': 0.7}
+                return {'source': name, 'chunks': calibrated,
+                        'score': max((float(c.get('score', 0)) for c in calibrated), default=0.7)}
     # Web fallback
     web_chunks = await loop.run_in_executor(_executor(), _blocking_web, query, domain, collection)
     if web_chunks:
         trace.decision("source_selection", choice="web", reason="all MCP empty, web fallback")
         calibrated = _calibrate_chunks(web_chunks, "web", "web", tenant_id=tenant_id)
-        return {'source': 'web', 'chunks': calibrated, 'score': 0.6}
+        return {'source': 'web', 'chunks': calibrated,
+                'score': max((float(c.get('score', 0)) for c in calibrated), default=0.6)}
     return {'source': 'empty', 'chunks': [], 'score': 0}
 
 
@@ -556,7 +570,7 @@ async def _async_rag_search_impl(
     if _zvec_entities_match is False:
         trace.decision("source_selection", choice="mcp_fallback", reason="zvec entity mismatch")
         with trace.stage("mcp_fallback"):
-            result = await _fallback_to_mcp_web(query, domain, collection, loop, trace)
+            result = await _fallback_to_mcp_web(query, domain, collection, loop, trace, tenant_id)
             if result['chunks']:
                 result['_trace'] = trace.json()
                 _cache_set(ck, result, dcd=dcd_result)
@@ -564,7 +578,7 @@ async def _async_rag_search_impl(
         if web_chunks:
             trace.decision("source_selection", choice="web", reason="mcp empty")
             calibrated = _calibrate_chunks(web_chunks, "web", "web", tenant_id=tenant_id)
-            result = {'source': 'web', 'chunks': calibrated, 'score': 0.6,
+            result = {'source': 'web', 'chunks': calibrated, 'score': max((float(c.get('score', 0)) for c in calibrated), default=0.6),
                       'trace': f'ZVec→EntityMismatch→Web', '_trace': trace.json()}
             _cache_set(ck, result, dcd=dcd_result)
             return result
@@ -579,7 +593,8 @@ async def _async_rag_search_impl(
         trace.decision("source_selection", choice="zvec",
                        reason=f"zvec score {max_score:.2f} >= threshold (no LLM gate)")
         result = {'source': 'zvec', 'chunks': zvec_chunks,
-                  'score': max_score, 'trace': f'ZVec({max_score:.2f})',
+                  'score': max((float(c.get('score', 0)) for c in zvec_chunks), default=max_score),
+                  'trace': f'ZVec({max_score:.2f})',
                   '_trace': trace.json()}
         _cache_set(ck, result, dcd=dcd_result)
         return result
@@ -589,14 +604,14 @@ async def _async_rag_search_impl(
         trace.decision("source_selection", choice="mcp_fallback",
                        reason=f"dcd confidence {confidence:.2f} < 0.2")
         with trace.stage("mcp_fallback_lowconf"):
-            result = await _fallback_to_mcp_web(query, domain, collection, loop, trace)
+            result = await _fallback_to_mcp_web(query, domain, collection, loop, trace, tenant_id)
             if result['chunks']:
                 result['_trace'] = trace.json()
                 _cache_set(ck, result, dcd=dcd_result)
                 return result
         if web_chunks:
             calibrated = _calibrate_chunks(web_chunks, "web", "web", tenant_id=tenant_id)
-            result = {'source': 'web', 'chunks': calibrated, 'score': 0.6,
+            result = {'source': 'web', 'chunks': calibrated, 'score': max((float(c.get('score', 0)) for c in calibrated), default=0.6),
                       'trace': f'DCD(conf={confidence:.2f}<0.2)→Web', '_trace': trace.json()}
             _cache_set(ck, result, dcd=dcd_result)
             return result
@@ -607,7 +622,7 @@ async def _async_rag_search_impl(
 
     # Final MCP fallback
     with trace.stage("final_mcp"):
-        result = await _fallback_to_mcp_web(query, domain, collection, loop, trace)
+        result = await _fallback_to_mcp_web(query, domain, collection, loop, trace, tenant_id)
         if result['chunks']:
             result['_trace'] = trace.json()
             _cache_set(ck, result, dcd=dcd_result)
@@ -616,7 +631,7 @@ async def _async_rag_search_impl(
     if web_chunks:
         trace.decision("source_selection", choice="web", reason="all MCP empty, final web")
         calibrated = _calibrate_chunks(web_chunks, "web", "web", tenant_id=tenant_id)
-        result = {'source': 'web', 'chunks': calibrated, 'score': 0.6,
+        result = {'source': 'web', 'chunks': calibrated, 'score': max((float(c.get('score', 0)) for c in calibrated), default=0.6),
                   'trace': 'ZVec→MCP→Web', '_trace': trace.json()}
         _cache_set(ck, result, dcd=dcd_result)
         return result
@@ -703,6 +718,18 @@ async def async_rag_search(
         collection = dcd_result.get('collection', '')
         trace = RagTrace(query, domain, collection)
 
+    # Single cache-key source of truth (P1 audit fix): build QueryContext
+    # once at the public entrypoint so compound/federation cache writes use
+    # the same tenant/ACL-aware key instead of an undefined `ctx`.
+    from rag_core.query_context import QueryContext
+    _tenant_id = dcd_result.get("tenant_id", os.environ.get("RAG_TENANT_ID", "default"))
+    _acl_hash = dcd_result.get("acl_hash", os.environ.get("RAG_ACL_HASH", "none"))
+    ctx = QueryContext(
+        query=query, domain=dcd_result.get("domain", ""),
+        collection=dcd_result.get("collection", ""), max_results=max_results,
+        tenant_id=_tenant_id, principal_acl_hash=_acl_hash,
+    )
+
     # 1) recall (short-circuit) — GUARDED mechanism, not an unbounded one.
     # Memory short-circuit is retained as an intentional latency optimization,
     # but it is now bounded by the poisoning guard in episode_writer.py
@@ -711,19 +738,24 @@ async def async_rag_search(
     # episode is re-validated against the current query/domain before use.
     result = None
     if _MEMVID_AVAILABLE:
-        mem = _get_memory()
+        mem = _get_memory(_tenant_id)
         if mem is not None and mem.active:
             try:
                 priors = mem.recall(query, domain=trace.domain, trace=trace)
                 if priors and priors[0].score >= mem.recall_threshold:
                     ep = priors[0]
                     # C6 fix: include synthetic chunk so eval/canary/CLI see
-                    # consistent structure with normal pipeline (has 'chunks')
-                    chunks = [{
+                    # consistent structure with normal pipeline (has 'chunks').
+                    # Calibrate through the same Evidence contract so memory
+                    # scores are comparable with retrieval scores downstream.
+                    raw_chunk = [{
                         "text": ep.answer or "",
                         "source": ep.sources[0].get("source", "") if ep.sources else "memory",
                         "score": ep.score,
                     }]
+                    chunks = _calibrate_chunks(raw_chunk, "memory",
+                                               ep.sources[0].get("source", "memory") if ep.sources else "memory",
+                                               tenant_id=_tenant_id)
                     result = {
                         "answer": ep.answer,
                         "sources": ep.sources,
@@ -742,8 +774,9 @@ async def async_rag_search(
         results = await asyncio.gather(*[
             _async_rag_search_impl(
                 sq["query"],
-                {"domain": sq["domain"], "collection": sq["collection"],
-                 "confidence": dcd_result.get("confidence", 0), "fallback": False},
+                {**dcd_result,
+                 "domain": sq["domain"], "collection": sq["collection"],
+                 "fallback": False},
                 trace=RagTrace(sq["query"], sq["domain"], sq["collection"]),
                 federate=federate,
                 max_results=max_results,
@@ -758,11 +791,22 @@ async def async_rag_search(
             src = r.get("source", "?")
             sources_used.setdefault(src, []).extend(r.get("chunks", []))
         if fused_chunks:
-            fused_chunks = fused_chunks[:max_results]
+            # Sort by calibrated score (desc) so weak chunks from the first
+            # subquery don't evict strong chunks from the second. Dedupe by
+            # text prefix to avoid near-duplicate inflation.
+            fused_chunks.sort(key=lambda c: float(c.get("score", 0)), reverse=True)
+            seen = set()
+            deduped = []
+            for c in fused_chunks:
+                key = c.get("text", "")[:200]
+                if key not in seen:
+                    seen.add(key)
+                    deduped.append(c)
+            fused_chunks = deduped[:max_results]
             fused = {
                 "source": "compound",
                 "chunks": fused_chunks,
-                "score": max((r.get("score", 0) for r in results), default=0),
+                "score": max((float(c.get("score", 0)) for c in fused_chunks), default=0),
                 "trace": f"Compound({'+'.join(s['domain'] for s in subqueries)})",
                 "_trace": trace.json(),
                 "sources_used": list(sources_used.keys()),
@@ -781,7 +825,7 @@ async def async_rag_search(
 
     # 3) record (skip if this was a memory hit)
     if not result.get("from_memory"):
-        _record_episode(result, query, trace.domain, trace)
+        _record_episode(result, query, trace.domain, trace, _tenant_id)
 
     return result
 

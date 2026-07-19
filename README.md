@@ -102,18 +102,32 @@ answer before ZVec/MCP/Web; on a miss it stores the useful RAG chunk content
 and sources for future recall. It is dependency-optional: if `memvid-sdk` is
 not installed, `_NoopMemvidBackend` is used and the pipeline runs unchanged.
 
-```
+```text
 async_rag_search(query)
-  ├─ memvid.recall(query, domain)        # semantic short-circuit gate
+  ├─ memvid.recall(query, domain)        # semantic short-circuit gate (tenant-isolated)
   │     if top_score >= recall_threshold (0.75):
   │        RETURN {answer, sources, from_memory:True}   ← ZVec/MCP/Web skipped
-  ├─ [miss] generic pipeline (ZVec ∥ Web → entity match → MCP → federation)
+  ├─ [miss] generic pipeline:
+  │     ZVec/Chroma vector search (default, trusted-local)
+  │       → [low entity match] MCP fallback chain (Context7 → Jira → Confluence → Lodestone → Web)
+  │       → [low DCD confidence] MCP/Web fallback
+  │       → [opt-in RAG_WEB_SPECULATIVE=1] parallel Web fetch (NOT default)
+  │       → [federation enabled] federated server pools (scores calibrated as UNTRUSTED)
   └─ memvid.record(episode)              # stores chunk text + sources, only on miss
 ```
 
+> **Default policy vs opt-in.** Out of the box only the trusted-local ZVec/Chroma
+> index is queried. Web retrieval is **opt-in** via `RAG_WEB_SPECULATIVE=1`
+> (controlled speculative fetch). MCP federation and web both go through
+> `Evidence.calibrated_score`, so a remote/federated chunk with raw score 0.99 is
+> discounted and will not outrank an equivalent trusted-local chunk.
+
 - **Backend**: `memvid-sdk` 2.x (`import memvid_sdk`; legacy `memvid` fallback).
-- **Capsule**: one local `<dir>/memory_<tenant>.mv2` file per tenant; the
-  native vector index is persisted inside the same file.
+- **Capsule / tenant isolation**: memory is **tenant-keyed at request level** —
+  each `tenant_id` from the DCD context gets its own in-process instance
+  (`_get_memory(tenant_id)` registry). A request for `tenant_B` can never recall
+  an episode written by `tenant_A`. (Earlier versions selected the capsule via a
+  process-wide env var, which leaked across tenants — fixed.)
 - **Semantic index**: episodes are written with precomputed LM Studio vectors via
   the memvid native API. Reopen-safe semantic recall uses the native MV2 index,
   not a JSONL sidecar.
