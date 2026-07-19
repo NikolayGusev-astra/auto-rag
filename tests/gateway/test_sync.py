@@ -64,6 +64,27 @@ def test_published_documents_exclude_tombstones(tmp_path):
     assert [document["id"] for document in engine.active_documents("jira")] == ["jira:1"]
 
 
+def test_sync_status_returns_cursor(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    revision = engine.stage_sync("jira", SyncBatch(added=[_document("jira:1", "h1")], cursor="c1"))
+    engine.publish("jira", revision)
+
+    status = engine.sync_status("jira")
+
+    assert status["cursor"] == "c1"
+    assert status["available"] is True
+
+
+async def test_sync_source_uses_supplied_cursor(tmp_path):
+    connector = _Connector()
+    engine = SyncEngine(root=tmp_path)
+
+    await engine.sync_source(connector, cursor="resume-from-here")
+
+    assert connector.received_cursor == "resume-from-here"
+    assert engine.sync_status("jira")["cursor"] == "c2"
+
+
 def _document(document_id, content_hash):
     return Document(
         id=document_id,
@@ -73,3 +94,14 @@ def _document(document_id, content_hash):
         text="x",
         content_hash=content_hash,
     )
+
+
+class _Connector:
+    source = "jira"
+
+    def __init__(self):
+        self.received_cursor = None
+
+    async def sync_changes(self, cursor):
+        self.received_cursor = cursor
+        return SyncBatch(added=[_document("jira:2", "h2")], cursor="c2")

@@ -6,7 +6,9 @@ import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from rag_core.gateway.connector import SourceConnector
 from rag_core.gateway.models import SyncBatch
+from rag_core.gateway.sync.status import read_sync_status
 
 
 @dataclass(frozen=True)
@@ -67,6 +69,19 @@ class SyncEngine:
                 for line in handle
                 if line.strip() and (document := json.loads(line))["id"] not in tombstones
             ]
+
+    async def sync_source(self, connector: SourceConnector, cursor: str | None = None) -> Revision:
+        source = connector.source
+        resume_cursor = cursor if cursor is not None else self.sync_status(source)["cursor"]
+        batch = await connector.sync_changes(resume_cursor)
+        if not isinstance(batch, SyncBatch):
+            raise TypeError("connector.sync_changes must return SyncBatch")
+        revision = self.stage_sync(source, batch)
+        self.publish(source, revision)
+        return revision
+
+    def sync_status(self, source: str) -> dict:
+        return read_sync_status(self.root, source)
 
     def _manifest_path(self, source: str) -> Path:
         return self.root / source / "manifest.json"
