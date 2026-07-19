@@ -4,7 +4,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "rag_core"))
 
-from rag_async import _detect_compound
+from rag_core.rag_async import _detect_compound
 
 
 class TestCompoundDetection:

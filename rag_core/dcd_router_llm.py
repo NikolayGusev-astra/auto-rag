@@ -20,7 +20,7 @@ import logging
 import requests as sync_requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from rag_config import LM_STUDIO_CHAT_URL, LLM_CLASSIFY_MODEL, LLM_CLASSIFY_TIMEOUT
+from rag_core.rag_config import LM_STUDIO_CHAT_URL, LLM_CLASSIFY_MODEL, LLM_CLASSIFY_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ def classify_hybrid(query: str) -> dict:
     Keyword router is fast and zero-cost. LLM kicks in only when
     keyword confidence is below threshold.
     """
-    from dcd_router import classify as classify_keyword
+    from rag_core.dcd_router import classify as classify_keyword
 
     kw_result = classify_keyword(query)
 
@@ -183,7 +183,7 @@ def classify(query: str) -> dict:
     elif mode == "hybrid":
         return classify_hybrid(query)
     else:
-        from dcd_router import classify as classify_keyword
+        from rag_core.dcd_router import classify as classify_keyword
         result = classify_keyword(query)
         result["router"] = "keyword"
         return result

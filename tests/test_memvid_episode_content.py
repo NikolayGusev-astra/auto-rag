@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 from rag_core import rag_async
-from rag_trace import RagTrace
+from rag_core.rag_trace import RagTrace
 
 
 def test_episode_answer_uses_chunks_not_trace():

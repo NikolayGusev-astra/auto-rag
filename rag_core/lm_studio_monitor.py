@@ -101,7 +101,7 @@ class LMStudioMonitor:
 
     def warmup_all(self) -> dict:
         """Pre-load все модели, которые нужны auto-rag."""
-        from rag_config import (
+        from rag_core.rag_config import (
             EMBEDDING_MODEL,
             RERANK_MODEL,
             LLM_CLASSIFY_MODEL,

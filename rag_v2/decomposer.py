@@ -16,7 +16,7 @@ import json
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from rag_config import LM_STUDIO_CHAT_URL
+from rag_core.rag_config import LM_STUDIO_CHAT_URL
 
 _LLM_URL = LM_STUDIO_CHAT_URL.rstrip('/')
 

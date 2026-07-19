@@ -26,7 +26,7 @@ _rag_core = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'rag_c
 if _rag_core not in sys.path:
     sys.path.insert(0, _rag_core)
 
-from rag_config import (
+from rag_core.rag_config import (
     MCP_SERVERS, HYBRID_SEARCH_ENABLED, HYBRID_SEARCH_RECALL_TOPK,
     HYBRID_SEARCH_RRF_CONSTANT, DCD_MODE,
     LOCAL_RERANKER_ENABLED, LOCAL_RERANKER_MODEL, LOCAL_RERANKER_DEVICE,
@@ -38,7 +38,7 @@ from .mcp import AsyncMCPClient
 from .fuser import fuse
 
 # Reuse trace from v1
-from rag_trace import RagTrace
+from rag_core.rag_trace import RagTrace
 
 
 # ── LRU Cache ────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ def _classify(query: str) -> dict:
         return classify_hybrid(query)
     else:
         # keyword (default)
-        from dcd_router import classify
+        from rag_core.dcd_router import classify
         return classify(query)
 
 

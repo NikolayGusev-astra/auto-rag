@@ -8,7 +8,7 @@ import asyncio
 from unittest import mock
 
 from rag_core import rag_async
-from rag_trace import RagTrace
+from rag_core.rag_trace import RagTrace
 
 
 def _fake_loop():
@@ -85,6 +85,7 @@ async def test_compound_ranking_by_calibrated_score():
 
 async def test_memory_isolated_by_tenant_registry():
     """P0: _get_memory(tenant) returns tenant-distinct instances."""
+    rag_async._memories.clear()  # reset global registry between tests
     created = {}
     def fake_for_tenant(tid):
         # return a distinct object per tenant so identity checks work
@@ -93,8 +94,8 @@ async def test_memory_isolated_by_tenant_registry():
         return created[tid]
     with mock.patch.object(rag_async, "_MEMVID_AVAILABLE", True), \
          mock.patch.dict("sys.modules", {"memvid_config_bridge": mock.MagicMock()}), \
-         mock.patch.object(rag_async, "MemvidTraced", lambda x: x), \
-         mock.patch.object(rag_async, "MemvidMemory") as MM:
+         mock.patch.object(rag_async, "MemvidTraced", lambda x: x, create=True), \
+         mock.patch.object(rag_async, "MemvidMemory", create=True) as MM:
             MM.for_tenant.side_effect = fake_for_tenant
             a = rag_async._get_memory("tenant-a")
             b = rag_async._get_memory("tenant-b")

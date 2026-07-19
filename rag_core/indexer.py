@@ -8,8 +8,8 @@ import os, sys, json, hashlib, time, logging
 logger = logging.getLogger(__name__)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from index_common import file_hash, parse_frontmatter, _safe_id
-from rag_config import ZVEC_PATH, ZVEC_COLLECTION, EMBEDDING_DIM
-from rag_config import EMBEDDING_URL, EMBEDDING_MODEL
+from rag_core.rag_config import ZVEC_PATH, ZVEC_COLLECTION, EMBEDDING_DIM
+from rag_core.rag_config import EMBEDDING_URL, EMBEDDING_MODEL
 
 # ── Config ────────────────────────────────────────────────────────
 COLL_PATH = os.path.join(ZVEC_PATH, ZVEC_COLLECTION)

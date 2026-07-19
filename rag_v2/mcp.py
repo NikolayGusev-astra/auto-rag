@@ -16,7 +16,7 @@ from typing import Any
 import aiohttp
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from rag_config import MCP_SERVERS, MCP_TIMEOUT
+from rag_core.rag_config import MCP_SERVERS, MCP_TIMEOUT
 
 
 def server_name_from_url(url: str) -> str:

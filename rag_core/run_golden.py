@@ -2,7 +2,7 @@
 """Run golden set and report results."""
 import json, os, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dcd_router import classify
+from rag_core.dcd_router import classify
 
 GOLDEN_PATH = os.path.join(os.path.dirname(__file__), 'golden_set.json')
 REPORT_PATH = os.path.join(os.path.dirname(__file__), 'golden_eval_report.json')

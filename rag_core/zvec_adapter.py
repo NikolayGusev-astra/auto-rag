@@ -17,9 +17,9 @@ import logging
 from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from rag_config import ZVEC_PATH, ZVEC_COLLECTION, ZVEC_SESSIONS_COLLECTION
-from rag_config import EMBEDDING_URL, EMBEDDING_MODEL, EMBEDDING_DIM
-from rag_config import ensure_zvec_lock
+from rag_core.rag_config import ZVEC_PATH, ZVEC_COLLECTION, ZVEC_SESSIONS_COLLECTION
+from rag_core.rag_config import EMBEDDING_URL, EMBEDDING_MODEL, EMBEDDING_DIM
+from rag_core.rag_config import ensure_zvec_lock
 
 logger = logging.getLogger(__name__)
 

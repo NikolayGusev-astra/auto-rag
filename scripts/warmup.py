@@ -28,7 +28,7 @@ def warmup_reranker():
 
 def warmup_llm():
     from llm_service import get_llm
-    from rag_config import (
+    from rag_core.rag_config import (
         LLM_CLASSIFY_MODEL, LLM_VERIFY_MODEL, LLM_EVAL_MODEL,
     )
     models = set([LLM_CLASSIFY_MODEL, LLM_VERIFY_MODEL, LLM_EVAL_MODEL])

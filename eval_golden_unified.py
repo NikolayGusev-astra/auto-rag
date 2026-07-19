@@ -6,7 +6,7 @@ import json
 import time
 sys.path.insert(0, "rag_core")
 from unified_searcher import UnifiedSearcher
-from dcd_router import classify
+from rag_core.dcd_router import classify
 
 SEARCHER = UnifiedSearcher()
 

@@ -16,8 +16,8 @@ from pydantic import BaseModel
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from dcd_router import classify, DOMAIN_KEYWORDS
-from rag_async import async_rag_search
+from rag_core.dcd_router import classify, DOMAIN_KEYWORDS
+from rag_core.rag_async import async_rag_search
 from rag_federated import MAX_FEDERATION_HOPS, federation_hop_context
 
 app = FastAPI(title="Federated RAG Endpoint", version="1.1.0")
@@ -205,7 +205,7 @@ async def search_get(
 
 def _get_doc_count() -> int:
     try:
-        from rag_config import ZVEC_PATH, ZVEC_COLLECTION
+        from rag_core.rag_config import ZVEC_PATH, ZVEC_COLLECTION
         import os
         index_path = os.path.join(ZVEC_PATH, ZVEC_COLLECTION)
         if os.path.isdir(index_path):

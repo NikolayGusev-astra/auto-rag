@@ -29,8 +29,10 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-sys.path.insert(0, os.path.dirname(__file__))
-from rag_config import (
+# Absolute `rag_core.` imports guarantee a single module identity
+# (rag_core.rag_config) whether imported as package or (legacy) top-level.
+# NO sys.path.insert: callers must use `from rag_core.rag_async import ...`.
+from rag_core.rag_config import (
     EMBEDDING_URL, EMBEDDING_MODEL, EMBEDDING_DIM,
     ZVEC_PATH, ZVEC_COLLECTION,
     MCP_SERVERS, MCP_ENABLED, MCP_MAX_RESULTS,
@@ -41,9 +43,9 @@ from rag_config import (
     LOCAL_NODE_NAME,
 )
 
-from dcd_router import classify
-from rag_mcp_client import MCPClient
-from rag_trace import RagTrace
+from rag_core.dcd_router import classify
+from rag_core.rag_mcp_client import MCPClient
+from rag_core.rag_trace import RagTrace
 
 
 # ── SSRF guard ───────────────────────────────────────────────
@@ -395,7 +397,7 @@ def _llm_verify(query: str, chunks: list[dict]) -> float:
     it to 0.0 (irrelevant) rather than the old 0.5 fail-open default.
     """
     from rag_core.verification import verify_relevance
-    from rag_config import (
+    from rag_core.rag_config import (
         LLM_VERIFY_ENABLED, LLM_VERIFY_URL, LLM_VERIFY_MODEL, LLM_VERIFY_TIMEOUT,
     )
     res = verify_relevance(

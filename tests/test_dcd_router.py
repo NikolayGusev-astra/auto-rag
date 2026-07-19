@@ -1,5 +1,5 @@
 import pytest
-from dcd_router import classify
+from rag_core.dcd_router import classify
 
 
 class TestDCDRouter:

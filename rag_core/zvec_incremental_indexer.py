@@ -20,8 +20,8 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from index_common import file_hash, parse_frontmatter, _safe_id
-from rag_config import EMBEDDING_DIM, EMBEDDING_MODEL, EMBEDDING_URL
-from rag_config import EXCLUDE_DIRS, ZVEC_PATH, ZVEC_COLLECTION
+from rag_core.rag_config import EMBEDDING_DIM, EMBEDDING_MODEL, EMBEDDING_URL
+from rag_core.rag_config import EXCLUDE_DIRS, ZVEC_PATH, ZVEC_COLLECTION
 
 logger = logging.getLogger(__name__)
 

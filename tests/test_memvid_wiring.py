@@ -35,37 +35,40 @@ def test_wiring_recall_before_record(monkeypatch):
     """With memory enabled + fake backend, recall runs before RAG, record after."""
     monkeypatch.setenv("RAG_MEMVID_ENABLED", "true")
 
-    import rag_async
+    import rag_core.rag_async as rag_async
+    # Ensure memory path is exercised regardless of SDK availability in env
+    with patch.object(rag_async, "_MEMVID_AVAILABLE", True):
 
-    # Fake episode + memory
-    fake_ep = MagicMock()
-    fake_ep.score = 0.9
-    fake_ep.answer = "cached answer"
-    fake_ep.sources = [{"source": "mem"}]
+        # Fake episode + memory
+        fake_ep = MagicMock()
+        fake_ep.score = 0.9
+        fake_ep.answer = "cached answer"
+        fake_ep.sources = [{"source": "mem"}]
 
-    fake_mem = MagicMock()
-    fake_mem.active = True
-    fake_mem.recall_threshold = 0.75
-    fake_mem.recall.return_value = [fake_ep]
-    fake_mem.record.return_value = True
+        fake_mem = MagicMock()
+        fake_mem.active = True
+        fake_mem.recall_threshold = 0.75
+        fake_mem.recall.return_value = [fake_ep]
+        fake_mem.record.return_value = True
 
-    # Patch _get_memory to return our fake
-    with patch.object(rag_async, "_get_memory", return_value=fake_mem):
-        # Build a minimal dcd_result
-        dcd = {"domain": "astra", "collection": "wiki", "confidence": 0.5}
-        # trace=None -> created internally; we just check record called
-        import asyncio
-        result = asyncio.run(
-            rag_async.async_rag_search("сброс пароля", dcd)
-        )
+        # Patch _get_memory to return our fake
+        with patch.object(rag_async, "_get_memory", return_value=fake_mem):
+            # Build a minimal dcd_result
+            dcd = {"domain": "astra", "collection": "wiki", "confidence": 0.5}
+            # trace=None -> created internally; we just check record called
+            import asyncio
+            result = asyncio.run(
+                rag_async.async_rag_search("сброс пароля", dcd)
+            )
 
-    # recall should have been called (short-circuit or not)
-    assert fake_mem.recall.called
-    # record should have been called (unless short-circuit from memory)
-    if not result.get("from_memory"):
-        assert fake_mem.record.called
-    else:
-        # short-circuit path: record NOT called for a memory hit
+        # recall should have been called (short-circuit or not)
+        assert fake_mem.recall.called
+        # record should have been called (unless short-circuit from memory)
+        if not result.get("from_memory"):
+            assert fake_mem.record.called
+        else:
+            # short-circuit path: record NOT called for a memory hit
+            pass
         assert not fake_mem.record.called
 
 

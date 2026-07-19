@@ -40,7 +40,7 @@ def _llm_judge(query: str, answer: str, key_facts: list[str]) -> float:
     """LLM judge для оценки качества ответа."""
     import requests as sync_requests
     try:
-        from rag_config import LM_STUDIO_CHAT_URL
+        from rag_core.rag_config import LM_STUDIO_CHAT_URL
         r = sync_requests.post(LM_STUDIO_CHAT_URL, json={
             "model": "qwen2.5-7b-instruct",
             "messages": [{"role": "user", "content": LLM_JUDGE_PROMPT.format(

@@ -56,7 +56,7 @@ def read_cache() -> list[dict]:
     """
     sys.path.insert(0, os.path.dirname(__file__))
     try:
-        from rag_async import _CACHE
+        from rag_core.rag_async import _CACHE
     except Exception:
         return []
     records = []

@@ -22,8 +22,8 @@ from pathlib import Path
 import requests
 
 sys.path.insert(0, str(Path(__file__).parent))
-from dcd_router import classify as dcd_classify
-from rag_async import async_rag_search
+from rag_core.dcd_router import classify as dcd_classify
+from rag_core.rag_async import async_rag_search
 
 HERE = Path(__file__).parent
 GOLDEN_PATH = HERE / "golden_set.json"
@@ -282,7 +282,7 @@ async def evaluate_one(
     # 2. RAG pipeline
     t1 = time.time()
     try:
-        from rag_trace import RagTrace
+        from rag_core.rag_trace import RagTrace
         trace = RagTrace(q["query"])
         result = await async_rag_search(q["query"], dcd_result, trace=trace)
         latency = time.time() - t1
