@@ -46,8 +46,9 @@ class SyncEngine:
         documents.update({document.id: asdict(document) for document in batch.changed})
         for document_id in batch.deleted:
             documents.pop(document_id, None)
+        effective_profile = active_profile or self._active_embedding_profile(source)
         return _await_synchronously(
-            self._stage_documents(source, documents, batch, embed_provider, active_profile, allow_lexical_downgrade)
+            self._stage_documents(source, documents, batch, embed_provider, effective_profile, allow_lexical_downgrade)
         )
 
     async def stage_sync_async(
@@ -63,7 +64,8 @@ class SyncEngine:
         documents.update({document.id: asdict(document) for document in batch.changed})
         for document_id in batch.deleted:
             documents.pop(document_id, None)
-        return await self._stage_documents(source, documents, batch, embed_provider, active_profile, allow_lexical_downgrade)
+        effective_profile = active_profile or self._active_embedding_profile(source)
+        return await self._stage_documents(source, documents, batch, embed_provider, effective_profile, allow_lexical_downgrade)
 
     def full_rebuild(
         self,
@@ -79,7 +81,15 @@ class SyncEngine:
         for document_id in batch.deleted:
             documents.pop(document_id, None)
         revision = _await_synchronously(
-            self._stage_documents(source, documents, batch, embed_provider, active_profile, allow_lexical_downgrade)
+            self._stage_documents(
+                source,
+                documents,
+                batch,
+                embed_provider,
+                active_profile,
+                allow_lexical_downgrade,
+                detect_active_profile=False,
+            )
         )
         self.publish(source, revision)
         return revision
@@ -92,7 +102,11 @@ class SyncEngine:
         embed_provider: object | None = None,
         active_profile: EmbeddingProfile | None = None,
         allow_lexical_downgrade: bool = False,
+        detect_active_profile: bool = True,
     ) -> Revision:
+        effective_profile = active_profile or (
+            self._active_embedding_profile(source) if detect_active_profile else None
+        )
         source_root = self.root / source
         source_root.mkdir(parents=True, exist_ok=True)
         revision_path = Path(tempfile.mkdtemp(dir=source_root, prefix="revision-"))
@@ -100,7 +114,7 @@ class SyncEngine:
             revision_path,
             batch,
             embed_provider=embed_provider,
-            active_profile=active_profile,
+            active_profile=effective_profile,
             allow_lexical_downgrade=allow_lexical_downgrade,
             documents=documents.values(),
         )
@@ -112,6 +126,14 @@ class SyncEngine:
 
     def active_revision(self, source: str) -> str | None:
         return self._manifest_store(source).active_revision()
+
+    def _active_embedding_profile(self, source: str) -> EmbeddingProfile | None:
+        active_revision = self.active_revision(source)
+        if active_revision is None:
+            return None
+        manifest = json.loads((Path(active_revision) / "manifest.json").read_text(encoding="utf-8"))
+        profile = manifest.get("embedding_profile")
+        return EmbeddingProfile(**profile) if profile is not None else None
 
     def publish(self, source: str, revision: Revision) -> None:
         self._validate_revision(revision)
@@ -135,13 +157,15 @@ class SyncEngine:
                 if line.strip() and (document := json.loads(line))["id"] not in tombstones
             ]
 
-    async def sync_source(self, connector: SourceConnector, cursor: str | None = None) -> Revision:
+    async def sync_source(
+        self, connector: SourceConnector, cursor: str | None = None, *, embed_provider: object | None = None
+    ) -> Revision:
         source = connector.source
         resume_cursor = cursor if cursor is not None else self.sync_status(source)["cursor"]
         batch = await connector.sync_changes(resume_cursor)
         if not isinstance(batch, SyncBatch):
             raise TypeError("connector.sync_changes must return SyncBatch")
-        revision = await self.stage_sync_async(source, batch)
+        revision = await self.stage_sync_async(source, batch, embed_provider=embed_provider)
         self.publish(source, revision)
         return revision
 
