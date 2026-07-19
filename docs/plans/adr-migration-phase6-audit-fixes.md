@@ -19,15 +19,19 @@ The following tasks raise that to functional completeness for the core paths.
 
 ---
 
-## 6.1 / P0-1: Non-destructive incremental sync  [DONE — isolated, pending re-audit]
+## 6.1 / P0-1: Non-destructive incremental sync  [DONE — closed after re-audit round 2]
 
-**Status:** implemented in commits `2780520`, `90fd9df`, `f667443`. Non-destructive merge
-verified: carry-forward previous active → apply added → changed as upsert → deleted LAST
-(wins). Failed publish preserves prior active revision. State-transition tests in
-`tests/gateway/test_sync.py` (15 passed) cover add/change/delete/combined/rollback/
-idempotency/conflicts/corrupt-revision/source-isolation.
+**Status:** implemented `2780520`, `90fd9df`, `f667443` (non-destructive merge) +
+`f307106` (fail-closed on corrupt active revision). Re-audit round 2 found the original
+fix was FAIL-OPEN on corrupt active snapshot (silent data loss). Fixed: `_previous_active_documents`
+now raises `CorruptActiveRevisionError` when an existing active revision is unreadable
+(manifest/docs.jsonl/path broken); first-time sync (no active revision) still returns [].
+`full_rebuild(source, batch)` is the ONLY authorized bypass (receives full authoritative
+snapshot). 19 sync tests pass (T1-T5 regression: corrupt docs.jsonl/manifest/path → error,
+active unchanged; first sync OK; full_rebuild recovers). Full suite 271 passed.
 
-**Next step:** user re-audit of sync semantics. If confirmed, proceed below.
+**Verdict:** P0-1 fully closed — non-destructive merge + fail-closed + recovery path.
+Proceed to 6.2.
 
 ---
 
