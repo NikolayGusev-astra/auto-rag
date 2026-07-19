@@ -52,6 +52,24 @@ def test_publish_is_atomic_and_blocks_corrupt_staged_revision(tmp_path):
     assert engine.active_revision("jira") == str(revision.path)
 
 
+def test_failed_publish_preserves_previous_active_documents(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    _publish(
+        engine,
+        "jira",
+        added=[_document("jira:a", "ha"), _document("jira:b", "hb"), _document("jira:c", "hc")],
+    )
+    previous_revision = engine.active_revision("jira")
+    staged = engine.stage_sync("jira", SyncBatch(deleted=["jira:b"]))
+    (staged.path / "tombstones.jsonl").write_bytes(b"\xff")
+
+    with pytest.raises(ValueError):
+        engine.publish("jira", staged)
+
+    assert engine.active_revision("jira") == previous_revision
+    assert _active_hashes(engine, "jira") == {"jira:a": "ha", "jira:b": "hb", "jira:c": "hc"}
+
+
 def test_published_documents_exclude_tombstones(tmp_path):
     engine = SyncEngine(root=tmp_path)
     revision = engine.stage_sync(

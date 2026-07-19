@@ -107,9 +107,16 @@ class SyncEngine:
     def _validate_revision(revision: Revision) -> None:
         docs_file = revision.path / "docs.jsonl"
         try:
+            if not revision.path.is_dir() or not docs_file.is_file():
+                raise OSError("staged revision is incomplete")
             with docs_file.open(encoding="utf-8") as handle:
                 for line in handle:
                     if line.strip():
                         json.loads(line)
-        except (json.JSONDecodeError, OSError) as error:
+            tombstones_file = revision.path / "tombstones.jsonl"
+            if tombstones_file.exists():
+                with tombstones_file.open(encoding="utf-8") as handle:
+                    for _ in handle:
+                        pass
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as error:
             raise ValueError("staged revision failed integrity validation") from error
