@@ -1,7 +1,12 @@
 # Migration Plan: Auto-RAG → Agent Knowledge Gateway
 
-**Статус:** Draft (следует из ADR-001, ADR-002)
+**Статус:** Draft (следует из ADR-001, ADR-002, ADR-003)
 **Цель:** переориентация с "local-first full RAG pipeline" на "local offline-capable knowledge gateway for AI agents".
+
+> Базовая миграция описана здесь (Фазы 1–5). Полный порядок исполнения, включая
+> Phase 2.5 (Model Runtime, ADR-002) и Phase A–F (Adaptive Loop, ADR-003), см.
+> [Migration Plans Index](plans/adr-migration-index.md) — там же детальные TDD-планы
+> для Codex.
 
 Текущий `rag_async` pipeline сохраняется как **legacy/full-RAG profile** до завершения миграции. Новый reference core строится рядом, не ломая существующий.
 
