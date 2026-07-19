@@ -20,6 +20,7 @@ import logging
 import os
 import subprocess
 import time
+import warnings
 from typing import Any, Optional
 from dataclasses import dataclass, field
 
@@ -28,6 +29,7 @@ import aiohttp
 
 logger = logging.getLogger(__name__)
 
+FEDERATION_EXPERIMENTAL = True
 MAX_FEDERATION_HOPS = 3
 _federation_hop_count: ContextVar[int] = ContextVar("federation_hop_count", default=0)
 
@@ -438,6 +440,11 @@ async def shutdown_federated() -> None:
 # между последовательными запросами. Закрывается через shutdown_federated().
 async def query_federated_servers(query: str, max_results: int = 3, domain: str = "") -> dict[str, list[dict]]:
     """Удобная функция для вызова из rag_async."""
+    warnings.warn(
+        "Federation is an experimental extension and is not part of the gateway reference path.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
     client = await get_federated_client()
     if not client.configs:
         return {}
