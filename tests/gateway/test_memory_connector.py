@@ -36,3 +36,14 @@ async def test_memory_tagged_agent_memory_and_not_short_circuited():
 
     assert results[0].origin == EvidenceOrigin.AGENT_MEMORY
     assert [result.text for result in results] == ["cached", "live result"]
+
+
+def test_memory_connector_exposes_memory_evidence():
+    connector = MemoryConnector(episodes=[{
+        "answer": "cached", "score": 0.9, "document_ids": ["d1"],
+        "source_uris": ["u1"], "route": ["local"], "episode_id": "e1",
+    }])
+    evidence = connector.as_memory_evidence(0)
+    assert evidence.episode_id == "e1"
+    assert evidence.source_document_ids == ("d1",)
+    assert evidence.embedding_profile_id is None

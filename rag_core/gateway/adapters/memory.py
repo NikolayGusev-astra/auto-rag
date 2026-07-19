@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from rag_core.gateway.connector import SearchRequest, SourceConnector
+from rag_core.gateway.adaptive.contracts import MemoryEvidence
 from rag_core.gateway.models import Evidence, EvidenceOrigin
 
 
@@ -11,6 +12,19 @@ class MemoryConnector(SourceConnector):
 
     def __init__(self, episodes: list[dict] | None = None) -> None:
         self._episodes = episodes or []
+
+    def as_memory_evidence(self, idx: int) -> MemoryEvidence:
+        episode = self._episodes[idx]
+        return MemoryEvidence(
+            episode_id=episode.get("episode_id", f"e{idx}"),
+            summary=episode.get("answer", ""),
+            source_document_ids=tuple(episode.get("document_ids", [])),
+            source_uris=tuple(episode.get("source_uris", [])),
+            route=tuple(episode.get("route", [])),
+            score=float(episode.get("score", 0.0)),
+            created_at=None,
+            embedding_profile_id=episode.get("embedding_profile_id"),
+        )
 
     async def search_live(self, request: SearchRequest) -> list[Evidence]:
         return [
