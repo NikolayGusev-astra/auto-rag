@@ -17,20 +17,39 @@ class Revision:
     cursor: str | None
 
 
+class CorruptActiveRevisionError(RuntimeError):
+    def __init__(self, source: str, revision: str | None):
+        self.source = source
+        self.revision = revision
+        super().__init__(f"active revision for source {source!r} is corrupt: {revision!r}")
+
+
 class SyncEngine:
     def __init__(self, root: Path):
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
 
     def stage_sync(self, source: str, batch: SyncBatch) -> Revision:
-        source_root = self.root / source
-        source_root.mkdir(parents=True, exist_ok=True)
-        revision_path = Path(tempfile.mkdtemp(dir=source_root, prefix="revision-"))
         documents = {document["id"]: document for document in self._previous_active_documents(source)}
         documents.update({document.id: asdict(document) for document in batch.added})
         documents.update({document.id: asdict(document) for document in batch.changed})
         for document_id in batch.deleted:
             documents.pop(document_id, None)
+        return self._stage_documents(source, documents, batch)
+
+    def full_rebuild(self, source: str, batch: SyncBatch) -> Revision:
+        documents = {document.id: asdict(document) for document in batch.added}
+        documents.update({document.id: asdict(document) for document in batch.changed})
+        for document_id in batch.deleted:
+            documents.pop(document_id, None)
+        revision = self._stage_documents(source, documents, batch)
+        self.publish(source, revision)
+        return revision
+
+    def _stage_documents(self, source: str, documents: dict[str, dict], batch: SyncBatch) -> Revision:
+        source_root = self.root / source
+        source_root.mkdir(parents=True, exist_ok=True)
+        revision_path = Path(tempfile.mkdtemp(dir=source_root, prefix="revision-"))
         with (revision_path / "docs.jsonl").open("w", encoding="utf-8") as handle:
             for document in documents.values():
                 handle.write(json.dumps(document, default=str) + "\n")
@@ -88,9 +107,15 @@ class SyncEngine:
 
     def _previous_active_documents(self, source: str) -> list[dict]:
         try:
-            return self.active_documents(source)
-        except (json.JSONDecodeError, OSError, KeyError, TypeError):
+            active_revision = self.active_revision(source)
+        except (json.JSONDecodeError, OSError, KeyError, TypeError) as error:
+            raise CorruptActiveRevisionError(source, None) from error
+        if active_revision is None:
             return []
+        try:
+            return self.active_documents(source)
+        except (json.JSONDecodeError, OSError, KeyError, TypeError) as error:
+            raise CorruptActiveRevisionError(source, active_revision) from error
 
     def _manifest_path(self, source: str) -> Path:
         return self.root / source / "manifest.json"

@@ -1,9 +1,10 @@
 import os
+from pathlib import Path
 
 import pytest
 
 from rag_core.gateway.models import Document, SyncBatch
-from rag_core.gateway.sync.engine import SyncEngine
+from rag_core.gateway.sync.engine import CorruptActiveRevisionError, SyncEngine
 
 
 def test_sync_writes_staged_not_active(tmp_path):
@@ -157,16 +158,74 @@ def test_empty_batch_preserves_active_documents(tmp_path):
     assert _active_hashes(engine, "jira") == {"jira:a": "ha"}
 
 
-def test_stage_sync_skips_corrupt_previous_revision(tmp_path):
+def test_incremental_sync_fails_closed_when_active_docs_are_corrupt(tmp_path):
     engine = SyncEngine(root=tmp_path)
+    _publish(
+        engine,
+        "jira",
+        added=[_document("jira:a", "ha"), _document("jira:b", "hb"), _document("jira:c", "hc")],
+    )
+    active_revision = engine.active_revision("jira")
+    manifest = engine._manifest_path("jira")
+    manifest_contents = manifest.read_text(encoding="utf-8")
+    (Path(active_revision) / "docs.jsonl").write_text("{broken", encoding="utf-8")
+
+    with pytest.raises(CorruptActiveRevisionError):
+        engine.stage_sync("jira", SyncBatch(added=[_document("jira:d", "hd")]))
+
+    assert engine.active_revision("jira") == active_revision
+    assert manifest.read_text(encoding="utf-8") == manifest_contents
+
+
+def test_incremental_sync_fails_closed_when_manifest_is_corrupt(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    _publish(engine, "jira", added=[_document("jira:a", "ha")])
+    manifest = engine._manifest_path("jira")
+    manifest.write_text("{broken", encoding="utf-8")
+    corrupt_manifest = manifest.read_text(encoding="utf-8")
+
+    with pytest.raises(CorruptActiveRevisionError):
+        engine.stage_sync("jira", SyncBatch(added=[_document("jira:d", "hd")]))
+
+    assert manifest.read_text(encoding="utf-8") == corrupt_manifest
+
+
+def test_incremental_sync_fails_closed_when_active_revision_path_is_missing(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    _publish(engine, "jira", added=[_document("jira:a", "old")])
+    manifest = engine._manifest_path("jira")
+    manifest.write_text('{"active_index": "missing-revision", "cursor": null}', encoding="utf-8")
+    revision_paths_before = list((tmp_path / "jira").glob("revision-*"))
+
+    with pytest.raises(CorruptActiveRevisionError):
+        engine.stage_sync("jira", SyncBatch(changed=[_document("jira:a", "new")]))
+
+    assert engine.active_revision("jira") == "missing-revision"
+    assert list((tmp_path / "jira").glob("revision-*")) == revision_paths_before
+
+
+def test_first_sync_without_active_revision_succeeds(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+
     revision = engine.stage_sync("jira", SyncBatch(added=[_document("jira:a", "ha")]))
     engine.publish("jira", revision)
-    (revision.path / "docs.jsonl").write_text("{broken", encoding="utf-8")
 
-    replacement = engine.stage_sync("jira", SyncBatch(added=[_document("jira:b", "hb")]))
-    engine.publish("jira", replacement)
+    assert _active_hashes(engine, "jira") == {"jira:a": "ha"}
 
-    assert _active_hashes(engine, "jira") == {"jira:b": "hb"}
+
+def test_full_rebuild_recovers_from_corrupt_active_revision(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    _publish(engine, "jira", added=[_document("jira:old", "old")])
+    active_revision = engine.active_revision("jira")
+    (Path(active_revision) / "docs.jsonl").write_text("{broken", encoding="utf-8")
+
+    revision = engine.full_rebuild(
+        "jira",
+        SyncBatch(added=[_document("jira:a", "ha"), _document("jira:b", "hb"), _document("jira:c", "hc")]),
+    )
+
+    assert engine.active_revision("jira") == str(revision.path)
+    assert _active_hashes(engine, "jira") == {"jira:a": "ha", "jira:b": "hb", "jira:c": "hc"}
 
 
 def test_sources_have_independent_active_revisions(tmp_path):
