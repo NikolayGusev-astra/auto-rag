@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-import os
 import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from rag_core.gateway.connector import SourceConnector
 from rag_core.gateway.models import SyncBatch
+from rag_core.gateway.sync.manifest_store import CorruptManifestError, MissingRevisionError, RevisionManifestStore
 from rag_core.gateway.sync.status import read_sync_status
 
 
@@ -60,19 +60,11 @@ class SyncEngine:
         return Revision(path=revision_path, cursor=batch.cursor)
 
     def active_revision(self, source: str) -> str | None:
-        manifest = self._manifest_path(source)
-        if not manifest.exists():
-            return None
-        return json.loads(manifest.read_text(encoding="utf-8")).get("active_index")
+        return self._manifest_store(source).active_revision()
 
     def publish(self, source: str, revision: Revision) -> None:
         self._validate_revision(revision)
-        source_root = self.root / source
-        source_root.mkdir(parents=True, exist_ok=True)
-        self.atomic_write_json(
-            self._manifest_path(source),
-            {"active_index": str(revision.path), "cursor": revision.cursor},
-        )
+        self._manifest_store(source).write(profile={}, active_revision=str(revision.path), cursor=revision.cursor)
 
     def active_documents(self, source: str) -> list[dict]:
         active_revision = self.active_revision(source)
@@ -108,25 +100,20 @@ class SyncEngine:
     def _previous_active_documents(self, source: str) -> list[dict]:
         try:
             active_revision = self.active_revision(source)
-        except (json.JSONDecodeError, OSError, KeyError, TypeError) as error:
+        except (CorruptManifestError, MissingRevisionError, json.JSONDecodeError, OSError, KeyError, TypeError) as error:
             raise CorruptActiveRevisionError(source, None) from error
         if active_revision is None:
             return []
         try:
             return self.active_documents(source)
-        except (json.JSONDecodeError, OSError, KeyError, TypeError) as error:
+        except (CorruptManifestError, MissingRevisionError, json.JSONDecodeError, OSError, KeyError, TypeError) as error:
             raise CorruptActiveRevisionError(source, active_revision) from error
 
     def _manifest_path(self, source: str) -> Path:
-        return self.root / source / "manifest.json"
+        return self._manifest_store(source).path
 
-    @staticmethod
-    def atomic_write_json(path: Path, data: dict) -> None:
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temporary_path = path.with_name(f"{path.stem}.tmp{path.suffix}")
-        temporary_path.write_text(json.dumps(data), encoding="utf-8")
-        os.replace(temporary_path, path)
+    def _manifest_store(self, source: str) -> RevisionManifestStore:
+        return RevisionManifestStore(self.root, source)
 
     @staticmethod
     def _validate_revision(revision: Revision) -> None:

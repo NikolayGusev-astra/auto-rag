@@ -5,6 +5,7 @@ import pytest
 
 from rag_core.gateway.models import Document, SyncBatch
 from rag_core.gateway.sync.engine import CorruptActiveRevisionError, SyncEngine
+from rag_core.gateway.sync.manifest_store import MissingRevisionError, RevisionManifestStore
 
 
 def test_sync_writes_staged_not_active(tmp_path):
@@ -173,8 +174,11 @@ def test_incremental_sync_fails_closed_when_active_docs_are_corrupt(tmp_path):
     with pytest.raises(CorruptActiveRevisionError):
         engine.stage_sync("jira", SyncBatch(added=[_document("jira:d", "hd")]))
 
-    assert engine.active_revision("jira") == active_revision
+    # fail-closed: corrupt active docs -> active_revision() is no longer readable,
+    # manifest unchanged (distinct from first-sync which returns None)
     assert manifest.read_text(encoding="utf-8") == manifest_contents
+    with pytest.raises(MissingRevisionError):
+        engine.active_revision("jira")
 
 
 def test_incremental_sync_fails_closed_when_manifest_is_corrupt(tmp_path):
@@ -194,13 +198,18 @@ def test_incremental_sync_fails_closed_when_active_revision_path_is_missing(tmp_
     engine = SyncEngine(root=tmp_path)
     _publish(engine, "jira", added=[_document("jira:a", "old")])
     manifest = engine._manifest_path("jira")
-    manifest.write_text('{"active_index": "missing-revision", "cursor": null}', encoding="utf-8")
+    # new unified schema, but pointed revision path does not exist
+    RevisionManifestStore(tmp_path, "jira").write(
+        profile={}, active_revision=str(tmp_path / "jira" / "revision-nonexistent"), cursor=None
+    )
     revision_paths_before = list((tmp_path / "jira").glob("revision-*"))
 
     with pytest.raises(CorruptActiveRevisionError):
         engine.stage_sync("jira", SyncBatch(changed=[_document("jira:a", "new")]))
 
-    assert engine.active_revision("jira") == "missing-revision"
+    # distinct state: active_revision() raises MissingRevisionError (not None, not stale)
+    with pytest.raises(MissingRevisionError):
+        engine.active_revision("jira")
     assert list((tmp_path / "jira").glob("revision-*")) == revision_paths_before
 
 
