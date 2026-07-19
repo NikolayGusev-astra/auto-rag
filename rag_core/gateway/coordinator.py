@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
+from dataclasses import replace
 
 from rag_core.gateway.connector import SearchRequest, SourceConnector
 from rag_core.gateway.models import Evidence
@@ -54,9 +55,25 @@ class RetrievalCoordinator:
                 not evidence_filter(item) for evidence_filter in self._filters
             ):
                 continue
-            current = best_by_document.get(item.document_id)
-            if current is None or item.retrieval_score > current.retrieval_score:
-                best_by_document[item.document_id] = item
-        return sorted(
-            best_by_document.values(), key=lambda item: item.retrieval_score, reverse=True
+            final_score = item.retrieval_score
+            if item.reranker_score is not None:
+                final_score = 0.4 * item.retrieval_score + 0.6 * item.reranker_score
+            scored = replace(item, final_score=round(final_score, 4))
+            current = best_by_document.get(scored.document_id)
+            if current is None or scored.final_score > current.final_score:
+                best_by_document[scored.document_id] = scored
+        by_source: dict[str, list[Evidence]] = {}
+        for item in best_by_document.values():
+            by_source.setdefault(item.source, []).append(item)
+        for items in by_source.values():
+            items.sort(key=lambda item: item.final_score, reverse=True)
+
+        ordered_sources = sorted(
+            by_source, key=lambda source: by_source[source][0].final_score, reverse=True
         )
+        balanced: list[Evidence] = []
+        while any(by_source.values()):
+            for source in ordered_sources:
+                if by_source[source]:
+                    balanced.append(by_source[source].pop(0))
+        return balanced

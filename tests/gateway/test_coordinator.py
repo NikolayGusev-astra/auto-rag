@@ -52,3 +52,25 @@ async def test_unavailable_source_is_skipped_without_error():
     )
 
     assert results == []
+
+
+def test_final_score_computed():
+    evidence = Evidence(
+        id="a#c0", document_id="a", title="t", text="x", source="local",
+        origin=EvidenceOrigin.LOCAL_SNAPSHOT, retrieval_score=0.6, reranker_score=0.9,
+    )
+    fused = RetrievalCoordinator().fuse([evidence])
+    assert fused[0].final_score > 0.6
+
+
+def test_memory_not_dominant_by_similarity():
+    memory = Evidence(
+        id="m1", document_id="m1", title="t", text="x", source="agent_memory",
+        origin=EvidenceOrigin.AGENT_MEMORY, retrieval_score=0.99, final_score=0.99,
+    )
+    document = Evidence(
+        id="d1#c0", document_id="d1", title="t", text="x", source="local",
+        origin=EvidenceOrigin.LOCAL_SNAPSHOT, retrieval_score=0.7, final_score=0.7,
+    )
+    fused = RetrievalCoordinator().fuse([memory, document])
+    assert any(item.origin == EvidenceOrigin.LOCAL_SNAPSHOT for item in fused)
