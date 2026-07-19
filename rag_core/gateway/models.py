@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from typing import Any, Literal
 
 
@@ -27,3 +28,26 @@ class DocumentRef:
         if self.chunk_id:
             return f"{self.document_id}#{self.chunk_id}"
         return self.document_id
+
+
+class EvidenceOrigin(str, Enum):
+    LOCAL_SNAPSHOT = "local_snapshot"
+    LIVE_CORPORATE = "live_corporate"
+    PUBLIC_WEB = "public_web"
+    AGENT_MEMORY = "agent_memory"
+
+
+@dataclass(frozen=True)
+class Evidence:
+    id: str
+    document_id: str
+    title: str
+    text: str
+    source: str
+    uri: str | None = None
+    origin: EvidenceOrigin = "local_snapshot"
+    retrieval_score: float = 0.0
+    reranker_score: float | None = None
+    updated_at: datetime | None = None
+    synced_at: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
