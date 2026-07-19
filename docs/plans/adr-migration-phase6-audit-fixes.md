@@ -5,14 +5,33 @@
 > by direct code inspection. This phase closes them. Each task = one narrow patch, TDD.
 > Do NOT push until the full phase is green and re-audited.
 
+> **Execution order (user decision):** Run **6.1 (P0-1) isolated first**, push, then a
+> separate re-audit of sync semantics. Only after P0-1 is confirmed correct, proceed to
+> 6.2 → 6.3 → 6.4 → 6.5 → 6.6. Reason: destructive sync risks losing the local offline
+> snapshot — the core product value — so it must be closed and verified alone before any
+> other change enters the same commit series.
+
 **Audit verdict accepted:** ADR-001 ~55-60%, ADR-002 ~70-75%, ADR-003 ~40-45% realized.
 The following tasks raise that to functional completeness for the core paths.
 
 **Baseline before this phase:** `258 passed, 4 skipped, 1 xfailed` (tests -q).
+**After 6.1 (P0-1):** `267 passed, 4 skipped, 1 xfailed` (non-destructive sync closed).
 
 ---
 
-## P0-1: Non-destructive incremental sync
+## 6.1 / P0-1: Non-destructive incremental sync  [DONE — isolated, pending re-audit]
+
+**Status:** implemented in commits `2780520`, `90fd9df`, `f667443`. Non-destructive merge
+verified: carry-forward previous active → apply added → changed as upsert → deleted LAST
+(wins). Failed publish preserves prior active revision. State-transition tests in
+`tests/gateway/test_sync.py` (15 passed) cover add/change/delete/combined/rollback/
+idempotency/conflicts/corrupt-revision/source-isolation.
+
+**Next step:** user re-audit of sync semantics. If confirmed, proceed below.
+
+---
+
+## P0-1: Non-destructive incremental sync  (spec retained for reference)
 
 **Problem:** `SyncEngine.stage_sync` writes ONLY `batch.added`; previous active revision
 documents are NOT carried forward; `batch.changed` ignored. Publishing drops A,B,C when
@@ -43,28 +62,42 @@ only D is added. Destructive for the local autonomous snapshot (core product fea
 
 ---
 
-## P0-2: Real MCP transport (protocol surface)
+## P0-2: Real MCP transport (SDK-first, no self-written fallback)
 
 **Problem:** `server.py` speaks a custom line-JSON protocol, not MCP. No `initialize`,
 `tools/list`, `tools/call`. Real MCP clients (Claude/Cursor/Codex) cannot register it.
 
-**Decision:** Implement the MCP protocol surface manually (no external SDK dependency,
-per ADR-001 "offline-capable" + Phase 5 note). Minimal but compliant:
+**Decision (user, 2026-07-19):** Use the **official MCP SDK as the primary transport**.
+Do NOT build a self-written MCP surface as fallback — that duplicates the protocol matrix
+and risks "almost-MCP" again. Offline-capable ≠ no installed deps: the SDK runs locally
+without network. Model:
 
 ```
-initialize → returns protocolVersion, capabilities, serverInfo
-tools/list → lists gateway tools with JSON Schema input schemas
-tools/call → dispatches tool, returns content[0].text or structured
-ping → {}
-notifications/initialized → no-op
-notifications/cancelled → no-op
+pyproject.toml:
+  [project.optional-dependencies]
+  gateway = ["mcp>=1.0"]
+
+Without extra:
+  - core retrieval, sync, local Python API, legacy/debug JSON-lines CLI
+With extra (gateway):
+  - real MCP stdio server (mcp SDK FastMCP / low-level Server)
 ```
 
-**Files:** rewrite `rag_core/gateway/server.py` (keep `dispatch` for tool handlers),
-new `rag_core/gateway/mcp_protocol.py` (lifecycle + tool registry),
-tests `tests/gateway/test_mcp_protocol.py`.
+The existing custom JSON-lines `server.py` is kept ONLY as an explicitly-labeled
+**debug/legacy transport** (`serve_stdio_debug`), never advertised as MCP. If the MCP SDK
+is proven incompatible with the target Astra Linux / Python runtime, that becomes a separate
+blocking technical constraint — until then, SDK-first.
 
-**Task P0-2.1: MCP lifecycle (initialize/tools/list/ping)**
+**Tasks P0-2.1-2.3 are revised:** implement via `mcp` SDK `Server` (or `FastMCP`), register
+gateway tools (`search`, `fetch`, `sync`, `sync_status`, `list_sources`, `source_status`)
+with JSON Schema input schemas, handle `initialize`/`tools/list`/`tools/call`/`ping` from
+the SDK. Smoke test against the SDK's own client (`mcp.client.stdio`).
+
+**Files:** `rag_core/gateway/mcp_server.py` (new, SDK-based), `rag_core/gateway/server.py`
+(relabeled debug/legacy, keep `dispatch` for tool handlers + `serve_stdio_debug`),
+`pyproject.toml` (add `gateway` extra), tests `tests/gateway/test_mcp_server.py`.
+
+**Task P0-2.1: MCP server via SDK (initialize/tools/list)**
 - Step 1 (RED): client sends `{"jsonrpc":"2.0","id":1,"method":"initialize",...}` →
   response has `protocolVersion`, `capabilities.tools`, `serverInfo`.
   `tools/list` → result.tools contains `search` with `inputSchema`.
