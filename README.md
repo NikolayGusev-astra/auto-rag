@@ -17,7 +17,7 @@ are unavailable.
 
 ## Highlights
 
-- Local hybrid retrieval: ZVec vector/FTS search with Chroma fallback.
+- Local hybrid retrieval: ZVec (default, in-process HNSW) with ChromaDB as a local fallback vector store — both trusted-local, no external calls. Web retrieval is **opt-in** via `RAG_WEB_SPECULATIVE=1`.
 - DCD routing, MCP integrations and Web/Federation fallback paths.
 - SSRF-protected web retrieval and authenticated federation endpoints.
 - Persistent episodic semantic memory with LM Studio embeddings.

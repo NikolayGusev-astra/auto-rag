@@ -760,12 +760,19 @@ async def async_rag_search(
                         "answer": ep.answer,
                         "sources": ep.sources,
                         "chunks": chunks,
+                        "score": max((float(c.get("score", 0)) for c in chunks), default=0.0),
                         "trace": f"memvid.recall(short-circuit, score={ep.score:.3f})",
                         "from_memory": True,
                         "_trace": trace.json(),
                     }
             except Exception as exc:
                 logger.debug("memvid recall failed: %s", exc)
+
+    # Memory short-circuit: if we got a recalled episode, return it NOW and
+    # skip compound decomposition entirely. (Earlier the compound block ran
+    # after this and could override the memory hit with fresh subqueries.)
+    if result is not None and result.get("from_memory"):
+        return result
 
     # 1.5) compound query split (product + infra) → parallel subqueries
     subqueries = _detect_compound(query, dcd_result)

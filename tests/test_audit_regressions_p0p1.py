@@ -104,8 +104,44 @@ async def test_memory_isolated_by_tenant_registry():
             assert a is a2
 
 
+async def test_memory_hit_short_circuits_before_compound():
+    """NEW regression: memory hit must return before compound decomposition,
+    not be overridden by fresh subqueries."""
+    trace = RagTrace("q", "devops", "deployment")
+    dcd = {"domain": "devops", "collection": "deployment", "confidence": 0.5,
+           "fallback": False, "tenant_id": "t", "acl_hash": "a"}
+    compound_called = {"flag": False}
+
+    async def fake_impl(q, dcd_sub, trace=None, federate=True, max_results=5):
+        compound_called["flag"] = True
+        return {"source": "zvec", "chunks": [{"text": "c", "score": 0.5}], "score": 0.5}
+
+    # Force a memory hit: monkeypatch _get_memory to return a fake with active=True
+    class _FakeMem:
+        active = True
+        recall_threshold = 0.0
+        def recall(self, *a, **k):
+            from types import SimpleNamespace
+            ep = SimpleNamespace(answer="recalled answer",
+                                 sources=[{"source": "wiki", "trusted": True}],
+                                 score=0.95)
+            return [ep]
+        def record(self, *a, **k):
+            pass
+
+    with mock.patch.object(rag_async, "_MEMVID_AVAILABLE", True), \
+         mock.patch.object(rag_async, "_get_memory", return_value=_FakeMem()), \
+         mock.patch.object(rag_async, "_async_rag_search_impl", side_effect=fake_impl):
+        res = await rag_async.async_rag_search(
+            "настройка ald pro postgresql репликация", dcd, trace=trace, federate=False)
+    assert res.get("from_memory") is True, "memory hit must short-circuit"
+    assert compound_called["flag"] is False, "compound must NOT run on memory hit"
+    assert res["score"] > 0, "memory result must carry calibrated score"
+    assert res["chunks"][0]["_trust"] == "trusted_internal"
+
+
 async def test_no_ctx_nameerror_in_compound_path():
-    """P1: full compound path must not raise NameError on ctx (cache write)."""
+    """P1.2: full compound path must not raise NameError on ctx (cache write)."""
     trace = RagTrace("q", "devops", "deployment")
     dcd = {"domain": "devops", "collection": "deployment", "confidence": 0.5,
            "fallback": False, "tenant_id": "t", "acl_hash": "a"}
