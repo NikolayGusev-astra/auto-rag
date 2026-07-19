@@ -49,6 +49,10 @@ from rag_core.rag_config import (
 from rag_core.dcd_router import classify
 from rag_core.rag_mcp_client import MCPClient
 from rag_core.rag_trace import RagTrace
+# Gateway retrieval is imported here so legacy callers and the reference
+# gateway share the same reusable retrieval seam.  The full legacy profile
+# retains its specialised ZVec/MCP/web orchestration below.
+from rag_core.gateway.retrieval import retrieve as gateway_retrieve
 
 
 # ── SSRF guard ───────────────────────────────────────────────
