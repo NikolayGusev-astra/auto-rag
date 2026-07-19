@@ -26,9 +26,11 @@ class SyncEngine:
         source_root = self.root / source
         source_root.mkdir(parents=True, exist_ok=True)
         revision_path = Path(tempfile.mkdtemp(dir=source_root, prefix="revision-"))
+        documents = {document["id"]: document for document in self.active_documents(source)}
+        documents.update({document.id: asdict(document) for document in batch.added})
         with (revision_path / "docs.jsonl").open("w", encoding="utf-8") as handle:
-            for document in batch.added:
-                handle.write(json.dumps(asdict(document), default=str) + "\n")
+            for document in documents.values():
+                handle.write(json.dumps(document, default=str) + "\n")
         if batch.deleted:
             with (revision_path / "tombstones.jsonl").open("w", encoding="utf-8") as handle:
                 for document_id in batch.deleted:

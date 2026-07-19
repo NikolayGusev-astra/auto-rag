@@ -64,6 +64,20 @@ def test_published_documents_exclude_tombstones(tmp_path):
     assert [document["id"] for document in engine.active_documents("jira")] == ["jira:1"]
 
 
+def test_incremental_add_carries_forward_active_documents(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    initial = engine.stage_sync(
+        "jira",
+        SyncBatch(added=[_document("jira:a", "ha"), _document("jira:b", "hb"), _document("jira:c", "hc")]),
+    )
+    engine.publish("jira", initial)
+
+    incremental = engine.stage_sync("jira", SyncBatch(added=[_document("jira:d", "hd")]))
+    engine.publish("jira", incremental)
+
+    assert [document["id"] for document in engine.active_documents("jira")] == ["jira:a", "jira:b", "jira:c", "jira:d"]
+
+
 def test_sync_status_returns_cursor(tmp_path):
     engine = SyncEngine(root=tmp_path)
     revision = engine.stage_sync("jira", SyncBatch(added=[_document("jira:1", "h1")], cursor="c1"))
