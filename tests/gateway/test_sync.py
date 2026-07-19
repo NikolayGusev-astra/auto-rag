@@ -22,3 +22,12 @@ def test_sync_writes_staged_not_active(tmp_path):
 
     assert os.path.isdir(revision.path)
     assert engine.active_revision("jira") is None
+
+
+def test_tombstones_written(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    revision = engine.stage_sync("jira", SyncBatch(deleted=["jira:0"], cursor="c2"))
+
+    tombstones = revision.path / "tombstones.jsonl"
+    assert tombstones.exists()
+    assert tombstones.read_text(encoding="utf-8").strip().splitlines() == ["jira:0"]

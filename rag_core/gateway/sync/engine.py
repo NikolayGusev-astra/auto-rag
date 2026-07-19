@@ -24,6 +24,10 @@ class SyncEngine:
         with (revision_path / "docs.jsonl").open("w", encoding="utf-8") as handle:
             for document in batch.added:
                 handle.write(json.dumps(asdict(document), default=str) + "\n")
+        if batch.deleted:
+            with (revision_path / "tombstones.jsonl").open("w", encoding="utf-8") as handle:
+                for document_id in batch.deleted:
+                    handle.write(document_id + "\n")
         return Revision(path=revision_path, cursor=batch.cursor)
 
     def active_revision(self, source: str) -> str | None:
