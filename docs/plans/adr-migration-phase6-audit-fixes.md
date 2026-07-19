@@ -197,6 +197,21 @@ filter; availability faked; origin corrupted; topk ignored; errors swallowed.
 
 ---
 
+## 6.2 / P1-2: Unified manifest/publisher  [DONE — closed after re-audit]
+
+**Status:** `67cdc31` (unified store) + `35b07eb` (directory fsync P1). One
+`RevisionManifestStore` (atomic os.replace + file fsync + parent-dir fsync, versioned
+schema). SyncEngine / RevisionPublisher / IndexManifest all delegate. Distinct failure
+states preserved (manifest missing / corrupt / active revision missing / invalid).
+Re-audit found missing directory fsync -> fixed with portable best-effort helper
+(EACCES/ENOTSUP/EINVAL ignored). 7 manifest_store tests + 278 full suite green.
+P2 hardening backlog: single-writer policy, relative revision IDs + root escape guard,
+legacy-schema migration path, typed `kind`+`payload` schema.
+
+**Verdict:** 6.2 fully closed. Proceed to 6.3.
+
+---
+
 ## P1-3: Sync builds actual knowledge index (chunk/embed/index)
 
 **Problem:** SyncEngine writes raw docs.jsonl only; no parse/chunk/embed/lexical/vector.
@@ -224,6 +239,25 @@ always; ZVec skipped if unavailable).
   best-effort (skip if backend absent).
 - Step 3 (GREEN): pass.
 - Step 4: commit `feat(sync): embed + profile validation in index build (P1-3)`.
+
+---
+
+## 6.3 / P1-3: Real index build  [DONE — pending audit]
+
+**Status:** `62f5166`. New `rag_core/gateway/sync/index_builder.py`: deterministic
+`chunk()` (stable `{doc_id}:{i}` IDs, empty->[], oversized split), `build_lexical_index()`
+(inverted term->chunk_ids), `embed_chunks()` (optional provider; None -> lexical only,
+NOT blocked), `validate_profile()` (full compatibility contract from 2.5), `build_revision()`
+writes docs.jsonl + chunks.jsonl + lexical.json + optional vectors.jsonl + manifest
+(embedding profile or None). SyncEngine.stage_sync forms merged snapshot (carry-forward +
+added + changed - deleted) and passes to build_revision, so staged revision is FULL, not
+batch-only. 9 index_builder tests cover all 10 acceptance invariants: changed replaces
+old chunks, deleted removes docs+chunks+lexical+vectors, lexical-only without provider,
+incompatible profile blocks publish, partial embed failure flags doc (no active corruption),
+stable/dedup chunk IDs, empty/oversized handling, full-snapshot staging, corrupt staged
+blocks publish. Full suite 287 passed.
+
+**Verdict:** 6.3 implemented per invariants. Awaiting user audit of Real index build.
 
 ---
 
