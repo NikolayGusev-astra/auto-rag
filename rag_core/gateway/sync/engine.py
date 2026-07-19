@@ -26,8 +26,11 @@ class SyncEngine:
         source_root = self.root / source
         source_root.mkdir(parents=True, exist_ok=True)
         revision_path = Path(tempfile.mkdtemp(dir=source_root, prefix="revision-"))
-        documents = {document["id"]: document for document in self.active_documents(source)}
+        documents = {document["id"]: document for document in self._previous_active_documents(source)}
         documents.update({document.id: asdict(document) for document in batch.added})
+        documents.update({document.id: asdict(document) for document in batch.changed})
+        for document_id in batch.deleted:
+            documents.pop(document_id, None)
         with (revision_path / "docs.jsonl").open("w", encoding="utf-8") as handle:
             for document in documents.values():
                 handle.write(json.dumps(document, default=str) + "\n")
@@ -82,6 +85,12 @@ class SyncEngine:
 
     def sync_status(self, source: str) -> dict:
         return read_sync_status(self.root, source)
+
+    def _previous_active_documents(self, source: str) -> list[dict]:
+        try:
+            return self.active_documents(source)
+        except (json.JSONDecodeError, OSError, KeyError, TypeError):
+            return []
 
     def _manifest_path(self, source: str) -> Path:
         return self.root / source / "manifest.json"

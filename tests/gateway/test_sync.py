@@ -78,6 +78,90 @@ def test_incremental_add_carries_forward_active_documents(tmp_path):
     assert [document["id"] for document in engine.active_documents("jira")] == ["jira:a", "jira:b", "jira:c", "jira:d"]
 
 
+def test_incremental_change_replaces_active_document(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    _publish(engine, "jira", added=[_document("jira:a", "v1"), _document("jira:b", "hb")])
+
+    _publish(engine, "jira", changed=[_document("jira:a", "v2")])
+
+    assert _active_hashes(engine, "jira") == {"jira:a": "v2", "jira:b": "hb"}
+
+
+def test_incremental_delete_removes_active_document(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    _publish(
+        engine,
+        "jira",
+        added=[_document("jira:a", "ha"), _document("jira:b", "hb"), _document("jira:c", "hc")],
+    )
+
+    _publish(engine, "jira", deleted=["jira:b"])
+
+    assert _active_hashes(engine, "jira") == {"jira:a": "ha", "jira:c": "hc"}
+
+
+def test_incremental_change_add_and_delete_merge_in_order(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    _publish(engine, "jira", added=[_document("jira:a", "old"), _document("jira:b", "hb")])
+
+    _publish(
+        engine,
+        "jira",
+        added=[_document("jira:c", "hc")],
+        changed=[_document("jira:a", "new")],
+        deleted=["jira:b"],
+    )
+
+    assert _active_hashes(engine, "jira") == {"jira:a": "new", "jira:c": "hc"}
+
+
+def test_incremental_conflicts_are_ordered_and_idempotent(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    _publish(engine, "jira", added=[_document("jira:a", "old"), _document("jira:b", "hb")])
+    batch = SyncBatch(
+        added=[_document("jira:a", "added"), _document("jira:c", "hc")],
+        changed=[_document("jira:a", "changed"), _document("jira:b", "changed-b")],
+        deleted=["jira:b", "jira:unknown"],
+    )
+
+    _publish_batch(engine, "jira", batch)
+    _publish_batch(engine, "jira", batch)
+
+    assert _active_hashes(engine, "jira") == {"jira:a": "changed", "jira:c": "hc"}
+
+
+def test_empty_batch_preserves_active_documents(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    _publish(engine, "jira", added=[_document("jira:a", "ha")])
+
+    _publish_batch(engine, "jira", SyncBatch())
+
+    assert _active_hashes(engine, "jira") == {"jira:a": "ha"}
+
+
+def test_stage_sync_skips_corrupt_previous_revision(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    revision = engine.stage_sync("jira", SyncBatch(added=[_document("jira:a", "ha")]))
+    engine.publish("jira", revision)
+    (revision.path / "docs.jsonl").write_text("{broken", encoding="utf-8")
+
+    replacement = engine.stage_sync("jira", SyncBatch(added=[_document("jira:b", "hb")]))
+    engine.publish("jira", replacement)
+
+    assert _active_hashes(engine, "jira") == {"jira:b": "hb"}
+
+
+def test_sources_have_independent_active_revisions(tmp_path):
+    engine = SyncEngine(root=tmp_path)
+    _publish(engine, "jira", added=[_document("jira:a", "old")])
+    _publish(engine, "wiki", added=[_document("wiki:a", "wiki")])
+
+    _publish(engine, "jira", changed=[_document("jira:a", "new")])
+
+    assert _active_hashes(engine, "jira") == {"jira:a": "new"}
+    assert _active_hashes(engine, "wiki") == {"wiki:a": "wiki"}
+
+
 def test_sync_status_returns_cursor(tmp_path):
     engine = SyncEngine(root=tmp_path)
     revision = engine.stage_sync("jira", SyncBatch(added=[_document("jira:1", "h1")], cursor="c1"))
@@ -108,6 +192,18 @@ def _document(document_id, content_hash):
         text="x",
         content_hash=content_hash,
     )
+
+
+def _publish(engine, source, *, added=(), changed=(), deleted=()):
+    _publish_batch(engine, source, SyncBatch(added=list(added), changed=list(changed), deleted=list(deleted)))
+
+
+def _publish_batch(engine, source, batch):
+    engine.publish(source, engine.stage_sync(source, batch))
+
+
+def _active_hashes(engine, source):
+    return {document["id"]: document["content_hash"] for document in engine.active_documents(source)}
 
 
 class _Connector:
