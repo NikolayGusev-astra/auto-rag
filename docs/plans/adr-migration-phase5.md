@@ -1,14 +1,18 @@
 # ADR Migration — Phase 5: Decomposition & Agent Integration
 
-> **For Codex:** Final phase. Split monolith, build reference gateway, run agent integration tests. Depends on Phase 1-4.
+> **For Codex:** Final phase. Split monolith, build reference gateway, run agent integration tests.
+Depends on Phase 1-4.
 
-**Goal:** Break `rag_async.py` (~865 lines) into `gateway/` submodules; make `rag_core.gateway` the reference implementation; prove agent integration with ≥2 clients (Hermes + Codex stdio).
+**Goal:** Break `rag_async.py` (~865 lines) into `gateway/` submodules; make `rag_core.gateway` the
+reference implementation; prove agent integration with ≥2 clients (Hermes + Codex stdio).
 
 ---
 
 ## Task 5.1: Split `rag_async` retrieval into `gateway/retrieval.py`
 
-**Objective:** Extract pure retrieval+fusion logic from `rag_async.async_rag_search` into `rag_core/gateway/retrieval.py` as a reusable function `retrieve(request, connectors, reranker)`. Keep `rag_async` calling it (adapter) so legacy tests stay green.
+**Objective:** Extract pure retrieval+fusion logic from `rag_async.async_rag_search` into
+`rag_core/gateway/retrieval.py` as a reusable function `retrieve(request, connectors, reranker)`.
+Keep `rag_async` calling it (adapter) so legacy tests stay green.
 
 **Files:**
 - Create: `rag_core/gateway/retrieval.py`
@@ -34,14 +38,18 @@ async def test_retrieve_merges_connectors():
 ```
 
 **Step 2: Run** → FAIL.
-**Step 3: Implement** `retrieval.py` (mirror coordinator.fuse + connector loop; convert dict→Evidence).
-**Step 4: Run** → PASS. **Step 5: Commit** `refactor(gateway): extract retrieval from rag_async (ADR-001 Phase 5)`.
+**Step 3: Implement** `retrieval.py` (mirror coordinator.fuse + connector loop; convert
+dict→Evidence).
+**Step 4: Run** → PASS. **Step 5: Commit** `refactor(gateway): extract retrieval from rag_async
+(ADR-001 Phase 5)`.
 
 ---
 
 ## Task 5.2: Full MCP stdio server (JSON-RPC loop)
 
-**Objective:** `rag_core/gateway/server.py` gains a `serve_stdio()` entrypoint that reads JSON-RPC from stdin, dispatches `search`/`fetch`/`sync`/`sync_status`/`list_sources`/`source_status`, writes JSON to stdout. Use `mcp` SDK if present, else raw stdio JSON-RPC.
+**Objective:** `rag_core/gateway/server.py` gains a `serve_stdio()` entrypoint that reads JSON-RPC
+from stdin, dispatches `search`/`fetch`/`sync`/`sync_status`/`list_sources`/`source_status`, writes
+JSON to stdout. Use `mcp` SDK if present, else raw stdio JSON-RPC.
 
 **Files:**
 - Modify: `rag_core/gateway/server.py` (add `serve_stdio`, `list_sources`, `source_status`)
@@ -62,13 +70,15 @@ async def test_dispatch_search_method():
 
 **Step 2: Run** → FAIL.
 **Step 3: Implement** `dispatch(msg)` + `serve_stdio()` (loop over stdin lines).
-**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): MCP stdio dispatch loop (ADR-001 Phase 5)`.
+**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): MCP stdio dispatch loop (ADR-001 Phase
+5)`.
 
 ---
 
 ## Task 5.3: CLI entrypoint `auto-rag-gateway`
 
-**Objective:** Add console script / `python -m rag_core.gateway.server` that starts stdio gateway with configured connectors (from `rag_config`).
+**Objective:** Add console script / `python -m rag_core.gateway.server` that starts stdio gateway
+with configured connectors (from `rag_config`).
 
 **Files:**
 - Modify: `rag_core/gateway/server.py` (`__main__` guard)
@@ -98,7 +108,9 @@ def test_gateway_stdio_smoke():
 
 ## Task 5.4: Agent integration test (Hermes + Codex)
 
-**Objective:** Integration test proving ≥2 agent clients can call `search`. Use mocked stdio subprocess (no real LM Studio needed). Hermes client = `subprocess` JSON-RPC; Codex client = same protocol, second fixture.
+**Objective:** Integration test proving ≥2 agent clients can call `search`. Use mocked stdio
+subprocess (no real LM Studio needed). Hermes client = `subprocess` JSON-RPC; Codex client = same
+protocol, second fixture.
 
 **Files:**
 - Create: `tests/gateway/test_agent_integration.py`
@@ -118,13 +130,15 @@ def test_two_agent_clients_search():
 
 **Step 2: Run** → FAIL.
 **Step 3: Implement** helper + test using Task 5.3 entrypoint.
-**Step 4: Run** → PASS. **Step 5: Commit** `test(gateway): agent integration (Hermes + Codex) (ADR-001 Phase 5)`.
+**Step 4: Run** → PASS. **Step 5: Commit** `test(gateway): agent integration (Hermes + Codex)
+(ADR-001 Phase 5)`.
 
 ---
 
 ## Task 5.5: CPU scheduler priority (ADR-002)
 
-**Objective:** `rag_core/gateway/scheduler.py` with priority queue: interactive search > fetch > sync > rebuild. Embedding sync pauses on interactive request.
+**Objective:** `rag_core/gateway/scheduler.py` with priority queue: interactive search > fetch >
+sync > rebuild. Embedding sync pauses on interactive request.
 
 **Files:**
 - Create: `rag_core/gateway/scheduler.py`
@@ -143,7 +157,8 @@ def test_interactive_priority_over_sync():
 
 **Step 2: Run** → FAIL.
 **Step 3: Implement** `PriorityQueue` (heapq by priority).
-**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): CPU priority scheduler (ADR-002 Phase 5)`.
+**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): CPU priority scheduler (ADR-002 Phase
+5)`.
 
 ---
 
@@ -168,4 +183,5 @@ Expected: full suite green (baseline + all gateway phases).
 - [x] Integration test ≥2 agents
 - [x] `rag_async` not mandatory entrypoint for agent mode
 
-→ If all checked: ADR-001 / ADR-002 IMPLEMENTED. Mark ADR status Proposed→Accepted in `docs/ADR-INDEX.md`.
+→ If all checked: ADR-001 / ADR-002 IMPLEMENTED. Mark ADR status Proposed→Accepted in
+`docs/ADR-INDEX.md`.

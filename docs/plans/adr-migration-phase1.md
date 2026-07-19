@@ -1,20 +1,30 @@
 # ADR Migration — Phase 1: Foundation & Contracts
 
-> **For Codex:** Execute task-by-task. Each task = one narrow patch (one defect class / one module). Write the failing test first (RED), run to confirm failure, implement minimal code (GREEN), run to confirm pass, then commit. Do NOT combine multiple tasks into one patch. Windows: use `codex exec --sandbox danger-full-access` if sandbox blocks writes.
+> **For Codex:** Execute task-by-task. Each task = one narrow patch (one defect class / one module).
+Write the failing test first (RED), run to confirm failure, implement minimal code (GREEN), run to
+confirm pass, then commit. Do NOT combine multiple tasks into one patch. Windows: use `codex exec
+--sandbox danger-full-access` if sandbox blocks writes.
 
-**Goal:** Establish the agent-gateway domain models, protocols, and MCP schema docs without altering the existing `rag_async.py` legacy pipeline. All existing tests must stay green.
+**Goal:** Establish the agent-gateway domain models, protocols, and MCP schema docs without altering
+the existing `rag_async.py` legacy pipeline. All existing tests must stay green.
 
-**Architecture:** New modules under `rag_core/gateway/` (fresh package, no imports from `rag_async`). Domain models are frozen dataclasses. `SourceConnector` is a Protocol; existing ZVec/MCP/Jira adapters get thin wrapper adapters in Phase 2. Model providers are Protocols (ADR-002) but concrete implementations are out of scope for Phase 1 (only the Protocol + capability dataclasses).
+**Architecture:** New modules under `rag_core/gateway/` (fresh package, no imports from
+`rag_async`). Domain models are frozen dataclasses. `SourceConnector` is a Protocol; existing
+ZVec/MCP/Jira adapters get thin wrapper adapters in Phase 2. Model providers are Protocols (ADR-002)
+but concrete implementations are out of scope for Phase 1 (only the Protocol + capability
+dataclasses).
 
 **Tech Stack:** Python 3.11+, `pydantic` (already in requirements), `pytest`, `pytest-asyncio`.
 
-**Source of truth:** `docs/ADR-001-knowledge-gateway.md`, `docs/ADR-002-model-runtime.md`, `docs/MIGRATION-PLAN.md`.
+**Source of truth:** `docs/ADR-001-knowledge-gateway.md`, `docs/ADR-002-model-runtime.md`,
+`docs/MIGRATION-PLAN.md`.
 
 ---
 
 ## Task 1.1: Create `rag_core/gateway/` package + domain models `Document` / `DocumentRef`
 
-**Objective:** Define the immutable `Document` and `DocumentRef` dataclasses from ADR-001 §Data model.
+**Objective:** Define the immutable `Document` and `DocumentRef` dataclasses from ADR-001 §Data
+model.
 
 **Files:**
 - Create: `rag_core/gateway/__init__.py`
@@ -116,7 +126,8 @@ git commit -m "feat(gateway): add Document/DocumentRef frozen models (ADR-001 Ph
 
 ## Task 1.2: Add `Evidence` (gateway variant) with `origin` enum
 
-**Objective:** Gateway `Evidence` carries `document_id`, `origin` (Literal), `retrieval_score`, `reranker_score`, `updated_at`, `synced_at` — distinct from legacy `rag_core.evidence.Evidence`.
+**Objective:** Gateway `Evidence` carries `document_id`, `origin` (Literal), `retrieval_score`,
+`reranker_score`, `updated_at`, `synced_at` — distinct from legacy `rag_core.evidence.Evidence`.
 
 **Files:**
 - Modify: `rag_core/gateway/models.py` (add `Evidence`, `EvidenceOrigin`)
@@ -187,7 +198,8 @@ git commit -m "feat(gateway): add Evidence + EvidenceOrigin (ADR-001 Phase 1)"
 
 ## Task 1.3: Add `SyncBatch` and `SourceHealth`
 
-**Objective:** Define `SyncBatch` (added/changed/deleted docs, cursor, warnings, stats) and `SourceHealth`.
+**Objective:** Define `SyncBatch` (added/changed/deleted docs, cursor, warnings, stats) and
+`SourceHealth`.
 
 **Files:**
 - Modify: `rag_core/gateway/models.py`
@@ -336,7 +348,8 @@ git commit -m "feat(gateway): add SourceConnector Protocol + SearchRequest (ADR-
 
 ## Task 1.5: Define Model Provider Protocols (ADR-002)
 
-**Objective:** `EmbeddingProvider`, `RerankerProvider`, `LanguageModelProvider` Protocols + capability dataclasses + `EmbeddingProfile`.
+**Objective:** `EmbeddingProvider`, `RerankerProvider`, `LanguageModelProvider` Protocols +
+capability dataclasses + `EmbeddingProfile`.
 
 **Files:**
 - Create: `rag_core/gateway/model_providers.py`
@@ -443,7 +456,9 @@ git commit -m "feat(gateway): add model provider Protocols + EmbeddingProfile (A
 
 ## Task 1.6: Document MCP schemas (`docs/mcp-schema.md`)
 
-**Objective:** Write the MCP tool schemas for `search`, `fetch`, `sync`, `sync_status`, `list_sources`, `source_status` as JSON Schema / request-response examples. This is docs only — no code.
+**Objective:** Write the MCP tool schemas for `search`, `fetch`, `sync`, `sync_status`,
+`list_sources`, `source_status` as JSON Schema / request-response examples. This is docs only — no
+code.
 
 **Files:**
 - Create: `docs/mcp-schema.md`

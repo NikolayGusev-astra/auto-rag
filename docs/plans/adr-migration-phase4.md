@@ -1,14 +1,19 @@
 # ADR Migration — Phase 4: Scope Reduction (legacy → extension)
 
-> **For Codex:** Depends on Phase 1-3. Move non-core mechanisms OUT of reference path. Keep `rag_async` functional but mark legacy. Do NOT delete — just gate behind flags / separate modules.
+> **For Codex:** Depends on Phase 1-3. Move non-core mechanisms OUT of reference path. Keep
+`rag_async` functional but mark legacy. Do NOT delete — just gate behind flags / separate modules.
 
-**Goal:** Memory → optional connector (no short-circuit); federation → experimental extension (out of default path); web → explicit opt-in only; LLM generation → out of core; tenant/ACL → optional compat fields, not required.
+**Goal:** Memory → optional connector (no short-circuit); federation → experimental extension (out
+of default path); web → explicit opt-in only; LLM generation → out of core; tenant/ACL → optional
+compat fields, not required.
 
 ---
 
 ## Task 4.1: Memory as optional `MemoryConnector` (no short-circuit)
 
-**Objective:** Create `rag_core/gateway/adapters/memory.py` implementing `SourceConnector`. Memory result tagged `origin=AGENT_MEMORY`. Coordinator does NOT short-circuit on memory hit — memory is just another connector in the fuse list.
+**Objective:** Create `rag_core/gateway/adapters/memory.py` implementing `SourceConnector`. Memory
+result tagged `origin=AGENT_MEMORY`. Coordinator does NOT short-circuit on memory hit — memory is
+just another connector in the fuse list.
 
 **Files:**
 - Create: `rag_core/gateway/adapters/memory.py`
@@ -64,13 +69,15 @@ class MemoryConnector:
     async def health(self): return {"source": self.source, "available": True}
 ```
 
-**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): MemoryConnector optional, no short-circuit (ADR-001 Phase 4)`.
+**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): MemoryConnector optional, no
+short-circuit (ADR-001 Phase 4)`.
 
 ---
 
 ## Task 4.2: Web explicit opt-in only
 
-**Objective:** Gateway `search` ignores web unless `request.include_web=True`. Web connector not registered by default.
+**Objective:** Gateway `search` ignores web unless `request.include_web=True`. Web connector not
+registered by default.
 
 **Files:**
 - Modify: `rag_core/gateway/server.py` (`handle_search` only includes web connector if `include_web`)
@@ -89,11 +96,13 @@ async def test_web_excluded_without_opt_in():
     assert "should-not-appear" not in str(resp["results"])
 ```
 
-**Step 2: Run** → FAIL (web runs unconditionally — currently no web connector, so test would pass; instead assert that `include_web=False` does not add web source to status).
+**Step 2: Run** → FAIL (web runs unconditionally — currently no web connector, so test would pass;
+instead assert that `include_web=False` does not add web source to status).
 
 Adjust test: assert `"public_web" not in resp["runtime"]["source_status"]` when `include_web=False`.
 
-**Step 3: Implement** — in `handle_search`, build connector dict excluding any connector whose `source == "public_web"` unless `request.include_web`.
+**Step 3: Implement** — in `handle_search`, build connector dict excluding any connector whose
+`source == "public_web"` unless `request.include_web`.
 
 **Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): web explicit opt-in (ADR-001 Phase 4)`.
 
@@ -101,19 +110,22 @@ Adjust test: assert `"public_web" not in resp["runtime"]["source_status"]` when 
 
 ## Task 4.3: Federation out of default path
 
-**Objective:** `rag_federated.py` not imported by gateway coordinator. Add `docs/EXPERIMENTAL.md` noting federation is experimental extension, not reference path.
+**Objective:** `rag_federated.py` not imported by gateway coordinator. Add `docs/EXPERIMENTAL.md`
+noting federation is experimental extension, not reference path.
 
 **Files:**
 - Create: `docs/EXPERIMENTAL.md`
 - Verify: grep gateway imports for `rag_federated` → must be absent.
 
-**Step 1-4:** Docs + verification grep. Commit `docs: mark federation experimental (ADR-001 Phase 4)`.
+**Step 1-4:** Docs + verification grep. Commit `docs: mark federation experimental (ADR-001 Phase
+4)`.
 
 ---
 
 ## Task 4.4: Mark `rag_async` legacy
 
-**Objective:** Add module docstring to `rag_async.py`: "LEGACY / full-RAG profile. New agent gateway in rag_core.gateway.*". No code change.
+**Objective:** Add module docstring to `rag_async.py`: "LEGACY / full-RAG profile. New agent gateway
+in rag_core.gateway.*". No code change.
 
 **Files:**
 - Modify: `rag_core/rag_async.py` (top docstring)

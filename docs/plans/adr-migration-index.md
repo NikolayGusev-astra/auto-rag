@@ -1,13 +1,17 @@
 # ADR Migration Plans Index
 
-Планы поэтапной миграции Auto-RAG из legacy "local-first full RAG pipeline" в "local offline-capable knowledge gateway for AI agents" (ADR-001, ADR-002).
+Планы поэтапной миграции Auto-RAG из legacy "local-first full RAG pipeline" в "local
+offline-capable knowledge gateway for AI agents" (ADR-001, ADR-002).
 
-Каждый план написан в формате `writing-plans`: bite-sized субтаски (2-5 мин), TDD (RED→GREEN), explicit file paths, точные команды. Предназначен для исполнения через Codex (узкие патчи, один defect class за раз).
+Каждый план написан в формате `writing-plans`: bite-sized субтаски (2-5 мин), TDD
+(RED→GREEN), explicit file paths, точные команды. Предназначен для исполнения через Codex
+(узкие патчи, один defect class за раз).
 
 | Фаза | Файл | Содержание | Зависит от |
 |------|------|-----------|-----------|
 | 1 | [adr-migration-phase1.md](adr-migration-phase1.md) | Foundation & Contracts: domain models (Document, Evidence, SyncBatch), SourceConnector Protocol, Model Provider Protocols, MCP schema docs | — |
 | 2 | [adr-migration-phase2.md](adr-migration-phase2.md) | Agent Gateway MVP: ZvecConnector adapter, RetrievalCoordinator (dedup/filter/rerank), MCP `search` handler, source availability | Phase 1 |
+| 2.5 | [adr-migration-phase2.5.md](adr-migration-phase2.5.md) | Model Runtime & Index Compatibility (ADR-002): index manifest, compatibility gate, CPU/OpenAI providers, no-LLM/lexical fallback, cloud policy, portability tests, staged re-embedding | Phase 1 |
 | 3 | [adr-migration-phase3.md](adr-migration-phase3.md) | Sync Engine: staged write, tombstones, atomic publish + integrity, resume cursor, sync_status | Phase 1-2 |
 | 4 | [adr-migration-phase4.md](adr-migration-phase4.md) | Scope Reduction: MemoryConnector (no short-circuit), web opt-in, federation experimental, rag_async legacy mark | Phase 1-3 |
 | 5 | [adr-migration-phase5.md](adr-migration-phase5.md) | Decomposition & Integration: split rag_async, full MCP stdio server, CLI, agent integration (Hermes+Codex), CPU scheduler | Phase 1-4 |
@@ -20,6 +24,13 @@
 - После каждой фазы — локальный `python -m pytest tests -q`, сверить с baseline (187 passed, 4 skipped, 1 xfailed)
 - Push в main только по явному "ок" пользователя (standing rule из cursor skill)
 
+## ADR-002 coverage
+
+До Phase 2.5: ~40-50% (только protocols + CPU scheduler stub). После Phase 2.5: ~95% (manifest,
+compatibility gate, CPU + OpenAI-compatible providers, no-LLM/lexical fallback, cloud policy,
+portability tests, staged re-embedding). Остаток: ONNX concrete impl (stubbed), live LM Studio
+end-to-end (integration, env-dependent).
+
 ## Verification gates
 
 Каждая фаза заканчивается gate (см. конец файла фазы). Не переходить к следующей, пока gate не green.
@@ -28,6 +39,7 @@
 
 - [ ] Phase 1 — planned
 - [ ] Phase 2 — planned
+- [ ] Phase 2.5 — planned
 - [ ] Phase 3 — planned
 - [ ] Phase 4 — planned
 - [ ] Phase 5 — planned

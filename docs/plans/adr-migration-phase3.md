@@ -1,10 +1,15 @@
 # ADR Migration — Phase 3: Sync Engine
 
-> **For Codex:** Depends on Phase 1-2. Each task = one narrow patch, TDD. Sync Engine writes to a **staged** index revision; publish is atomic; failure leaves active index untouched.
+> **For Codex:** Depends on Phase 1-2. Each task = one narrow patch, TDD. Sync Engine writes to a
+**staged** index revision; publish is atomic; failure leaves active index untouched.
 
-**Goal:** Incremental source→local sync with cursor, tombstones, staged atomic publish, resume, integrity check.
+**Goal:** Incremental source→local sync with cursor, tombstones, staged atomic publish, resume,
+integrity check.
 
-**Architecture:** `rag_core/gateway/sync.py` (SyncEngine: `sync_source(connector, cursor)` → builds `SyncBatch` → writes staged revision → validates → publishes). Staged revision stored under `indexes/<profile>/revision-XXXX/`; manifest `indexes/manifest.json` points to active. Active index read-only during sync.
+**Architecture:** `rag_core/gateway/sync.py` (SyncEngine: `sync_source(connector, cursor)` → builds
+`SyncBatch` → writes staged revision → validates → publishes). Staged revision stored under
+`indexes/<profile>/revision-XXXX/`; manifest `indexes/manifest.json` points to active. Active index
+read-only during sync.
 
 ---
 
@@ -72,13 +77,15 @@ class Revision:
         self.cursor = cursor
 ```
 
-**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): SyncEngine staged write (ADR-001 Phase 3)`.
+**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): SyncEngine staged write (ADR-001 Phase
+3)`.
 
 ---
 
 ## Task 3.2: Tombstones / delete propagation
 
-**Objective:** `SyncBatch.deleted` ids written to `tombstones.jsonl`; active query excludes tombstoned.
+**Objective:** `SyncBatch.deleted` ids written to `tombstones.jsonl`; active query excludes
+tombstoned.
 
 **Files:**
 - Modify: `rag_core/gateway/sync.py`
@@ -113,7 +120,8 @@ def test_tombstones_written(tmp_path):
 
 ## Task 3.3: Integrity check + atomic publish
 
-**Objective:** `publish(revision)` validates (docs parse, no corruption) then atomically swaps manifest pointer. On validation failure → raises, active unchanged.
+**Objective:** `publish(revision)` validates (docs parse, no corruption) then atomically swaps
+manifest pointer. On validation failure → raises, active unchanged.
 
 **Files:**
 - Modify: `rag_core/gateway/sync.py`
@@ -173,13 +181,15 @@ def test_publish_atomic_and_reversible_on_bad(tmp_path):
         return data.get("active_index")
 ```
 
-**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): atomic publish + integrity check (ADR-001 Phase 3)`.
+**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): atomic publish + integrity check (ADR-001
+Phase 3)`.
 
 ---
 
 ## Task 3.4: Resume cursor + `sync_status`
 
-**Objective:** `sync_status(source)` returns last cursor + health; `sync_source` accepts `cursor` and passes to connector.
+**Objective:** `sync_status(source)` returns last cursor + health; `sync_source` accepts `cursor`
+and passes to connector.
 
 **Files:**
 - Modify: `rag_core/gateway/sync.py`
@@ -213,7 +223,8 @@ def test_sync_status_returns_cursor(tmp_path):
                 "cursor": data.get("cursor")}
 ```
 
-**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): sync_status + resume cursor (ADR-001 Phase 3)`.
+**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): sync_status + resume cursor (ADR-001
+Phase 3)`.
 
 ---
 

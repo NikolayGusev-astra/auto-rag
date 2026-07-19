@@ -1,10 +1,17 @@
 # ADR Migration — Phase 2: Agent Gateway MVP
 
-> **For Codex:** Continue from Phase 1 (contracts in `rag_core/gateway/`). Each task = one narrow patch. TDD: write failing test → RED → implement → GREEN → commit. Do NOT touch `rag_async.py` — new gateway lives in `rag_core/gateway/`.
+> **For Codex:** Continue from Phase 1 (contracts in `rag_core/gateway/`). Each task = one narrow
+patch. TDD: write failing test → RED → implement → GREEN → commit. Do NOT touch `rag_async.py` — new
+gateway lives in `rag_core/gateway/`.
 
-**Goal:** First working MCP-facing retrieval that returns structured `Evidence[]` (no LLM answer generation), with source availability detection and hybrid retrieval via a thin ZVec adapter.
+**Goal:** First working MCP-facing retrieval that returns structured `Evidence[]` (no LLM answer
+generation), with source availability detection and hybrid retrieval via a thin ZVec adapter.
 
-**Architecture:** `rag_core/gateway/server.py` (MCP stdio server using `mcp` SDK if available, else a stdio JSON-RPC loop), `rag_core/gateway/coordinator.py` (RetrievalCoordinator: select connectors → execute → normalize → dedup → filter → rerank → fuse), `rag_core/gateway/adapters/zvec.py` (wraps `rag_core.zvec_adapter.ZvecAdapter.search_hybrid` into `SourceConnector`). Legacy `rag_async.async_rag_search` is NOT called.
+**Architecture:** `rag_core/gateway/server.py` (MCP stdio server using `mcp` SDK if available, else
+a stdio JSON-RPC loop), `rag_core/gateway/coordinator.py` (RetrievalCoordinator: select connectors →
+execute → normalize → dedup → filter → rerank → fuse), `rag_core/gateway/adapters/zvec.py` (wraps
+`rag_core.zvec_adapter.ZvecAdapter.search_hybrid` into `SourceConnector`). Legacy
+`rag_async.async_rag_search` is NOT called.
 
 **Depends on:** Phase 1 (`Document`, `Evidence`, `SourceConnector`, `SearchRequest`).
 
@@ -12,7 +19,8 @@
 
 ## Task 2.1: ZVec SourceConnector adapter
 
-**Objective:** Wrap existing `rag_core.zvec_adapter.ZvecAdapter` as a `SourceConnector` returning gateway `Evidence` with `origin=LOCAL_SNAPSHOT`.
+**Objective:** Wrap existing `rag_core.zvec_adapter.ZvecAdapter` as a `SourceConnector` returning
+gateway `Evidence` with `origin=LOCAL_SNAPSHOT`.
 
 **Files:**
 - Create: `rag_core/gateway/adapters/__init__.py`
@@ -107,7 +115,8 @@ class ZvecConnector:
 
 ## Task 2.2: RetrievalCoordinator — dedup + filters
 
-**Objective:** Coordinator merges connector results, dedups by `document_id+content_hash`, applies version/entity filter (stub: drop `metadata.get("deprecated")`).
+**Objective:** Coordinator merges connector results, dedups by `document_id+content_hash`, applies
+version/entity filter (stub: drop `metadata.get("deprecated")`).
 
 **Files:**
 - Create: `rag_core/gateway/coordinator.py`
@@ -169,13 +178,15 @@ class RetrievalCoordinator:
         return out
 ```
 
-**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): RetrievalCoordinator dedup+filter (ADR-001 Phase 2)`.
+**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): RetrievalCoordinator dedup+filter
+(ADR-001 Phase 2)`.
 
 ---
 
 ## Task 2.3: Coordinator source-aware fusion + reranker hook
 
-**Objective:** `fuse` accepts optional `reranker` (RerankerProvider from Phase 1.5); if provided, call `rerank` and set `reranker_score`. Otherwise keep deterministic order.
+**Objective:** `fuse` accepts optional `reranker` (RerankerProvider from Phase 1.5); if provided,
+call `rerank` and set `reranker_score`. Otherwise keep deterministic order.
 
 **Files:**
 - Modify: `rag_core/gateway/coordinator.py`
@@ -209,13 +220,15 @@ async def test_reranker_sets_score():
         return reranked
 ```
 
-**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): reranker hook in coordinator (ADR-002 Phase 2)`.
+**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): reranker hook in coordinator (ADR-002
+Phase 2)`.
 
 ---
 
 ## Task 2.4: MCP `search` tool (stdio JSON-RPC)
 
-**Objective:** `rag_core/gateway/server.py` exposes `search` over stdio returning `Evidence[]` JSON + `runtime` block. Use `mcp` SDK if installed; else minimal stdio JSON-RPC loop.
+**Objective:** `rag_core/gateway/server.py` exposes `search` over stdio returning `Evidence[]` JSON
++ `runtime` block. Use `mcp` SDK if installed; else minimal stdio JSON-RPC loop.
 
 **Files:**
 - Create: `rag_core/gateway/server.py`
@@ -278,13 +291,15 @@ async def handle_search(request, connectors: dict, reranker=None):
     }
 ```
 
-**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): search handler returning structured Evidence (ADR-001 Phase 2)`.
+**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): search handler returning structured
+Evidence (ADR-001 Phase 2)`.
 
 ---
 
 ## Task 2.5: Source availability detection
 
-**Objective:** `handle_search` marks each source available/unavailable in response; offline source → skipped, not error.
+**Objective:** `handle_search` marks each source available/unavailable in response; offline source →
+skipped, not error.
 
 **Files:**
 - Modify: `rag_core/gateway/server.py` (add `source_status` tracking)
@@ -322,7 +337,8 @@ async def test_offline_source_skipped_not_error():
     resp["runtime"]["source_status"] = source_status
 ```
 
-**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): per-source availability in search response (ADR-001 Phase 2)`.
+**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): per-source availability in search
+response (ADR-001 Phase 2)`.
 
 ---
 
