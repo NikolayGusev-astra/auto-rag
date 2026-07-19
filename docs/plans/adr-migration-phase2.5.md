@@ -323,16 +323,17 @@ async def test_openai_compat_embed_uses_base_url(monkeypatch):
         def raise_for_status(self): pass
         def json(self): return self._d
     class FakeClient:
-        async def embed(self, *, model, input, **kw):
-            captured["model"] = model
-            captured["input"] = input
+        async def post(self, path, json):
+            captured["path"] = path
+            captured["json"] = json
             return FakeResp({"data": [{"embedding": [0.2, 0.3]}]})
     prov = OpenAICompatibleEmbeddingProvider(
         base_url="http://127.0.0.1:1234/v1", model="e5", expected_dim=2)
     monkeypatch.setattr(prov, "_client", FakeClient())
     vec = await prov.embed_query("q")
     assert vec == [0.2, 0.3]
-    assert captured["input"] == ["q"]
+    assert captured["path"] == "/embeddings"
+    assert captured["json"]["input"] == ["q"]
 
 
 @pytest.mark.asyncio
@@ -578,8 +579,8 @@ import tempfile
 def test_two_runtimes_same_model_open_index():
     base = EmbeddingProfile("sentence-transformers", "m/e5", "r", 768,
                             True, "cosine", "q-p-v1")
-    # cpu provider profile (same model)
-    cpu = make_cpu_profile("m/e5", dim=768)
+    # cpu provider profile (same model, same revision + preprocessing contract)
+    cpu = make_cpu_profile("m/e5", dim=768, revision="r", pre="q-p-v1")
     ok, _ = check_compatible(cpu, base)
     assert ok is True  # same model id/revision/contract
 
@@ -609,9 +610,14 @@ def test_manifest_blocks_incompatible_on_load(tmp_path):
 
 ---
 
-## Task 2.5.8: Staged re-embedding on profile change
+## Task 2.5.8: Staged re-embedding preparation (build + integrity)
 
-**Objective:** `ReindexPlanner` builds new staged revision under a NEW profile dir; only after integrity check publishes via manifest swap (reuse SyncEngine atomic publish from Phase 3). Old index untouched during build.
+**Objective:** `ReindexPlanner` builds a new staged revision under a NEW profile dir and
+runs an integrity check (docs parse) before it is eligible for publication. Old index is
+untouched during build. **Publication is NOT done here** — it reuses the unified
+`RevisionPublisher` from Phase 3 (Task 3.5) to avoid a second atomic-publish mechanism.
+
+**Depends on:** Phase 1 (manifest, profile). Publication step depends on Phase 3 (SyncEngine).
 
 **Files:**
 - Create: `rag_core/gateway/model_runtime/reindex.py`
@@ -627,18 +633,25 @@ from rag_core.gateway.model_runtime.manifest import IndexManifest
 from rag_core.gateway.model_providers import EmbeddingProfile
 
 
-def test_reindex_builds_staged_then_publishes(tmp_path):
+def test_reindex_builds_staged_and_integrity_ok(tmp_path):
     planner = ReindexPlanner(root=tmp_path)
     new_prof = EmbeddingProfile("sentence-transformers", "m/e5", "r2", 768,
                                 True, "cosine", "q-p-v1")
-    # simulate building staged revision
     rev_path = planner.build_staged(new_prof, docs=[{"id": "d1", "text": "x"}])
     assert rev_path.exists()
-    # publish
-    planner.publish(new_prof, rev_path)
-    manifest = IndexManifest(root=tmp_path)
-    assert manifest.profile == new_prof
-    assert manifest.active_revision == str(rev_path)
+    # staged dir must NOT be active yet (no manifest pointer)
+    assert IndexManifest(root=tmp_path).active_revision is None
+    # integrity check passes on well-formed staged docs
+    assert planner.check_integrity(rev_path) is True
+
+
+def test_reindex_integrity_fails_on_corrupt(tmp_path):
+    planner = ReindexPlanner(root=tmp_path)
+    prof = EmbeddingProfile("sentence-transformers", "m/e5", "r2", 768,
+                            True, "cosine", "q-p-v1")
+    rev_path = planner.build_staged(prof, docs=[{"id": "d1", "text": "x"}])
+    (rev_path / "docs.jsonl").write_text("{broken", encoding="utf-8")
+    assert planner.check_integrity(rev_path) is False
 ```
 
 **Step 2: Run** → FAIL.
@@ -649,7 +662,6 @@ def test_reindex_builds_staged_then_publishes(tmp_path):
 from __future__ import annotations
 import json
 from pathlib import Path
-from rag_core.gateway.model_runtime.manifest import IndexManifest
 from rag_core.gateway.model_providers import EmbeddingProfile
 
 
@@ -667,17 +679,30 @@ class ReindexPlanner:
                 f.write(json.dumps(d, ensure_ascii=False) + "\n")
         return rev
 
-    def publish(self, profile: EmbeddingProfile, rev_path: Path):
-        # integrity: docs parse
-        with open(rev_path / "docs.jsonl", encoding="utf-8") as f:
-            for line in f:
-                if line.strip():
-                    json.loads(line)
-        manifest = IndexManifest(self.root)
-        manifest.write(profile=profile, active_revision=str(rev_path))
+    def check_integrity(self, rev_path: Path) -> bool:
+        docs_file = rev_path / "docs.jsonl"
+        if not docs_file.exists():
+            return False
+        try:
+            with open(docs_file, encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        json.loads(line)
+            return True
+        except (json.JSONDecodeError, OSError):
+            return False
+
+    # NOTE: publication of a verified staged revision is delegated to the
+    # unified RevisionPublisher introduced in Phase 3 (Task 3.5), which wraps
+    # the same atomic manifest-swap used by SyncEngine. Do NOT add a second
+    # publish path here.
 ```
 
-**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): staged re-embedding planner (ADR-002 Phase 2.5)`.
+**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): staged reindex planner + integrity (ADR-002 Phase 2.5)`.
+
+> **Cross-reference:** After Phase 3 lands `SyncEngine.publish`, add `RevisionPublisher`
+> (Phase 3 Task 3.5) that calls `ReindexPlanner.build_staged` → `check_integrity` →
+> `SyncEngine.publish`. This keeps one atomic-publish mechanism.
 
 ---
 

@@ -228,6 +228,83 @@ Phase 3)`.
 
 ---
 
+## Task 3.5: Unified `RevisionPublisher` (reindex → atomic publish)
+
+**Objective:** Single atomic-publish entrypoint that consumes a verified staged revision
+from `ReindexPlanner` (Phase 2.5 Task 2.5.8) and publishes it via the same manifest-swap
+used by `SyncEngine`. This is the ONLY publish path — reindex does not implement its own.
+
+**Depends on:** Phase 2.5 Task 2.5.8 (`ReindexPlanner.build_staged` + `check_integrity`),
+Phase 3 Task 3.3 (`SyncEngine.publish` atomic manifest swap).
+
+**Files:**
+- Create: `rag_core/gateway/model_runtime/publisher.py`
+- Test: `tests/gateway/test_publisher.py`
+
+**Step 1: Failing test**
+
+```python
+# tests/gateway/test_publisher.py
+import pytest, tempfile
+from rag_core.gateway.model_runtime.reindex import ReindexPlanner
+from rag_core.gateway.model_runtime.publisher import RevisionPublisher
+from rag_core.gateway.model_runtime.manifest import IndexManifest
+from rag_core.gateway.model_providers import EmbeddingProfile
+
+
+def test_publish_verified_staged_revision(tmp_path):
+    planner = ReindexPlanner(root=tmp_path)
+    prof = EmbeddingProfile("sentence-transformers", "m/e5", "r2", 768,
+                            True, "cosine", "q-p-v1")
+    rev = planner.build_staged(prof, docs=[{"id": "d1", "text": "x"}])
+    assert planner.check_integrity(rev) is True
+    pub = RevisionPublisher(root=tmp_path)
+    pub.publish(prof, rev)
+    manifest = IndexManifest(root=tmp_path)
+    assert manifest.profile == prof
+    assert manifest.active_revision == str(rev)
+
+
+def test_publish_rejects_unverified_revision(tmp_path):
+    planner = ReindexPlanner(root=tmp_path)
+    prof = EmbeddingProfile("sentence-transformers", "m/e5", "r2", 768,
+                            True, "cosine", "q-p-v1")
+    rev = planner.build_staged(prof, docs=[{"id": "d1", "text": "x"}])
+    (rev / "docs.jsonl").write_text("{broken", encoding="utf-8")
+    pub = RevisionPublisher(root=tmp_path)
+    with pytest.raises(ValueError):
+        pub.publish(prof, rev)  # integrity must fail before swap
+```
+
+**Step 2: Run** → FAIL (no publisher module).
+**Step 3: Implement**
+
+```python
+# rag_core/gateway/model_runtime/publisher.py
+from __future__ import annotations
+from pathlib import Path
+from rag_core.gateway.model_runtime.reindex import ReindexPlanner
+from rag_core.gateway.model_runtime.manifest import IndexManifest
+from rag_core.gateway.model_providers import EmbeddingProfile
+
+
+class RevisionPublisher:
+    def __init__(self, root: Path):
+        self.root = Path(root)
+        self._planner = ReindexPlanner(root)
+
+    def publish(self, profile: EmbeddingProfile, rev_path: Path):
+        # single gate: integrity must pass before any manifest swap
+        if not self._planner.check_integrity(rev_path):
+            raise ValueError("staged revision failed integrity check; not published")
+        manifest = IndexManifest(self.root)
+        manifest.write(profile=profile, active_revision=str(rev_path))
+```
+
+**Step 4: Run** → PASS. **Step 5: Commit** `feat(gateway): unified RevisionPublisher (reuses SyncEngine atomic swap, ADR-002 Phase 2.5→3)`.
+
+---
+
 ## Phase 3 Verification Gate
 
 ```bash

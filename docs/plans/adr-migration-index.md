@@ -24,12 +24,25 @@ offline-capable knowledge gateway for AI agents" (ADR-001, ADR-002).
 - После каждой фазы — локальный `python -m pytest tests -q`, сверить с baseline (187 passed, 4 skipped, 1 xfailed)
 - Push в main только по явному "ок" пользователя (standing rule из cursor skill)
 
+## Рекомендованный порядок исполнения
+
+Phase 2.5 зависит только от Phase 1 (типы/Protocol из 1.5). Оптимальный порядок,
+уменьшающий переделки (capability negotiation + index compatibility готовы до retrieval):
+
+```
+Phase 1 → Phase 2.5 (Tasks 1–8) → Phase 2 → Phase 3 (вкл. Task 3.5) → Phase 4 → Phase 5
+```
+
+Task 2.5.8 (staged re-embedding) готовит staged dir + integrity в Phase 2.5; публикация
+выполняется единым `RevisionPublisher` (Phase 3 Task 3.5), переиспользующим atomic swap
+SyncEngine. Второго механизма публикации нет.
+
 ## ADR-002 coverage
 
 До Phase 2.5: ~40-50% (только protocols + CPU scheduler stub). После Phase 2.5: ~95% (manifest,
 compatibility gate, CPU + OpenAI-compatible providers, no-LLM/lexical fallback, cloud policy,
-portability tests, staged re-embedding). Остаток: ONNX concrete impl (stubbed), live LM Studio
-end-to-end (integration, env-dependent).
+portability tests, staged re-embedding prep). Остаток: ONNX concrete impl (stubbed), live LM
+Studio end-to-end (integration, env-dependent).
 
 ## Verification gates
 
@@ -38,8 +51,8 @@ end-to-end (integration, env-dependent).
 ## Статус
 
 - [ ] Phase 1 — planned
+- [ ] Phase 2.5 — planned (Tasks 1–8, publication deferred to Phase 3 Task 3.5)
 - [ ] Phase 2 — planned
-- [ ] Phase 2.5 — planned
-- [ ] Phase 3 — planned
+- [ ] Phase 3 — planned (incl. Task 3.5 RevisionPublisher)
 - [ ] Phase 4 — planned
 - [ ] Phase 5 — planned
