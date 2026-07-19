@@ -261,12 +261,17 @@ blocks publish. Full suite 287 passed.
 - `551b569` — EmbeddingProviderUnavailable + `allow_lexical_downgrade` (P1-1: no silent vector loss); async `build_revision` + `stage_sync_async` + executor for sync CPU (P1-2: async provider no longer degrades to silent failure); `full_rebuild` accepts provider/profile (P1-3); rejects wrong-dimension + non-finite vectors.
 - `10806f4` — LocalSnapshotConnector retrieves over lexical.json + optional cosine rerank (P1-4: artifacts now searchable end-to-end). 3 retrieval tests: unique term match, missing term empty, query_vector cosine ranking.
 
+**Re-audit round 2 (commit `3a5e7c4`) found the guard depended on manually-passed active_profile; sync_source() did not auto-detect it -> silent downgrade still reproducible via the standard path.** Fixed:
+- `3a5e7c4` — `_active_embedding_profile()` reads profile from active revision manifest; `effective_profile = active_profile or detected`; `sync_source(..., embed_provider=None)` forwards provider and fails closed when vector profile exists without provider. 2 E2E tests via sync_source (reject + compatible rebuild).
+- `909e32e` — LocalSnapshotConnector upgraded lexical-AND+rerank -> hybrid lexical UNION vector (semantic-only match surfaces via vector score). 4 retrieval tests incl. "dog"->"canine companion animal" semantic match.
+
 **P2 hardening backlog (not blocking 6.4):**
 - preprocessing_revision mismatch (ADR-002) not carried in `_provider_profile` -> add to capabilities, compare in compatibility.
-- strict partial-failure semantics: manifest stores only IDs, no reason/retry/status.
-- full ZVec/Chroma/FTS publish remains follow-up (snapshot connector covers retrieval now).
+- strict partial-failure semantics: manifest stores only IDs, no reason/retry/status; distinguish provider-timeout vs invalid-doc vs invalid-vector vs programming error.
+- query embedding inside connector: SearchRequest should carry query_vector, or connector gets EmbeddingProvider.
+- full ZVec/Chroma/FTS publish remains follow-up (snapshot connector covers hybrid retrieval now).
 
-**Verdict:** 6.3 all 4 P1 closed. Awaiting final sign-off. Proceed to 6.4 after confirmation.
+**Verdict:** 6.3 all blocking P1 closed (artifact build, async, full rebuild, dimension/finite, auto-detect downgrade, hybrid retrieval). Awaiting final sign-off. Proceed to 6.4 after confirmation.
 
 ---
 
