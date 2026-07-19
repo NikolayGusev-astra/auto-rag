@@ -48,6 +48,7 @@ class Evidence:
     origin: EvidenceOrigin = "local_snapshot"
     retrieval_score: float = 0.0
     reranker_score: float | None = None
+    final_score: float = 0.0
     updated_at: datetime | None = None
     synced_at: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)

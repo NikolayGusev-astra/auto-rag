@@ -49,6 +49,15 @@ def test_evidence_has_origin_and_scores():
     assert ev.retrieval_score == 0.81
 
 
+def test_evidence_has_final_score():
+    evidence = Evidence(
+        id="d1#c0", document_id="d1", title="t", text="x", source="local",
+        origin="local_snapshot", retrieval_score=0.7, reranker_score=0.8,
+        final_score=0.75,
+    )
+    assert evidence.final_score == 0.75
+
+
 def test_syncbatch_carries_cursor_and_lists():
     docs = [
         Document(id="jira:1", source="jira", source_instance="jira-prod",
