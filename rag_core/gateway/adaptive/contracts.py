@@ -16,6 +16,7 @@ class QueryPlan:
     include_web: bool
     max_results: int
     retrieval_budget_ms: int | None = None
+    include_memory: bool = False
     hints: dict[str, Any] = field(default_factory=dict)
 
     @property

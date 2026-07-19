@@ -37,7 +37,10 @@ class Planner:
         return self._plan
 
 
-def plan(*, sources, include_local=False, include_live=False, include_web=False, queries=("q",), budget=None):
+def plan(
+    *, sources, include_local=False, include_live=False, include_web=False,
+    include_memory=False, queries=("q",), budget=None,
+):
     return QueryPlan(
         original_query="q",
         queries=queries,
@@ -48,6 +51,7 @@ def plan(*, sources, include_local=False, include_live=False, include_web=False,
         include_web=include_web,
         max_results=5,
         retrieval_budget_ms=budget,
+        include_memory=include_memory,
     )
 
 
@@ -121,3 +125,57 @@ async def test_retrieval_budget_records_timeout_and_preserves_prior_evidence():
     assert [item["document_id"] for item in response["results"]] == ["early"]
     assert response["metadata"]["failed_sources"] == ["jira-prod"]
     assert response["metadata"]["timed_out_sources"] == ["jira-prod"]
+
+
+@pytest.mark.asyncio
+async def test_retrieval_budget_applies_once_to_the_entire_query_plan():
+    class QueryAwareConnector(Connector):
+        async def search_live(self, request):
+            self.calls += 1
+            await asyncio.sleep(0.03)
+            return [evidence(request.query)]
+
+    jira = QueryAwareConnector("jira", "live")
+    started_at = asyncio.get_running_loop().time()
+    response = await AdaptiveLoop(enabled=True).run(
+        SearchRequest(query="q"), {"jira-prod": jira},
+        planner=Planner(plan(
+            sources=("live",), include_live=True, queries=("q1", "q2", "q3"), budget=50,
+        )),
+    )
+
+    assert asyncio.get_running_loop().time() - started_at < 0.2
+    assert [item["document_id"] for item in response["results"]] == ["q1"]
+    assert response["metadata"]["timed_out_queries"] == ["q2"]
+    assert response["metadata"]["skipped_queries"] == ["q3"]
+    assert response["metadata"]["timed_out_sources"] == ["jira-prod"]
+
+
+@pytest.mark.asyncio
+async def test_plan_excludes_healthy_memory_when_not_selected():
+    jira = Connector("jira", "live", [evidence("jira")])
+    memory = Connector("agent_memory", "memory", [evidence("memory")])
+
+    await AdaptiveLoop(enabled=True).run(
+        SearchRequest(query="q"), {"jira-prod": jira}, memory=memory,
+        planner=Planner(plan(sources=("jira",), include_live=True)),
+    )
+
+    assert jira.calls == 1
+    assert memory.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_plan_includes_memory_when_explicitly_selected():
+    jira = Connector("jira", "live", [evidence("jira")])
+    memory = Connector("agent_memory", "memory", [evidence("memory")])
+
+    await AdaptiveLoop(enabled=True).run(
+        SearchRequest(query="q"), {"jira-prod": jira}, memory=memory,
+        planner=Planner(plan(
+            sources=("jira", "memory"), include_live=True, include_memory=True,
+        )),
+    )
+
+    assert jira.calls == 1
+    assert memory.calls == 1

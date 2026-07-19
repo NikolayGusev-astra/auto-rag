@@ -17,6 +17,7 @@ class DcdPlanner:
             for source, available in (("local", include_local), ("live", include_live), ("web", include_web))
             if available
         )
+        include_memory = ("memory" in sources) or availability.get("memory", False) is not False
         return QueryPlan(
             original_query=query,
             queries=queries,
@@ -26,5 +27,6 @@ class DcdPlanner:
             include_live=include_live,
             include_web=include_web,
             max_results=5,
+            include_memory=include_memory,
             hints=hints,
         )

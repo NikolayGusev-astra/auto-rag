@@ -42,10 +42,12 @@ class AdaptiveLoop:
 
         selected_connectors = self._selected_connectors(connectors, plan)
         if self.enabled and memory is not None:
-            memory_requested = plan is not None and (
-                plan.include_local or plan.include_live or plan.include_web or bool(plan.sources)
+            memory_selected = plan is not None and (
+                plan.include_memory
+                or "memory" in plan.sources
+                or getattr(memory, "source", None) in plan.sources
             )
-            if availability.get(memory_key, False) and memory_requested:
+            if availability.get(memory_key, False) and memory_selected:
                 selected_connectors[memory_key] = memory
         include_web = plan.include_web if plan is not None else request.include_web
         top_k = plan.top_k if plan is not None else request.topk
@@ -54,28 +56,36 @@ class AdaptiveLoop:
         evidence = []
         successful_sources: set[str] = set()
         timed_out_sources: set[str] = set()
-        for query in queries:
-            search_request = SearchRequest(
-                query=query,
-                topk=top_k,
-                domain=request.domain,
-                collection=request.collection,
-                include_web=include_web,
-                continuation_token=request.continuation_token,
-            )
-            try:
-                if plan is not None and plan.retrieval_budget_ms is not None:
-                    async with asyncio.timeout(plan.retrieval_budget_ms / 1000):
-                        results = await coordinator.search(search_request)
-                else:
+        timed_out_queries: list[str] = []
+        skipped_queries: list[str] = []
+        budget_seconds = (
+            plan.retrieval_budget_ms / 1000
+            if plan is not None and plan.retrieval_budget_ms is not None
+            else None
+        )
+        query_index = 0
+        try:
+            async with asyncio.timeout(
+                None if budget_seconds is None else budget_seconds + 0.02
+            ):
+                for query_index, query in enumerate(queries):
+                    search_request = SearchRequest(
+                        query=query,
+                        topk=top_k,
+                        domain=request.domain,
+                        collection=request.collection,
+                        include_web=include_web,
+                        continuation_token=request.continuation_token,
+                    )
                     results = await coordinator.search(search_request)
-            except TimeoutError:
-                timed_out_sources.update(coordinator.last_timed_out_sources or selected_connectors)
-                failed_sources.update(timed_out_sources)
-                continue
-            evidence.extend(results)
-            failed_sources.update(coordinator.last_failed_sources)
-            successful_sources.update(coordinator.last_successful_sources)
+                    evidence.extend(results)
+                    failed_sources.update(coordinator.last_failed_sources)
+                    successful_sources.update(coordinator.last_successful_sources)
+        except TimeoutError:
+            timed_out_queries.append(queries[query_index])
+            skipped_queries.extend(queries[query_index + 1:])
+            timed_out_sources.update(coordinator.last_timed_out_sources or selected_connectors)
+            failed_sources.update(timed_out_sources)
 
         fused = self._coordinator.fuse(evidence)[:top_k]
         if self.enabled and feedback is not None:
@@ -103,6 +113,8 @@ class AdaptiveLoop:
             "metadata": {
                 "failed_sources": sorted(failed_sources),
                 "timed_out_sources": sorted(timed_out_sources),
+                "timed_out_queries": timed_out_queries,
+                "skipped_queries": skipped_queries,
             },
         }
 
@@ -128,6 +140,5 @@ class AdaptiveLoop:
                     getattr(connector, "retrieval_kind", "live") == "web"
                     and plan.include_web
                 )
-                or getattr(connector, "retrieval_kind", "live") == "memory"
             )
         }
