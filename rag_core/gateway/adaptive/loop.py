@@ -5,6 +5,8 @@ import inspect
 import time
 
 from rag_core.gateway.adaptive.contracts import RoutingFeedback
+from rag_core.gateway.adaptive.enrichment import MemvidEnricher
+from rag_core.gateway.adaptive.feedback_store import FeedbackStore
 from rag_core.gateway.coordinator import RetrievalCoordinator
 from rag_core.gateway.connector import SearchRequest
 
@@ -16,8 +18,12 @@ class AdaptiveLoop:
 
     async def run(
         self, request, connectors: dict, *, memory=None, planner=None, feedback=None, enricher=None,
-        active_revision_path=None, embedding_profile_id=None,
+        active_revision_path=None, embedding_profile_id=None, feedback_path=None, enrichment_path=None,
     ) -> dict:
+        if feedback is None and feedback_path is not None:
+            feedback = FeedbackStore(feedback_path)
+        if enricher is None and enrichment_path is not None:
+            enricher = MemvidEnricher(enrichment_path)
         started_at = time.perf_counter()
         available_connectors = dict(connectors)
         memory_key = getattr(memory, "source", "agent_memory") if memory is not None else None
