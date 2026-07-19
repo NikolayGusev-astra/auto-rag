@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import asyncio
 import inspect
 import json
+import math
 import re
 from dataclasses import asdict
 from pathlib import Path
@@ -16,6 +16,10 @@ from rag_core.gateway.models import Document, SyncBatch
 
 CHUNK_SIZE = 1000
 _TERM = re.compile(r"\w+", re.UNICODE)
+
+
+class EmbeddingProviderUnavailable(RuntimeError):
+    """A vector-indexed source cannot be safely rebuilt without its provider."""
 
 
 def chunk(document: Document, *, chunk_size: int = CHUNK_SIZE) -> list[dict[str, str]]:
@@ -59,24 +63,28 @@ def validate_profile(
         raise ValueError(f"incompatible embedding profile: {reason}")
 
 
-def embed_chunks(chunks: list[dict[str, str]], provider: Any) -> list[list[float]]:
-    if provider is None:
-        return []
-    result = provider.embed_documents([item["text"] for item in chunks])
+async def embed_chunks(chunks: list[dict[str, str]], provider: Any) -> list[list[float]]:
+    method = provider.embed_documents
+    texts = [item["text"] for item in chunks]
+    if inspect.iscoroutinefunction(method):
+        result = await method(texts)
+    else:
+        result = await _run_sync_embedding(method, texts)
     if inspect.isawaitable(result):
-        result = _run_awaitable(result)
+        result = await result
     vectors = list(result)
     if len(vectors) != len(chunks):
         raise ValueError("embedding provider returned a vector count different from chunks")
     return vectors
 
 
-def build_revision(
+async def build_revision(
     source: str | Path,
     batch: SyncBatch,
     *,
     embed_provider: Any = None,
     active_profile: EmbeddingProfile | None = None,
+    allow_lexical_downgrade: bool = False,
     documents: Iterable[Document | dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build all index artifacts for a full document snapshot.
@@ -84,6 +92,8 @@ def build_revision(
     When ``source`` is a directory, artifacts are written there. The engine supplies
     the merged snapshot so incremental batches cannot discard prior documents.
     """
+    if active_profile is not None and embed_provider is None and not allow_lexical_downgrade:
+        raise EmbeddingProviderUnavailable("an embedding provider is required for the active vector profile")
     snapshot = list(documents) if documents is not None else [*batch.added, *batch.changed]
     document_dicts = [asdict(item) if isinstance(item, Document) else dict(item) for item in snapshot]
     document_models = [Document(**item) for item in document_dicts]
@@ -100,10 +110,11 @@ def build_revision(
             if not document_chunks:
                 continue
             try:
-                embeddings = embed_chunks(document_chunks, embed_provider)
+                embeddings = await embed_chunks(document_chunks, embed_provider)
             except Exception:
                 failures.append(document.id)
                 continue
+            _validate_vectors(embeddings, profile.dimension if profile is not None else None)
             vectors.extend(
                 {"id": item["id"], "document_id": document.id, "vector": vector}
                 for item, vector in zip(document_chunks, embeddings, strict=True)
@@ -145,9 +156,16 @@ def _write_jsonl(path: Path, values: Iterable[dict[str, Any]]) -> None:
             handle.write(json.dumps(value, default=str, sort_keys=True) + "\n")
 
 
-def _run_awaitable(awaitable: Any) -> Any:
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(awaitable)
-    raise RuntimeError("synchronous index build cannot await an embedding provider inside an event loop")
+async def _run_sync_embedding(method: Any, texts: list[str]) -> Any:
+    import asyncio
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, method, texts)
+
+
+def _validate_vectors(vectors: list[list[float]], expected_dimension: int | None) -> None:
+    for vector in vectors:
+        if expected_dimension is not None and len(vector) != expected_dimension:
+            raise ValueError(f"embedding vector dimension {len(vector)} does not match profile dimension {expected_dimension}")
+        if not all(isinstance(value, (int, float)) and math.isfinite(value) for value in vector):
+            raise ValueError("embedding vectors must contain only finite numeric values")

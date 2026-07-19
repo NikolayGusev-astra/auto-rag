@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import tempfile
+import asyncio
+import threading
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -9,7 +11,7 @@ from rag_core.gateway.connector import SourceConnector
 from rag_core.gateway.models import SyncBatch
 from rag_core.gateway.sync.manifest_store import CorruptManifestError, MissingRevisionError, RevisionManifestStore
 from rag_core.gateway.sync.status import read_sync_status
-from rag_core.gateway.sync.index_builder import build_revision
+from rag_core.gateway.sync.index_builder import EmbeddingProviderUnavailable, build_revision
 from rag_core.gateway.model_providers import EmbeddingProfile
 
 
@@ -37,39 +39,69 @@ class SyncEngine:
         batch: SyncBatch,
         embed_provider: object | None = None,
         active_profile: EmbeddingProfile | None = None,
+        allow_lexical_downgrade: bool = False,
     ) -> Revision:
         documents = {document["id"]: document for document in self._previous_active_documents(source)}
         documents.update({document.id: asdict(document) for document in batch.added})
         documents.update({document.id: asdict(document) for document in batch.changed})
         for document_id in batch.deleted:
             documents.pop(document_id, None)
-        return self._stage_documents(source, documents, batch, embed_provider, active_profile)
+        return _await_synchronously(
+            self._stage_documents(source, documents, batch, embed_provider, active_profile, allow_lexical_downgrade)
+        )
 
-    def full_rebuild(self, source: str, batch: SyncBatch) -> Revision:
+    async def stage_sync_async(
+        self,
+        source: str,
+        batch: SyncBatch,
+        embed_provider: object | None = None,
+        active_profile: EmbeddingProfile | None = None,
+        allow_lexical_downgrade: bool = False,
+    ) -> Revision:
+        documents = {document["id"]: document for document in self._previous_active_documents(source)}
+        documents.update({document.id: asdict(document) for document in batch.added})
+        documents.update({document.id: asdict(document) for document in batch.changed})
+        for document_id in batch.deleted:
+            documents.pop(document_id, None)
+        return await self._stage_documents(source, documents, batch, embed_provider, active_profile, allow_lexical_downgrade)
+
+    def full_rebuild(
+        self,
+        source: str,
+        batch: SyncBatch,
+        *,
+        embed_provider: object | None = None,
+        active_profile: EmbeddingProfile | None = None,
+        allow_lexical_downgrade: bool = False,
+    ) -> Revision:
         documents = {document.id: asdict(document) for document in batch.added}
         documents.update({document.id: asdict(document) for document in batch.changed})
         for document_id in batch.deleted:
             documents.pop(document_id, None)
-        revision = self._stage_documents(source, documents, batch)
+        revision = _await_synchronously(
+            self._stage_documents(source, documents, batch, embed_provider, active_profile, allow_lexical_downgrade)
+        )
         self.publish(source, revision)
         return revision
 
-    def _stage_documents(
+    async def _stage_documents(
         self,
         source: str,
         documents: dict[str, dict],
         batch: SyncBatch,
         embed_provider: object | None = None,
         active_profile: EmbeddingProfile | None = None,
+        allow_lexical_downgrade: bool = False,
     ) -> Revision:
         source_root = self.root / source
         source_root.mkdir(parents=True, exist_ok=True)
         revision_path = Path(tempfile.mkdtemp(dir=source_root, prefix="revision-"))
-        build_revision(
+        await build_revision(
             revision_path,
             batch,
             embed_provider=embed_provider,
             active_profile=active_profile,
+            allow_lexical_downgrade=allow_lexical_downgrade,
             documents=documents.values(),
         )
         if batch.deleted:
@@ -109,7 +141,7 @@ class SyncEngine:
         batch = await connector.sync_changes(resume_cursor)
         if not isinstance(batch, SyncBatch):
             raise TypeError("connector.sync_changes must return SyncBatch")
-        revision = self.stage_sync(source, batch)
+        revision = await self.stage_sync_async(source, batch)
         self.publish(source, revision)
         return revision
 
@@ -186,3 +218,35 @@ class SyncEngine:
     def _read_jsonl(path: Path) -> list[dict]:
         with path.open(encoding="utf-8") as handle:
             return [json.loads(line) for line in handle if line.strip()]
+
+
+def _await_synchronously(awaitable):
+    """Keep the legacy sync API while leaving async execution to the async builder."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return _run_in_new_loop(awaitable)
+
+    result: list[object] = []
+    error: list[BaseException] = []
+
+    def runner() -> None:
+        try:
+            result.append(_run_in_new_loop(awaitable))
+        except BaseException as exc:
+            error.append(exc)
+
+    thread = threading.Thread(target=runner)
+    thread.start()
+    thread.join()
+    if error:
+        raise error[0]
+    return result[0]
+
+
+def _run_in_new_loop(awaitable):
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(awaitable)
+    finally:
+        loop.close()
