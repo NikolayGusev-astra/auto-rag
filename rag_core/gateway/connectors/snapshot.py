@@ -48,14 +48,8 @@ class LocalSnapshotConnector(SourceConnector):
         manifest = json.loads((path / "manifest.json").read_text(encoding="utf-8"))
 
         terms = _TERM.findall(query.lower())
-        if not terms:
-            return []
         postings = [set(lexical.get(term, ())) for term in set(terms)]
-        if not postings or any(not ids for ids in postings):
-            return []
-        candidate_ids = set.intersection(*postings)
-        if not candidate_ids:
-            return []
+        candidate_ids = set.intersection(*postings) if postings and all(postings) else set()
 
         term_counts = Counter(terms)
         lexical_scores = {
@@ -66,17 +60,18 @@ class LocalSnapshotConnector(SourceConnector):
             for chunk_id in candidate_ids
             if chunk_id in chunks
         }
-        vector_scores = self._vector_scores(path, manifest, query_vector, candidate_ids)
+        vector_scores = self._vector_scores(path, manifest, query_vector)
+        final_scores = _combine_scores(lexical_scores, vector_scores)
         ranked_ids = sorted(
-            lexical_scores,
-            key=lambda chunk_id: (vector_scores.get(chunk_id, lexical_scores[chunk_id]), lexical_scores[chunk_id], chunk_id),
+            set(lexical_scores) | set(vector_scores),
+            key=lambda chunk_id: (final_scores[chunk_id], chunk_id),
             reverse=True,
         )[:top_k]
         return [
             _evidence(chunks[chunk_id], documents[chunks[chunk_id]["document_id"]], self._snapshot_source,
-                      vector_scores.get(chunk_id, lexical_scores[chunk_id]))
+                      final_scores[chunk_id])
             for chunk_id in ranked_ids
-            if chunks[chunk_id]["document_id"] in documents
+            if chunk_id in chunks and chunks[chunk_id]["document_id"] in documents
         ]
 
     def retrieve(self, query: str, **kwargs: Any) -> list[Evidence]:
@@ -96,7 +91,6 @@ class LocalSnapshotConnector(SourceConnector):
         path: Path,
         manifest: dict[str, Any],
         query_vector: Sequence[float] | None,
-        candidate_ids: set[str],
     ) -> dict[str, float]:
         vectors_path = path / "vectors.jsonl"
         if query_vector is None or not vectors_path.is_file() or not manifest.get("embedding_profile"):
@@ -104,7 +98,6 @@ class LocalSnapshotConnector(SourceConnector):
         return {
             item["id"]: score
             for item in _read_jsonl(vectors_path)
-            if item.get("id") in candidate_ids
             if (score := _cosine(query_vector, item.get("vector", ()))) is not None
         }
 
@@ -119,6 +112,29 @@ def _cosine(left: Sequence[float], right: Sequence[float]) -> float | None:
         return None
     denominator = math.sqrt(sum(value * value for value in left)) * math.sqrt(sum(value * value for value in right))
     return None if denominator == 0 else sum(a * b for a, b in zip(left, right)) / denominator
+
+
+def _combine_scores(lexical_scores: dict[str, float], vector_scores: dict[str, float]) -> dict[str, float]:
+    max_lexical_score = max(lexical_scores.values(), default=0.0)
+    lexical_normalized = {
+        chunk_id: score / max_lexical_score
+        for chunk_id, score in lexical_scores.items()
+        if max_lexical_score
+    }
+    vector_normalized = {
+        chunk_id: max(0.0, min(1.0, (score + 1.0) / 2.0))
+        for chunk_id, score in vector_scores.items()
+    }
+    return {
+        chunk_id: (
+            (lexical_normalized[chunk_id] + vector_normalized[chunk_id]) / 2.0
+            if chunk_id in lexical_normalized and chunk_id in vector_normalized
+            else lexical_normalized[chunk_id]
+            if chunk_id in lexical_normalized
+            else vector_normalized[chunk_id]
+        )
+        for chunk_id in set(lexical_normalized) | set(vector_normalized)
+    }
 
 
 def _evidence(chunk: dict[str, Any], document: dict[str, Any], source: str, score: float) -> Evidence:

@@ -55,6 +55,25 @@ async def test_query_vector_ranks_snapshot_vectors_by_cosine(tmp_path):
     assert [result.document_id for result in results] == ["jira:two", "jira:one"]
 
 
+@pytest.mark.asyncio
+async def test_query_vector_returns_semantic_match_without_lexical_overlap(tmp_path):
+    from rag_core.gateway.connectors.snapshot import LocalSnapshotConnector
+
+    engine = SyncEngine(tmp_path)
+    _publish(
+        engine,
+        SyncBatch(added=[_document("jira:canine", "canine companion animal")]),
+        _SemanticProvider(),
+    )
+
+    connector = LocalSnapshotConnector(engine, "jira")
+
+    assert await connector.search("dog") == []
+    results = await connector.search("dog", query_vector=[1.0, 0.0])
+
+    assert [result.document_id for result in results] == ["jira:canine"]
+
+
 class _Provider:
     @property
     def capabilities(self):
@@ -66,3 +85,8 @@ class _Provider:
 
     async def embed_documents(self, texts):
         return [[1.0, 0.0] if "one" in text else [0.0, 1.0] for text in texts]
+
+
+class _SemanticProvider(_Provider):
+    async def embed_documents(self, texts):
+        return [[1.0, 0.0] if text == "canine companion animal" else [0.0, 1.0] for text in texts]
