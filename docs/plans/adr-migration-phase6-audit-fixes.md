@@ -311,6 +311,30 @@ Tests `test_feedback_persistence.py`, `test_enrichment_store.py`.
 
 ---
 
+## Phase 6.4 — AdaptiveLoop execution fixes — DONE
+
+- `QueryPlan` управляет выполнением retrieval:
+  - `sources`
+  - `queries`
+  - `include_local`
+  - `include_live`
+  - `include_web`
+  - `max_results`
+  - `retrieval_budget_ms`
+- Adaptive и reference paths используют единый `RetrievalCoordinator`.
+- Compound-запросы выполняются через единый plan, без отдельного pipeline.
+- Availability определяется через `connector.health()`, а не константой.
+- Web connector не вызывается при `include_web=False`.
+- Origin задаётся connector-ом и сохраняется в `Evidence`.
+- Memory evidence объединяется с document evidence без short-circuit.
+- `topk` применяется после fusion.
+- Ошибки connector-ов отражаются в diagnostics, а не проглатываются молча.
+- Отсутствие DCD, memory, reranker или отдельного connector-а не блокирует reference retrieval path.
+
+Commit: `7303f93 fix(adaptive): plan-driven coordinator, origin, health, topk, diagnostics (6.4)`. 6 focused adaptive-loop tests pass; full suite 305 passed. RetrievalCoordinator already provides health_map(), web-filter, topk, structured failure logging; AdaptiveLoop now delegates to it (no direct connector iteration), uses QueryPlan when planner present, preserves origin, persists feedback + episode.
+
+---
+
 ## Phase 6 Verification Gate
 
 ```bash
