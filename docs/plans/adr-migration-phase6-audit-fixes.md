@@ -345,6 +345,13 @@ Commit: `7303f93 fix(adaptive): plan-driven coordinator, origin, health, topk, d
 - `useful_document_ids` is telemetry (returned docs), not confirmed usefulness; 6.5 must not train routing on it as positive signal.
 - real Jira/MCP/web connectors must set `retrieval_kind` when added.
 
+**Re-audit round 2 (commit `ee796da`) found 2 P1 still open.** Fixed in `cded9d3`:
+- `retrieval_budget_ms` now a SINGLE plan-wide deadline: `async with asyncio.timeout(budget_seconds+0.02)` wraps the whole `for query in queries` loop; on TimeoutError keeps collected evidence, records `timed_out_queries` (current) + `skipped_queries` (remaining). No longer per-query timeout (was 3x budget for 3 subqueries).
+- Explicit memory policy: `QueryPlan.include_memory` field added; planner sets it from `("memory" in sources) or availability["memory"]`. Loop adds memory to execution set ONLY if `availability[memory_key]` AND `plan.include_memory or "memory" in plan.sources or memory.source in plan.sources`. `_selected_connectors` no longer unconditionally accepts `retrieval_kind=="memory"`.
+- 3 regression tests: compound total budget (q1 kept, q2/q3 timed_out/skipped, wall < budget+grace), healthy-but-unselected memory NOT called, explicit memory selected called. Full suite 312 passed.
+
+**Verdict:** 6.4 fully closed (routing kind selection, memory guard, single plan budget, explicit memory policy). Awaiting final sign-off. Proceed to 6.5 after confirmation.
+
 ---
 
 ## Phase 6 Verification Gate
