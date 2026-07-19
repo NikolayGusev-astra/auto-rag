@@ -1,5 +1,7 @@
 # Architecture
 
+> **Legacy profile.** This document describes the current `rag_async` full-RAG pipeline, retained as the **legacy/full-RAG profile** during the migration to an agent knowledge gateway (see [`ADR-001`](ADR-001-knowledge-gateway.md) and [`ADR-002`](ADR-002-model-runtime.md)). The target architecture makes LM Studio optional (provider-independent model layer) and MCP stdio the primary agent interface. Migration plan: [`MIGRATION-PLAN.md`](MIGRATION-PLAN.md).
+
 `auto-rag` is a local-first retrieval pipeline with optional remote sources and
 an episodic memory layer. The default deployment uses LM Studio for embeddings
 and generation, ZVec for local retrieval, and MCP/Web/Federation as fallbacks.

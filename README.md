@@ -29,14 +29,16 @@ are unavailable.
 - Local-first: runs without any cloud LLM; graceful degradation when MCP/web/memory are absent.
 - SSRF-hardened web fetch (resolve-once, connect-by-IP, no redirect bypass).
 - Fail-closed verification: a broken verifier is reported as "unknown", never as "half-relevant".
-- Tenant/ACL isolation in the response cache (no cross-tenant leakage in server mode).
+- Tenant/ACL isolation in the response cache (legacy server-mode compatibility; single-user agent gateway does not require tenant resolution — see ADR-001).
 - Episodic memory records only results anchored by a trusted local source (no web/federation poisoning).
 
 **What it does NOT guarantee (yet)**
 - Not a universal self-optimizing RAG — routing is policy/keyword-driven, tuned for the Astra technical domain.
-- No calibrated cross-source scoring: ZVec / MCP / web / federation scores are not directly comparable without trust weighting.
+- Cross-source scores ARE calibrated via `Evidence.calibrated_score` (ZVec/MCP/web/federation normalized to a comparable trust-weighted space) — see `rag_core/evidence.py`. This is implemented, not pending.
 - Memory short-circuit is a cache, not a source of truth; stale episodes possible if index revision changes.
 - Single reference pipeline (`rag_async`); `rag_v2` and adapters are experimental.
+
+> **Architecture direction:** Auto-RAG is migrating from a full local-first RAG pipeline toward a **local offline-capable knowledge gateway for AI agents** (MCP-first, structured Evidence, online/offline source fusion, provider-independent model layer). See [`docs/ADR-001-knowledge-gateway.md`](docs/ADR-001-knowledge-gateway.md) and [`docs/ADR-002-model-runtime.md`](docs/ADR-002-model-runtime.md). The current `rag_async` pipeline is retained as the legacy/full-RAG profile during migration.
 
 
 | | ZVec (default) | ChromaDB (fallback) |
