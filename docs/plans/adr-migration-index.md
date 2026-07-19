@@ -1,7 +1,7 @@
 # ADR Migration Plans Index
 
 Планы поэтапной миграции Auto-RAG из legacy "local-first full RAG pipeline" в "local
-offline-capable knowledge gateway for AI agents" (ADR-001, ADR-002).
+offline-capable knowledge gateway for AI agents" (ADR-001, ADR-002, ADR-003).
 
 Каждый план написан в формате `writing-plans`: bite-sized субтаски (2-5 мин), TDD
 (RED→GREEN), explicit file paths, точные команды. Предназначен для исполнения через Codex
@@ -12,9 +12,10 @@ offline-capable knowledge gateway for AI agents" (ADR-001, ADR-002).
 | 1 | [adr-migration-phase1.md](adr-migration-phase1.md) | Foundation & Contracts: domain models (Document, Evidence, SyncBatch), SourceConnector Protocol, Model Provider Protocols, MCP schema docs | — |
 | 2 | [adr-migration-phase2.md](adr-migration-phase2.md) | Agent Gateway MVP: ZvecConnector adapter, RetrievalCoordinator (dedup/filter/rerank), MCP `search` handler, source availability | Phase 1 |
 | 2.5 | [adr-migration-phase2.5.md](adr-migration-phase2.5.md) | Model Runtime & Index Compatibility (ADR-002): index manifest, compatibility gate, CPU/OpenAI providers, no-LLM/lexical fallback, cloud policy, portability tests, staged re-embedding | Phase 1 |
-| 3 | [adr-migration-phase3.md](adr-migration-phase3.md) | Sync Engine: staged write, tombstones, atomic publish + integrity, resume cursor, sync_status | Phase 1-2 |
+| 3 | [adr-migration-phase3.md](adr-migration-phase3.md) | Sync Engine: staged write, tombstones, atomic publish + integrity, resume cursor, sync_status (incl. Task 3.5 RevisionPublisher) | Phase 1-2 |
 | 4 | [adr-migration-phase4.md](adr-migration-phase4.md) | Scope Reduction: MemoryConnector (no short-circuit), web opt-in, federation experimental, rag_async legacy mark | Phase 1-3 |
 | 5 | [adr-migration-phase5.md](adr-migration-phase5.md) | Decomposition & Integration: split rag_async, full MCP stdio server, CLI, agent integration (Hermes+Codex), CPU scheduler | Phase 1-4 |
+| A–F | [adr-migration-phaseA-F.md](adr-migration-phaseA-F.md) | Adaptive Retrieval Loop (ADR-003): QueryPlan/RoutingFeedback/MemoryEpisode contracts, DcdPlanner, fusion final_score, FeedbackStore, MemvidEnricher, AdaptiveLoop (reference path preserved) | Phase 1, 2, 4 |
 
 ## Как исполнять (Codex)
 
@@ -56,3 +57,4 @@ Studio end-to-end (integration, env-dependent).
 - [ ] Phase 3 — planned (incl. Task 3.5 RevisionPublisher)
 - [ ] Phase 4 — planned
 - [ ] Phase 5 — planned
+- [ ] Phase A–F (ADR-003 adaptive loop) — planned (depends on Phase 1, 2, 4)
