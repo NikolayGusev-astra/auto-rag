@@ -257,7 +257,16 @@ incompatible profile blocks publish, partial embed failure flags doc (no active 
 stable/dedup chunk IDs, empty/oversized handling, full-snapshot staging, corrupt staged
 blocks publish. Full suite 287 passed.
 
-**Verdict:** 6.3 implemented per invariants. Awaiting user audit of Real index build.
+**Re-audit (commit `62f5166`) found 4 P1 + 3 P2.** All 4 P1 fixed:
+- `551b569` — EmbeddingProviderUnavailable + `allow_lexical_downgrade` (P1-1: no silent vector loss); async `build_revision` + `stage_sync_async` + executor for sync CPU (P1-2: async provider no longer degrades to silent failure); `full_rebuild` accepts provider/profile (P1-3); rejects wrong-dimension + non-finite vectors.
+- `10806f4` — LocalSnapshotConnector retrieves over lexical.json + optional cosine rerank (P1-4: artifacts now searchable end-to-end). 3 retrieval tests: unique term match, missing term empty, query_vector cosine ranking.
+
+**P2 hardening backlog (not blocking 6.4):**
+- preprocessing_revision mismatch (ADR-002) not carried in `_provider_profile` -> add to capabilities, compare in compatibility.
+- strict partial-failure semantics: manifest stores only IDs, no reason/retry/status.
+- full ZVec/Chroma/FTS publish remains follow-up (snapshot connector covers retrieval now).
+
+**Verdict:** 6.3 all 4 P1 closed. Awaiting final sign-off. Proceed to 6.4 after confirmation.
 
 ---
 
