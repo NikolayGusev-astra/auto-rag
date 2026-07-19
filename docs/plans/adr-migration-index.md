@@ -16,6 +16,7 @@ offline-capable knowledge gateway for AI agents" (ADR-001, ADR-002, ADR-003).
 | 4 | [adr-migration-phase4.md](adr-migration-phase4.md) | Scope Reduction: MemoryConnector (no short-circuit), web opt-in, federation experimental, rag_async legacy mark | Phase 1-3 |
 | 5 | [adr-migration-phase5.md](adr-migration-phase5.md) | Decomposition & Integration: split rag_async, full MCP stdio server, CLI, agent integration (Hermes+Codex), CPU scheduler | Phase 1-4 |
 | A–F | [adr-migration-phaseA-F.md](adr-migration-phaseA-F.md) | Adaptive Retrieval Loop (ADR-003): QueryPlan/RoutingFeedback/MemoryEpisode contracts, DcdPlanner, fusion final_score, FeedbackStore, MemvidEnricher, AdaptiveLoop (reference path preserved) | Phase 1, 2, 4 |
+| 6 | [adr-migration-phase6-audit-fixes.md](adr-migration-phase6-audit-fixes.md) | **Audit remediation:** P0-1 non-destructive incremental sync, P0-2 real MCP transport, P1-1 plan-driven coordinator + origin/availability/topk, P1-2 unified manifest store, P1-3 sync builds index (chunk/embed), P1-4 persistent feedback + memvid store | Phase 1-5, A-F |
 
 ## Как исполнять (Codex)
 
@@ -58,3 +59,4 @@ Studio end-to-end (integration, env-dependent).
 - [ ] Phase 4 — planned
 - [ ] Phase 5 — planned
 - [ ] Phase A–F (ADR-003 adaptive loop) — planned (depends on Phase 1, 2, 4)
+- [ ] Phase 6 (audit remediation P0/P1) — planned (depends on Phase 1-5, A-F)
