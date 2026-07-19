@@ -333,6 +333,18 @@ Tests `test_feedback_persistence.py`, `test_enrichment_store.py`.
 
 Commit: `7303f93 fix(adaptive): plan-driven coordinator, origin, health, topk, diagnostics (6.4)`. 6 focused adaptive-loop tests pass; full suite 305 passed. RetrievalCoordinator already provides health_map(), web-filter, topk, structured failure logging; AdaptiveLoop now delegates to it (no direct connector iteration), uses QueryPlan when planner present, preserves origin, persists feedback + episode.
 
+**Re-audit (commit `7303f93`) found 2 P1 + 1 P1/P2 routing defects.** Fixed in `ee796da`:
+- `retrieval_kind` added to `SourceConnector` Protocol (default "live"); `LocalSnapshotConnector` sets "local"; memory/web set on construction. Loop builds `kind_availability` from `health_map()` and passes it to planner (planner expects local/live/web keys). `_selected_connectors` selects by `plan.include_local/include_live/include_web` + `connector.retrieval_kind` + explicit source match. Real source IDs (jira, local_snapshot) now routed correctly (was broken: plan.sources "local"/"live" never matched real names).
+- Memory added to execution set ONLY if `availability[memory_key]` and plan requests it (not force-added via setdefault).
+- `retrieval_budget_ms` applied via `asyncio.timeout` per query; TimeoutError preserves partial evidence and records `timed_out_sources`.
+- 4 routing regression tests (real source IDs, explicit selection, unavailable memory, budget timeout). Full suite 309 passed.
+
+**P2 backlog (not blocking 6.5):**
+- `plan.domains` ignored by loop (passes request.domain); mark domains advisory or wire into subrequests.
+- health computed twice (loop health_map + coordinator.search re-checks); pass precomputed snapshot to coordinator.search(availability=...) to avoid double remote calls.
+- `useful_document_ids` is telemetry (returned docs), not confirmed usefulness; 6.5 must not train routing on it as positive signal.
+- real Jira/MCP/web connectors must set `retrieval_kind` when added.
+
 ---
 
 ## Phase 6 Verification Gate
