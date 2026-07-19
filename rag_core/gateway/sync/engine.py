@@ -45,12 +45,10 @@ class SyncEngine:
         self._validate_revision(revision)
         source_root = self.root / source
         source_root.mkdir(parents=True, exist_ok=True)
-        temporary_manifest = source_root / "manifest.tmp.json"
-        temporary_manifest.write_text(
-            json.dumps({"active_index": str(revision.path), "cursor": revision.cursor}),
-            encoding="utf-8",
+        self.atomic_write_json(
+            self._manifest_path(source),
+            {"active_index": str(revision.path), "cursor": revision.cursor},
         )
-        os.replace(temporary_manifest, self._manifest_path(source))
 
     def active_documents(self, source: str) -> list[dict]:
         active_revision = self.active_revision(source)
@@ -85,6 +83,14 @@ class SyncEngine:
 
     def _manifest_path(self, source: str) -> Path:
         return self.root / source / "manifest.json"
+
+    @staticmethod
+    def atomic_write_json(path: Path, data: dict) -> None:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = path.with_name(f"{path.stem}.tmp{path.suffix}")
+        temporary_path.write_text(json.dumps(data), encoding="utf-8")
+        os.replace(temporary_path, path)
 
     @staticmethod
     def _validate_revision(revision: Revision) -> None:
