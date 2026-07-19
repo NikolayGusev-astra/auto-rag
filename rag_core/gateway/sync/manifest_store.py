@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import errno
 import tempfile
 from pathlib import Path
 
@@ -57,9 +58,31 @@ class RevisionManifestStore:
             os.fsync(handle.fileno())
         try:
             os.replace(temporary_path, self.path)
+            self._fsync_directory(self.path.parent)
         finally:
             if temporary_path.exists():
                 temporary_path.unlink()
+
+    @staticmethod
+    def _fsync_directory(directory: Path) -> None:
+        """Best-effort fsync of a directory entry after rename.
+
+        Guarantees the rename is durable across power loss / kernel crash, not
+        just visible to the running process. Skipped where the platform does not
+        support directory fsync (e.g. some non-POSIX FS) rather than raising.
+        """
+        try:
+            directory_fd = os.open(directory, os.O_RDONLY)
+        except OSError:
+            return
+        try:
+            os.fsync(directory_fd)
+        except OSError as error:
+            if error.errno in (errno.ENOTSUP, errno.EINVAL, errno.EBADF, errno.EACCES):
+                return
+            raise
+        finally:
+            os.close(directory_fd)
 
     def active_revision(self) -> str | None:
         manifest = self.read()

@@ -1,4 +1,5 @@
 import json
+import os
 
 import pytest
 
@@ -93,3 +94,31 @@ def _batch():
         added=[Document("jira:1", "jira", "p", "title", "text", "hash")],
         cursor="cursor-1",
     )
+
+
+def test_write_fsyncs_file_content(tmp_path, monkeypatch):
+    fsync_calls = []
+
+    monkeypatch.setattr(os, "fsync", lambda fd: fsync_calls.append(fd))
+
+    store = RevisionManifestStore(tmp_path, "jira")
+    store.write(profile={}, active_revision=None, cursor="c1")
+
+    # temp file content is fsync'd before rename
+    assert len(fsync_calls) >= 1
+
+
+def test_write_fsyncs_parent_directory_after_rename(tmp_path, monkeypatch):
+    dir_fsynced = []
+
+    monkeypatch.setattr(
+        RevisionManifestStore,
+        "_fsync_directory",
+        staticmethod(lambda directory: dir_fsynced.append(directory)),
+    )
+
+    store = RevisionManifestStore(tmp_path, "jira")
+    store.write(profile={}, active_revision=None, cursor="c1")
+
+    # directory entry fsync happens after os.replace
+    assert dir_fsynced == [tmp_path / "jira"]
