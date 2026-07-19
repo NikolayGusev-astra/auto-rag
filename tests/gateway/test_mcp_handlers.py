@@ -48,3 +48,19 @@ async def test_web_connector_not_called_when_include_web_is_false():
     )
 
     assert response["results"] == []
+
+
+@pytest.mark.asyncio
+async def test_public_web_excluded_from_runtime_without_opt_in():
+    class WebConnector:
+        source = "public_web"
+
+        async def health(self):
+            return {"available": True}
+
+        async def search_live(self, request):
+            raise AssertionError("public web must be opt-in")
+
+    response = await handle_search(SearchRequest(query="q"), {"web": WebConnector()})
+
+    assert "public_web" not in response["runtime"]["source_status"]
