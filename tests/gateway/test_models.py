@@ -2,6 +2,7 @@ import pytest
 from dataclasses import FrozenInstanceError
 from rag_core.gateway.models import Document, DocumentRef
 from rag_core.gateway.models import Evidence, EvidenceOrigin
+from rag_core.gateway.models import SyncBatch, SourceHealth, Document
 
 
 def test_document_is_frozen_and_has_required_fields():
@@ -46,3 +47,22 @@ def test_evidence_has_origin_and_scores():
     )
     assert ev.origin == "local_snapshot"
     assert ev.retrieval_score == 0.81
+
+
+def test_syncbatch_carries_cursor_and_lists():
+    docs = [
+        Document(id="jira:1", source="jira", source_instance="jira-prod",
+                 title="t", text="x", content_hash="h1"),
+    ]
+    batch = SyncBatch(
+        added=docs, changed=[], deleted=["jira:0"],
+        cursor="cur-42", warnings=[], stats={"added": 1},
+    )
+    assert batch.cursor == "cur-42"
+    assert len(batch.added) == 1
+    assert batch.deleted == ["jira:0"]
+
+
+def test_source_health_available_flag():
+    h = SourceHealth(source="jira", available=True, detail="ok")
+    assert h.available is True

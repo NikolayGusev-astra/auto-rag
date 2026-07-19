@@ -51,3 +51,20 @@ class Evidence:
     updated_at: datetime | None = None
     synced_at: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class SyncBatch:
+    added: list[Document] = field(default_factory=list)
+    changed: list[Document] = field(default_factory=list)
+    deleted: list[str] = field(default_factory=list)
+    cursor: str | None = None
+    warnings: list[str] = field(default_factory=list)
+    stats: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class SourceHealth:
+    source: str
+    available: bool
+    detail: str = ""
