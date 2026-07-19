@@ -16,6 +16,7 @@ from typing import Any, Mapping
 
 from rag_core.gateway.connector import SearchRequest, SourceConnector
 from rag_core.gateway.mcp_handlers import handle_search
+from rag_core.gateway.scheduler import apply_low_cpu_priority
 from rag_core.gateway.sync.engine import SyncEngine
 
 
@@ -99,6 +100,8 @@ def main() -> None:
     """Start the local gateway's stdio transport."""
     parser = argparse.ArgumentParser(description="Run the auto-rag gateway over stdio JSON-RPC.")
     parser.parse_args()
+    if os.getenv("RAG_GATEWAY_LOW_CPU", "false").lower() in {"1", "true", "yes"}:
+        apply_low_cpu_priority()
     serve_stdio()
 
 
