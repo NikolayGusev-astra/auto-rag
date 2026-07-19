@@ -10,8 +10,11 @@ Async RAG pipeline — параллельный запуск ZVec, MCP, SearXNG 
 - Multi-source fallback: пустой источник → следующий
 - Compound queries: альд+postgresql → 2 подзапроса без LLM
 - Smart fusion: все чанки из всех источников → main model
+LEGACY / full-RAG profile. New agent gateway in rag_core.gateway.*
 """
 from __future__ import annotations
+
+LEGACY_PIPELINE = True
 
 import asyncio
 import hashlib
