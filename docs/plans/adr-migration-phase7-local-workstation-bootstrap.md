@@ -226,3 +226,24 @@ Verification (independent): `_configured_connectors` not called in product path;
 - 7.10 Real Codex/Cursor smoke + OPERATIONS.md steps.
 
 These two verify the already-assembled vertical path; run after 7.1–7.8 are pushed and audited.
+
+---
+
+## Phase 7 — Audit fix + 7.9 DONE
+
+**Audit 7.1–7.8 found 1 P1 + 2 P2.** Fixed in `55db81e`:
+- P1: `_connector_health()` no longer special-cases `retrieval_kind=='local'` to True; ALWAYS calls `connector.health()` (LocalSnapshotConnector.health checks active revision). Empty/corrupt snapshot → health False. Non-fatal on exception. `reason` surfaced from status.
+- P2: relative `knowledge_root` in TOML resolves from `config_path.parent` (not cwd).
+- 4 regression tests: empty/ready/corrupt local snapshot, relative config path. Full suite 334 passed.
+
+**7.9 Official MCP ClientSession smoke — `66b099c`:**
+- `tests/gateway/test_phase7_mcp_client.py` uses official `mcp.ClientSession` + `stdio_client` (NOT raw stdin JSON-RPC).
+- Full vertical path: publish `jira:1` → real `--config <toml>` → TOML loader → factory → LocalSnapshotConnector → RetrievalCoordinator → `Evidence[]`.
+- Asserts `initialize` → `list_tools` (search+sync) → `call_tool('search')` → `structuredContent["results"]` contains published doc.
+- `--config` wired through `main()` → `serve_mcp_stdio(config_path)` → `create_mcp_server(..., config_path)` → `_factory_connectors`.
+- 1 test passed; full suite 335 passed.
+
+**PENDING:**
+- 7.10 Real Codex/Cursor smoke + OPERATIONS.md steps (manual integration).
+
+**After 7.10:** Phase 7 complete per ADR-004 acceptance (10 criteria).
