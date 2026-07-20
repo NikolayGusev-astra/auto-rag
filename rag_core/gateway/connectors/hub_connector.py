@@ -40,11 +40,9 @@ class HubConnector:
             name = str(collection.get("name") or "")
             if not namespace or not name:
                 continue
-            versions = await self._get(
-                f"/api/galaxy/v3/plugin/ansible/content/published/{namespace}/{name}/"
-            )
-            latest = _latest_version(versions)
-            results.append(_evidence(namespace, name, latest, self._base, self.source))
+            highest = collection.get("highest_version") or {}
+            version = str(highest.get("version") or "unknown")
+            results.append(_evidence(namespace, name, version, self._base, self.source))
         return results
 
     async def health(self) -> dict[str, object]:
