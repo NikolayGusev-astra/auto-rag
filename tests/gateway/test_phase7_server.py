@@ -44,22 +44,20 @@ def test_mcp_search_uses_embedding_runtime_from_environment(monkeypatch):
 
     captured = {}
 
-    class FakeProvider:
-        def __init__(self, base_url, model, expected_dim):
-            captured["provider"] = (base_url, model, expected_dim)
-
     async def fake_handle_search(request, connectors, *, enricher=None, reranker=None):
+        captured["request"] = request
         captured["reranker"] = reranker
-        return {"results": [], "trace": {}}
+        return {"results": [{"text": "matching evidence"}], "trace": {}}
 
     monkeypatch.setattr(server, "FastMCP", FakeMCP)
-    monkeypatch.setattr(server, "OpenAICompatibleEmbeddingProvider", FakeProvider)
     monkeypatch.setattr(server, "handle_search", fake_handle_search)
     monkeypatch.setenv("EMBED_URL", "http://embedding.test/v1/embeddings")
     monkeypatch.setenv("EMBED_MODEL", "test-embed")
 
     mcp_server = server.create_mcp_server(connectors={})
-    asyncio.run(mcp_server.tools["search"]("q"))
+    result = asyncio.run(mcp_server.tools["search"]("q", top_k=3))
 
-    assert captured["provider"] == ("http://embedding.test/v1/embeddings", "test-embed", 1024)
     assert type(captured["reranker"]).__name__ == "RerankAdapter"
+    assert captured["request"].query == "q"
+    assert captured["request"].topk == 3
+    assert result["results"] == [{"text": "matching evidence"}]
