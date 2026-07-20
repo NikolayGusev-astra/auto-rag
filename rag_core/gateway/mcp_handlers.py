@@ -14,6 +14,7 @@ async def handle_search(
     connectors: Mapping[str, SourceConnector],
     *,
     enricher: MemvidEnricher | None = None,
+    reranker: object | None = None,
     active_revision_path: str | None = None,
     embedding_profile_id: str | None = None,
 ) -> dict[str, object]:
@@ -23,7 +24,7 @@ async def handle_search(
         if request.include_web
         or getattr(connector, "source", "").lower() not in {"web", "public_web"}
     }
-    coordinator = RetrievalCoordinator(active_connectors)
+    coordinator = RetrievalCoordinator(active_connectors, reranker=reranker)
     t0 = time.perf_counter()
     results = await coordinator.search(request)
     elapsed_ms = round((time.perf_counter() - t0) * 1000)
@@ -46,6 +47,10 @@ async def handle_search(
             "connector_count": len(active_connectors),
             "result_count": len(results),
             "elapsed_ms": elapsed_ms,
+            "reranker": {
+                "enabled": reranker is not None,
+                "provider": type(reranker).__name__ if reranker is not None else None,
+            },
         },
         "runtime": {
             "source_status": {

@@ -29,6 +29,8 @@ from rag_core.gateway.connector import SearchRequest, SourceConnector
 from rag_core.gateway.config_loader import load_config
 from rag_core.gateway.connector_factory import build_connectors
 from rag_core.gateway.mcp_handlers import handle_search
+from rag_core.gateway.model_runtime.providers import OpenAICompatibleEmbeddingProvider
+from rag_core.gateway.rerank_adapter import RerankAdapter
 from rag_core.gateway.scheduler import apply_low_cpu_priority
 from rag_core.gateway.sync.engine import SyncEngine
 
@@ -122,13 +124,23 @@ def create_mcp_server(
     active_connectors = dict(connectors if connectors is not None else _factory_connectors(config_path))
     engine = sync_engine or _sync_engine()
     enricher = MemvidEnricher(Path(os.getenv("RAG_ENRICHMENT_PATH", ".auto-rag-gateway/episodes.jsonl")))
+    embedding_url = os.getenv(
+        "EMBED_URL", os.getenv("RAG_EMBED_URL", "http://localhost:1234/v1/embeddings")
+    )
+    embedding_model = os.getenv("EMBED_MODEL", os.getenv("RAG_EMBED_MODEL", "bge-m3"))
+    embedding_provider = OpenAICompatibleEmbeddingProvider(
+        embedding_url, embedding_model, expected_dim=1024
+    )
+    reranker = RerankAdapter(embedding_provider)
     server = FastMCP("auto-rag-gateway")
 
     @server.tool()
     async def search(query: str, top_k: int = 5, include_web: bool = False) -> dict[str, object]:
         """Retrieve evidence for a query from configured gateway connectors."""
         request = SearchRequest(query=query, topk=top_k, include_web=include_web)
-        return await handle_search(request, active_connectors, enricher=enricher)
+        return await handle_search(
+            request, active_connectors, enricher=enricher, reranker=reranker
+        )
 
     @server.tool()
     async def sync(source: str) -> dict[str, str | None]:

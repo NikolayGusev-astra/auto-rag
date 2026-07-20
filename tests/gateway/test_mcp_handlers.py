@@ -33,6 +33,28 @@ async def test_handler_returns_results_and_trace():
 
 
 @pytest.mark.asyncio
+async def test_handler_passes_reranker_to_coordinator_and_reports_it():
+    class Connector:
+        source = "local"
+
+        async def health(self):
+            return {"available": True}
+
+        async def search_live(self, request):
+            return []
+
+    class Reranker:
+        async def rerank(self, query, documents, top_k):
+            return documents
+
+    response = await handle_search(
+        SearchRequest(query="q"), {"local": Connector()}, reranker=Reranker()
+    )
+
+    assert response["trace"]["reranker"] == {"enabled": True, "provider": "Reranker"}
+
+
+@pytest.mark.asyncio
 async def test_web_connector_not_called_when_include_web_is_false():
     class WebConnector:
         source = "web"

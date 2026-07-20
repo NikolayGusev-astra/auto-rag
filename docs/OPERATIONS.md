@@ -63,7 +63,11 @@ Add to the Hermes MCP config (this is the one real-agent acceptance step from AD
   "mcpServers": {
     "auto-rag": {
       "command": "python",
-      "args": ["-m", "rag_core.gateway.server", "--config", "~/.config/auto-rag/gateway.toml"]
+      "args": ["-m", "rag_core.gateway.server", "--config", "~/.config/auto-rag/gateway.toml"],
+      "env": {
+        "RAG_EMBED_URL": "http://localhost:1234/v1/embeddings",
+        "RAG_EMBED_MODEL": "bge-m3"
+      }
     }
   }
 }

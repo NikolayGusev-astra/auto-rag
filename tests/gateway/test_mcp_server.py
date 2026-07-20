@@ -1,9 +1,11 @@
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 
 import pytest
+import requests
 
 
 pytestmark = pytest.mark.skipif(
@@ -40,6 +42,18 @@ def _initialize_messages() -> tuple[dict, dict]:
     )
 
 
+def _require_embedding_runtime() -> None:
+    url = os.getenv(
+        "EMBED_URL", os.getenv("RAG_EMBED_URL", "http://localhost:1234/v1/embeddings")
+    )
+    model = os.getenv("EMBED_MODEL", os.getenv("RAG_EMBED_MODEL", "bge-m3"))
+    try:
+        response = requests.post(url, json={"model": model, "input": ["smoke test"]}, timeout=1)
+        response.raise_for_status()
+    except requests.RequestException as error:
+        pytest.skip(f"LM Studio embeddings are unavailable: {error}")
+
+
 def test_mcp_server_imports_when_sdk_is_available():
     import rag_core.gateway.server as server
 
@@ -70,6 +84,7 @@ def test_mcp_lists_search_and_sync_tools():
 
 
 def test_mcp_search_tool_returns_evidence_shape():
+    _require_embedding_runtime()
     initialize, initialized = _initialize_messages()
 
     responses = _mcp_messages(

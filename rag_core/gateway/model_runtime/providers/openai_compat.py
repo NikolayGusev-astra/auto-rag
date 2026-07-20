@@ -16,6 +16,7 @@ class OpenAICompatibleEmbeddingProvider:
         api_key: str | None = None,
     ):
         self._base = base_url.rstrip("/")
+        self._endpoint = "" if self._base.endswith("/embeddings") else "/embeddings"
         self._model = model
         self._dim = expected_dim
         self._api_key = api_key
@@ -46,7 +47,7 @@ class OpenAICompatibleEmbeddingProvider:
     async def embed_query(self, text: str) -> list[float]:
         self._ensure()
         response = await self._client.post(
-            "/embeddings", json={"model": self._model, "input": [text]}
+            self._endpoint, json={"model": self._model, "input": [text]}
         )
         response.raise_for_status()
         vector = response.json()["data"][0]["embedding"]
