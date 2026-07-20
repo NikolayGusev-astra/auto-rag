@@ -26,6 +26,10 @@ adaptive = false
 kind = "jira"
 enabled = false            # offline-safe stub until real connector lands
 credential_ref = "env:JIRA_TOKEN"   # NEVER put the token value here
+
+[sources.bitbucket]
+kind = "mcp-proxy"
+extra = { tool = "bitbucket_search_code", server = "bitbucket" }
 ```
 
 `LocalSnapshotConnector` is registered automatically. `web` is off by default.
