@@ -1,199 +1,213 @@
-# Operations Guide
+# Auto-RAG Gateway — Operations Guide
 
-## Local Workstation Gateway (Phase 7 — ADR-004)
+> **Версия:** Phase 7+ (20 июля 2026)  
+> **ADR:** [ADR-004](adr/004-local-workstation-focus.md)  
+> **Тесты:** 368 passed, 5 skipped, 1 xfailed
 
-Auto-RAG gateway is a local, offline-capable MCP stdio server for ONE engineer.
-It serves `search` and `sync` tools to a coding agent (Hermes Agent, Codex, Cursor, Claude).
-
-### Install
-
-```bash
-pip install -e .[gateway]   # installs official MCP SDK
-```
-
-Core retrieval/sync works without the `gateway` extra; the MCP transport needs it.
-
-### 1. Create a local config
-
-```toml
-# ~/.config/auto-rag/gateway.toml
-knowledge_root = "~/.local/share/auto-rag"
-local_snapshot = true
-web = false
-adaptive = false
-
-[sources.jira]
-kind = "jira"
-enabled = false            # offline-safe stub until real connector lands
-credential_ref = "env:JIRA_TOKEN"   # NEVER put the token value here
-
-[sources.bitbucket]
-kind = "mcp-proxy"
-extra = { tool = "bitbucket_search_code", server = "bitbucket" }
-```
-
-`LocalSnapshotConnector` is registered automatically. `web` is off by default.
-Relative `knowledge_root` resolves from this file's directory.
-
-### 2. Build the local snapshot
-
-The gateway serves whatever the sync engine already published. To publish a source:
-
-```python
-from rag_core.gateway.sync.engine import SyncEngine
-from rag_core.gateway.models import Document, SyncBatch
-
-engine = SyncEngine("~/.local/share/auto-rag")
-await engine.sync_source(my_source)   # my_source.sync_changes() -> SyncBatch
-```
-
-After publish, `LocalSnapshotConnector.health()` returns `available=True`.
-
-### 3. Start the gateway
+## Быстрый старт
 
 ```bash
+# Установка
+git clone https://github.com/NikolayGusev-astra/auto-rag.git
+cd auto-rag
+pip install -e ".[gateway]"
+
+# Конфиг
+cp docs/gateway.example.toml ~/.config/auto-rag/gateway.toml
+# → заполнить credential_ref и extra.base_url
+
+# Снапшот (wiki в локальный индекс)
+python -m rag_core.gateway sync --source local_snapshot
+
+# ZVec сервер
+python -m rag_core.zvec_server --port 8678 &
+
+# Запуск
 python -m rag_core.gateway.server --config ~/.config/auto-rag/gateway.toml
 ```
 
-No corporate network? Live sources show `unhealthy` in diagnostics; local search still works.
-Legacy debug transport (newline-delimited JSON) is available with `--legacy-jsonl`.
+## Hermes MCP регистрация
 
-### 4. Register with Hermes Agent (7.10 manual smoke)
+```bash
+hermes mcp add auto-rag \
+  --command ~/.venv/Scripts/python.exe \
+  --env JIRA_PAT=... \
+  --env CONFLUENCE_PAT=... \
+  --env JIRA_BASE_URL=https://jira.astralinux.ru \
+  --env CONFLUENCE_BASE_URL=https://wiki.astralinux.ru \
+  --env HUB_TOKEN=... \
+  --env HUB_BASE_URL=https://hub.astra-automation.ru \
+  --env EMBED_URL=http://localhost:1234/v1/embeddings \
+  --env EMBED_MODEL=text-embedding-baai-bge-m3-568m \
+  --env CPU_EMBED_MODEL=intfloat/multilingual-e5-large \
+  --env NO_PROXY=* \
+  --args -m rag_core.gateway.server --config ~/.config/auto-rag/gateway.toml
+```
 
-Add to the Hermes MCP config (this is the one real-agent acceptance step from ADR-004):
+**Проверка:** `hermes mcp test auto-rag` → `✓ Connected`
+
+## Конфигурация
+
+### gateway.toml
+
+```toml
+knowledge_root = "~/.local/share/auto-rag"
+local_snapshot = true
+web = false
+adaptive = true       # DCD Planner + DCD Learner
+
+[sources.jira]
+kind = "jira"
+enabled = true
+credential_ref = "env:JIRA_PAT"
+
+[sources.confluence]
+kind = "confluence"
+enabled = true
+credential_ref = "env:CONFLUENCE_PAT"
+
+[sources.hub]
+kind = "hub"
+enabled = true
+credential_ref = "env:HUB_TOKEN"
+
+[sources.zvec]
+kind = "zvec"
+enabled = true
+# extra.url defaults to http://127.0.0.1:8678
+
+[sources.bitbucket]       # пример: новый MCP-источник
+kind = "mcp-proxy"
+enabled = true
+extra = { tool = "bitbucket_search_code", server = "bitbucket" }
+```
+
+### Коннекторы
+
+| kind | Коннектор | Требования |
+|------|-----------|-----------|
+| `jira` | JiraConnector | `env:JIRA_PAT`, `env:JIRA_BASE_URL` |
+| `confluence` | ConfluenceConnector | `env:CONFLUENCE_PAT`, `env:CONFLUENCE_BASE_URL` |
+| `hub` | HubConnector | `env:HUB_TOKEN`, `env:HUB_BASE_URL` |
+| `zvec` | ZVecHttpConnector | ZVec сервер на `:8678` |
+| `mcp-proxy` | GenericMcpConnector | любой Hermes MCP tool |
+
+`LocalSnapshotConnector` регистрируется автоматически при `local_snapshot=true`.
+
+## Model Runtime
+
+### Embedding fallback chain
+
+```
+LM Studio (BGE-M3, localhost:1234/v1/embeddings)
+  ↓ недоступен
+CPU sentence-transformers (multilingual-e5-large)
+  ↓ недоступен
+None → graceful degradation (реранкер недоступен, retrieval order)
+```
+
+**Env:** `EMBED_URL` (default: `http://localhost:1234/v1/embeddings`), `EMBED_MODEL` (default: `bge-m3`), `CPU_EMBED_MODEL` (default: `intfloat/multilingual-e5-large`).
+
+**CPU-fallback:** требует `pip install sentence-transformers`. При первом запуске скачает модель (~1.5 GB).
+
+### RerankAdapter
+
+Cosine-реранкинг через эмбеддинги. `final_score = 0.4 × retrieval_score + 0.6 × reranker_score`. Graceful fallback при недоступности.
+
+## ZVec сервер
+
+Загружает коллекцию один раз при старте, держит в памяти — нет file-lock при конкурентных запросах.
+
+```bash
+python -m rag_core.zvec_server --port 8678 --host 127.0.0.1
+```
+
+Endpoint: `GET /search?q=...&topk=5`  
+Health: `GET /health`
+
+**Без AVX2:** Chroma-адаптер (`rag_core/chroma_adapter.py`).
+
+## DCD Routing
+
+### SourceDiscovery
+
+Автоматически находит документацию продуктов через wiki frontmatter + Confluence API:
+
+```bash
+python -m rag_core.gateway discover
+```
+
+Wiki → Confluence child pages → `~/.config/auto-rag/routing.json`.  
+DcdPlanner читает `routing.json`, выбирает домены/источники по ключевым словам.
+
+### DCD Learner
+
+Обучается из эпизодов (keyword→source аффинити):
+
+```bash
+python -m rag_core.gateway dcd-learn
+```
+
+Не исключает источники — только бустит приоритет.
+
+## Memvid Enrichment
+
+Каждый `search` сохраняет эпизод в `~/.local/share/auto-rag/episodes.jsonl`:
 
 ```json
-{
-  "mcpServers": {
-    "auto-rag": {
-      "command": "python",
-      "args": ["-m", "rag_core.gateway.server", "--config", "~/.config/auto-rag/gateway.toml"],
-      "env": {
-        "RAG_EMBED_URL": "http://localhost:1234/v1/embeddings",
-        "RAG_EMBED_MODEL": "bge-m3"
-      }
-    }
-  }
-}
+{"query": "INT-6515", "route": ["confluence","jira"], "document_ids": [...], "reranker_score": 0.67}
 ```
 
-Then in Hermes: the `auto-rag` server exposes `search` and `sync`. A real `search` call
-returns `Evidence[]` from the local snapshot. Stdio stderr must not corrupt the JSON-RPC
-stream — the server writes diagnostics to stderr only, never stdout.
+## Eval Golden
 
-### 5. Verify
+Два слоя оценки:
 
 ```bash
-python -m pytest tests/gateway/test_phase7_mcp_client.py -q   # official ClientSession smoke
+# Только детерминированные метрики (precision, recall, MRR, nDCG, citation, latency)
+python -m rag_core.eval_golden
+
+# + Qwen-2.5 judge (relevance, coverage, groundedness, conflicts)
+python -m rag_core.eval_golden --judge
 ```
 
-This launches the server as a subprocess with a real `--config` and a published snapshot,
-then drives `initialize` → `list_tools` → `call_tool("search")` via the SDK `ClientSession`.
+Golden set: `~/wiki/eval/golden_set.jsonl`  
+Release gate: детерминированные метрики не ухудшились AND Qwen judge без существенной деградации.
 
-### Startup diagnostics
+## Новые MCP-источники
 
-```python
-from rag_core.gateway.connector_factory import build_connectors
-from rag_core.gateway.config_loader import load_config
-from rag_core.gateway.diagnostics import collect_startup_diagnostics
+Добавить секцию в `gateway.toml`:
 
-diag = collect_startup_diagnostics(build_connectors(load_config(cfg_path)))
-# diag["connectors"]["local_snapshot"]["health"]  -> True only if a revision is published
-# diag["offline"]["healthy"] / ["unhealthy"]       -> which sources are up
+```toml
+[sources.имя]
+kind = "mcp-proxy"
+enabled = true
+extra = { tool = "имя_mcp_инструмента", server = "имя_mcp_сервера" }
 ```
 
-A registered-but-empty local snapshot reports `health=False` with a reason — not a false positive.
+Без изменения кода. `GenericMcpConnector` оборачивает любой Hermes MCP tool.
 
----
+## Портинг на другую машину
 
-## Prerequisites (legacy full-RAG pipeline)
+См. [porting-checklist.md](../../porting-checklist.md).
 
-- Python 3.11+
-- LM Studio serving an embedding model at `http://localhost:1234/v1/embeddings`
-- AVX2 CPU for ZVec; use the Chroma path when AVX2 is unavailable
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-pip install -e .[dev]
-```
-
-## Local Retrieval
-
-Build or refresh the ZVec index:
-
-```bash
-python rag_core/indexer.py --clear
-python rag_core/indexer.py --incremental
-```
-
-Run a query:
-
-```bash
-python rag_core/rag_search.py "how do I configure PostgreSQL replication?"
-```
-
-## Episodic Memory
-
-Configure an environment file or process environment:
-
-```bash
-RAG_MEMVID_ENABLED=true
-RAG_MEMVID_MODE=both
-RAG_MEMVID_DIR=./memvid_capsules
-RAG_MEMVID_TENANT=hermes_default
-RAG_MEMVID_EMBED_URL=http://localhost:1234/v1/embeddings
-RAG_MEMVID_EMBED_MODEL=bge-m3
-RAG_MEMVID_RECALL_THRESHOLD=0.75
-```
-
-Inspect a local capsule:
-
-```bash
-python rag_core/hermes_memory_cli.py \
-  --capsule ./memvid_capsules/memory_hermes_default.mv2 stats
-python rag_core/hermes_memory_cli.py \
-  --capsule ./memvid_capsules/memory_hermes_default.mv2 search "known query"
-```
-
-A successful memory hit appears in the result as:
-
-```text
-from_memory=true
-trace=memvid.recall(short-circuit, score=<score>)
-```
-
-## Verification
-
-Run all unit and integration tests:
-
-```bash
-python -m pytest tests/ -q
-```
-
-Run the golden set only when LM Studio, the local index and configured external
-sources are available:
-
-```bash
-python rag_core/eval_golden.py
-```
+Кратко:
+1. `git clone` + `pip install -e ".[gateway]"`
+2. Скопировать `~/.config/auto-rag/gateway.toml` (поправить пути)
+3. Скопировать `~/wiki/rusbitech/`, `~/wiki/eval/`
+4. Настроить env-переменные (JIRA_PAT, CONFLUENCE_PAT, HUB_TOKEN, EMBED_URL, EMBED_MODEL)
+5. Запустить ZVec-сервер: `python -m rag_core.zvec_server &`
+6. Зарегистрировать в Hermes: `hermes mcp add auto-rag ...`
+7. Проверить: `hermes mcp test auto-rag` → `✓ Connected`
+8. Прогнать тесты: `python -m pytest tests -q`
 
 ## Troubleshooting
 
-| Symptom | Check |
-|---|---|
-| `memvid disabled` | Confirm `RAG_MEMVID_ENABLED=true` is loaded by the active process. |
-| No memory recall | Confirm LM Studio embeddings, `RAG_MEMVID_ENABLED=true` and the capsule path; `stats` should report `has_vec_index` through the native MV2 backend. |
-| Empty local search | Check index path, collection name and embedding endpoint. |
-| Federation unavailable | Check the API key, bind address, configured nodes and SSH tunnel state. |
-| Web retrieval empty | Check SearXNG; private targets are intentionally blocked by the SSRF guard. |
-
-## Runtime Data
-
-Do not commit these local artifacts:
-
-- `memvid_capsules/` (one `.mv2` capsule contains its native vector index)
-- `.pytest_cache/`
-- `routing_log.jsonl`
-- audit reports and generated review canvases
+| Симптом | Проверить |
+|---------|----------|
+| `ConnectorStub` в результатах | `credential_ref` разрешается? env-переменные установлены? |
+| Пустой local_snapshot | `knowledge_root` существует? снапшот опубликован через `sync`? |
+| ZVec 503 | Сервер запущен на `:8678`? `/health` возвращает 200? |
+| LM Studio недоступен | `EMBED_URL` корректен? `NO_PROXY=*` установлен? CPU-fallback: `pip install sentence-transformers` |
+| Реракер не работает | LM Studio ИЛИ CPU fallback должны быть доступны. Graceful degradation — результаты в retrieval order. |
+| Heremes не видит auto-rag | `hermes mcp list` → enabled? Проверить `--env` ДО `--args` в команде регистрации. |
+| 0 результатов Hub | Hub отдаёт published (11 коллекций) + validated (40 коллекций). `astra.acm` и `astra.aa_controller` в validated. |
