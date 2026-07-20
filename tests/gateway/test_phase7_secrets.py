@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_resolve_credential_reads_environment_and_allows_none(monkeypatch):
     from rag_core.gateway.secrets import resolve_credential
 
@@ -5,3 +8,10 @@ def test_resolve_credential_reads_environment_and_allows_none(monkeypatch):
 
     assert resolve_credential("env:JIRA_TOKEN") == "secret-from-environment"
     assert resolve_credential(None) is None
+
+
+def test_resolve_credential_refuses_plaintext_values():
+    from rag_core.gateway.secrets import resolve_credential
+
+    with pytest.raises(ValueError, match="env: or keyring:"):
+        resolve_credential("abc")
