@@ -56,6 +56,7 @@ class HubConnector:
             headers={"Authorization": f"Token {self._token}"},
             timeout=30.0,
             trust_env=False,
+            follow_redirects=True,
         ) as client:
             response = await client.get(f"{self._base}{path}", params=params)
             response.raise_for_status()
