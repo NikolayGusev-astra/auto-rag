@@ -396,6 +396,28 @@ Commit: `1546bed feat(mcp): real MCP transport via SDK (P0-2 / 6.6)`. 4 MCP test
 
 ---
 
+## Phase 6 — Product Boundary & Next Phase
+
+**ADR-004 — Local Workstation RAG for a Single Engineer** filed: `docs/ADR-004-local-workstation-rag.md` (indexed in `ADR-INDEX.md`). Fixes the product boundary after Phase 6: Auto-RAG is a local offline-capable knowledge gateway for ONE engineer, not a multi-tenant platform.
+
+**Two main conditions to become daily-usable (not in Phase 6 scope):**
+1. Connector factory + config loader (empty `_configured_connectors()` today).
+2. Real MCP client smoke (official `ClientSession` + at least one coding agent: Codex/Cursor/Claude).
+
+**Phase 7 — Local Workstation Bootstrap** (next):
+- Local versioned config schema + loader
+- Narrow connector registry/factory
+- Mandatory `LocalSnapshotConnector` registration
+- Optional Jira/Wiki/MCP connectors
+- Credential references (no plaintext secrets)
+- Startup diagnostics, `list_sources`, `source_status`
+- CLI + MCP server use factory instead of empty `_configured_connectors()`
+- Offline startup acceptance test
+
+**Acceptance:** local config → gateway startup → LocalSnapshotConnector registered → MCP ClientSession initialize → tools/list → search → RetrievalCoordinator → LocalSnapshotConnector → Evidence[]. Separate test: corporate network down → live connectors unhealthy → gateway still starts → local search returns Evidence[].
+
+---
+
 ## Phase 6 Verification Gate
 
 ```bash
