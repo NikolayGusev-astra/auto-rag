@@ -38,3 +38,10 @@ def test_load_config_reads_toml(tmp_path):
     assert config.knowledge_root == Path("knowledge")
     assert config.local_snapshot is True
     assert config.sources["jira"].credential_ref == "env:JIRA_TOKEN"
+
+
+def test_load_config_rejects_missing_explicit_file(tmp_path):
+    from rag_core.gateway.config_loader import ConfigNotFound, load_config
+
+    with pytest.raises(ConfigNotFound):
+        load_config(tmp_path / "missing.toml")
