@@ -41,7 +41,7 @@ class HubConnector:
         collections = _merge_collections(
             _matching_collections(_items(collections_payload), request.query),
             published_items,
-            validated_items,
+            _matching_collections(validated_items, request.query),
         )
         results: list[Evidence] = []
         for collection in collections[: request.topk]:
