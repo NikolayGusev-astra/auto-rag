@@ -25,6 +25,8 @@ else:
     _MCP_IMPORT_ERROR = None
 
 from rag_core.gateway.connector import SearchRequest, SourceConnector
+from rag_core.gateway.config_loader import load_config
+from rag_core.gateway.connector_factory import build_connectors
 from rag_core.gateway.mcp_handlers import handle_search
 from rag_core.gateway.scheduler import apply_low_cpu_priority
 from rag_core.gateway.sync.engine import SyncEngine
@@ -33,9 +35,8 @@ from rag_core.gateway.sync.engine import SyncEngine
 MCP_SDK_INSTALL_MESSAGE = "MCP transport requires the official MCP SDK. Install it with: pip install 'auto-rag[gateway]'"
 
 
-def _configured_connectors() -> dict[str, SourceConnector]:
-    """Return deployment-configured gateway connectors."""
-    return {}
+def _factory_connectors(config_path: Path | None = None) -> dict[str, SourceConnector]:
+    return build_connectors(load_config(config_path))
 
 
 def _sync_engine() -> SyncEngine:
@@ -58,7 +59,7 @@ async def dispatch_legacy(
 ) -> dict[str, Any]:
     """Dispatch one request from the deprecated JSON-lines debug protocol."""
     active_connectors = dict(
-        connectors if connectors is not None else message.get("connectors", _configured_connectors())
+        connectors if connectors is not None else message.get("connectors", _factory_connectors())
     )
     engine = sync_engine or _sync_engine()
     method = message.get("method")
@@ -92,9 +93,10 @@ dispatch = dispatch_legacy
 def serve_legacy_jsonl(
     connectors: Mapping[str, SourceConnector] | None = None,
     sync_engine: SyncEngine | None = None,
+    config_path: Path | None = None,
 ) -> None:
     """Serve the deprecated newline-delimited debug protocol until stdin closes."""
-    active_connectors = dict(connectors or _configured_connectors())
+    active_connectors = dict(connectors if connectors is not None else _factory_connectors(config_path))
     engine = sync_engine or _sync_engine()
     for line in sys.stdin:
         try:
@@ -110,12 +112,13 @@ def serve_legacy_jsonl(
 def create_mcp_server(
     connectors: Mapping[str, SourceConnector] | None = None,
     sync_engine: SyncEngine | None = None,
+    config_path: Path | None = None,
 ) -> FastMCP:
     """Create the SDK-managed MCP server and register gateway tools."""
     if FastMCP is None:
         raise ImportError(MCP_SDK_INSTALL_MESSAGE) from _MCP_IMPORT_ERROR
 
-    active_connectors = dict(connectors or _configured_connectors())
+    active_connectors = dict(connectors if connectors is not None else _factory_connectors(config_path))
     engine = sync_engine or _sync_engine()
     server = FastMCP("auto-rag-gateway")
 
@@ -138,9 +141,10 @@ def create_mcp_server(
 def serve_mcp_stdio(
     connectors: Mapping[str, SourceConnector] | None = None,
     sync_engine: SyncEngine | None = None,
+    config_path: Path | None = None,
 ) -> None:
     """Start the standard MCP stdio transport provided by the SDK."""
-    create_mcp_server(connectors, sync_engine).run(transport="stdio")
+    create_mcp_server(connectors, sync_engine, config_path).run(transport="stdio")
 
 
 def main() -> None:
@@ -151,13 +155,14 @@ def main() -> None:
         action="store_true",
         help="run the deprecated newline-delimited JSON debug transport",
     )
+    parser.add_argument("--config", type=Path, help="path to local gateway TOML configuration")
     args = parser.parse_args()
     if os.getenv("RAG_GATEWAY_LOW_CPU", "false").lower() in {"1", "true", "yes"}:
         apply_low_cpu_priority()
     if args.legacy_jsonl:
-        serve_legacy_jsonl()
+        serve_legacy_jsonl(config_path=args.config)
         return
-    serve_mcp_stdio()
+    serve_mcp_stdio(config_path=args.config)
 
 
 if __name__ == "__main__":
