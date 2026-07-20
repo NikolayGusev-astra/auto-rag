@@ -128,8 +128,14 @@ def create_mcp_server(
         "EMBED_URL", os.getenv("RAG_EMBED_URL", "http://localhost:1234/v1/embeddings")
     )
     embedding_model = os.getenv("EMBED_MODEL", os.getenv("RAG_EMBED_MODEL", "bge-m3"))
-    embedding_provider = OpenAICompatibleEmbeddingProvider(
-        embedding_url, embedding_model, expected_dim=1024
+    cpu_model = os.getenv("CPU_EMBED_MODEL", "intfloat/multilingual-e5-large")
+    from rag_core.gateway.model_runtime.providers.robust import RobustEmbeddingProvider
+    embedding_provider = RobustEmbeddingProvider(
+        lm_studio_url=embedding_url,
+        lm_studio_model=embedding_model,
+        expected_dim=1024,
+        cpu_model_id=cpu_model,
+        cpu_dim=1024,
     )
     reranker = RerankAdapter(embedding_provider)
     server = FastMCP("auto-rag-gateway")

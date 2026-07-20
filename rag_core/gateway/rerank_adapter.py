@@ -25,11 +25,18 @@ class RerankAdapter:
             return []
         try:
             query_embedding = await self._embedding_provider.embed_query(query)
+            if query_embedding is None:
+                logger.warning("embedding provider returned None; returning retrieval order")
+                return list(documents)[:top_k]
             scored: list[Evidence] = []
             for document in documents:
                 document_embedding = await self._embedding_provider.embed_query(document.text)
+                if document_embedding is None:
+                    continue
                 score = self._cosine(query_embedding, document_embedding)
                 scored.append(replace(document, reranker_score=score))
+            if not scored:
+                return list(documents)[:top_k]
         except (httpx.HTTPError, OSError, Exception) as error:
             logger.warning("embedding reranker unavailable; returning retrieval order: %s", error)
             return list(documents)[:top_k]
