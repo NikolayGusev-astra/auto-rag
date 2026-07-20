@@ -24,6 +24,7 @@ except ImportError as error:  # pragma: no cover - exercised in installations wi
 else:
     _MCP_IMPORT_ERROR = None
 
+from rag_core.gateway.adaptive.enrichment import MemvidEnricher
 from rag_core.gateway.connector import SearchRequest, SourceConnector
 from rag_core.gateway.config_loader import load_config
 from rag_core.gateway.connector_factory import build_connectors
@@ -120,13 +121,14 @@ def create_mcp_server(
 
     active_connectors = dict(connectors if connectors is not None else _factory_connectors(config_path))
     engine = sync_engine or _sync_engine()
+    enricher = MemvidEnricher(Path(os.getenv("RAG_ENRICHMENT_PATH", ".auto-rag-gateway/episodes.jsonl")))
     server = FastMCP("auto-rag-gateway")
 
     @server.tool()
     async def search(query: str, top_k: int = 5, include_web: bool = False) -> dict[str, object]:
         """Retrieve evidence for a query from configured gateway connectors."""
         request = SearchRequest(query=query, topk=top_k, include_web=include_web)
-        return await handle_search(request, active_connectors)
+        return await handle_search(request, active_connectors, enricher=enricher)
 
     @server.tool()
     async def sync(source: str) -> dict[str, str | None]:
