@@ -51,6 +51,7 @@ class MemoryEpisode:
     created_at: datetime | None
     index_revision: str | None
     embedding_profile_id: str | None
+    reranker_score: float | None = None
 
 
 @dataclass(frozen=True)

@@ -33,6 +33,7 @@ class MemvidEnricher:
         index_revision: str | None = None,
         embedding_profile_id: str | None = None,
     ) -> MemoryEpisode:
+        reranker_scores = [item.reranker_score for item in evidence if item.reranker_score is not None]
         episode = MemoryEpisode(
             id=f"ep-{abs(hash(query))}",
             query=query,
@@ -45,6 +46,7 @@ class MemvidEnricher:
             created_at=datetime.now(),
             index_revision=index_revision,
             embedding_profile_id=embedding_profile_id,
+            reranker_score=sum(reranker_scores) / len(reranker_scores) if reranker_scores else None,
         )
         return episode
 

@@ -20,3 +20,14 @@ def test_enricher_excludes_credentials():
     episode = MemvidEnricher().build_episode("q", evidence, successful=True)
     assert "secret" not in episode.summary
     assert "TOP" not in episode.summary
+
+
+def test_enricher_records_reranker_score_for_routing_learning():
+    evidence = [
+        Evidence("d1#c0", "d1", "t", "x", "local", reranker_score=0.6),
+        Evidence("d2#c0", "d2", "t", "x", "web", reranker_score=1.0),
+    ]
+
+    episode = MemvidEnricher().build_episode("q", evidence)
+
+    assert episode.reranker_score == 0.8
