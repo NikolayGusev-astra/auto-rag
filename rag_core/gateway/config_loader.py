@@ -20,6 +20,10 @@ def load_config(path: Path | None = None) -> GatewayConfig:
         raise ConfigNotFound(f"gateway config not found: {config_path}")
     with config_path.open("rb") as handle:
         raw: dict[str, Any] = tomllib.load(handle)
+    if "knowledge_root" in raw:
+        knowledge_root = Path(raw["knowledge_root"])
+        if not knowledge_root.is_absolute():
+            raw["knowledge_root"] = (config_path.parent / knowledge_root).resolve()
     raw_sources = raw.pop("sources", {})
     sources = {
         name: SourceConfig(name=name, **source)

@@ -11,12 +11,15 @@ from rag_core.gateway.sync.engine import _await_synchronously
 def collect_startup_diagnostics(connectors: Mapping[str, SourceConnector]) -> dict[str, Any]:
     entries: dict[str, dict[str, Any]] = {}
     for name, connector in connectors.items():
-        health = _connector_health(connector)
-        entries[name] = {
+        health, reason = _connector_health(connector)
+        entry = {
             "source": getattr(connector, "source", name),
             "kind": getattr(connector, "retrieval_kind", "live"),
             "health": health,
         }
+        if reason is not None:
+            entry["reason"] = reason
+        entries[name] = entry
     healthy = [name for name, entry in entries.items() if entry["health"]]
     unhealthy = [name for name, entry in entries.items() if not entry["health"]]
     return {
@@ -26,13 +29,12 @@ def collect_startup_diagnostics(connectors: Mapping[str, SourceConnector]) -> di
     }
 
 
-def _connector_health(connector: SourceConnector) -> bool:
-    if getattr(connector, "retrieval_kind", None) == "local":
-        return True
+def _connector_health(connector: SourceConnector) -> tuple[bool, str | None]:
     try:
         status = _await_synchronously(connector.health())
-    except Exception:
-        return False
+    except Exception as error:
+        return False, str(error) or type(error).__name__
     if isinstance(status, Mapping):
-        return bool(status.get("available", False))
-    return bool(getattr(status, "available", False))
+        reason = status.get("reason")
+        return bool(status.get("available", False)), reason if isinstance(reason, str) else None
+    return bool(getattr(status, "available", False)), None

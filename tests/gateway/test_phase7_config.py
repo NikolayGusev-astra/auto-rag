@@ -35,7 +35,7 @@ def test_load_config_reads_toml(tmp_path):
 
     config = load_config(path)
 
-    assert config.knowledge_root == Path("knowledge")
+    assert config.knowledge_root == (path.parent / "knowledge").resolve()
     assert config.local_snapshot is True
     assert config.sources["jira"].credential_ref == "env:JIRA_TOKEN"
 
