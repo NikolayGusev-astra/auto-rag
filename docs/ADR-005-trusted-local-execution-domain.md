@@ -70,13 +70,47 @@ QueryPlan → web policy gate → SearXNG discovery
 
 ## Acceptance criteria
 
-1. Config schema поддерживает `deployment_class`
-2. Для remote services заданы policy и timeout
-3. `trusted_node`/`ssh_tunneled` ≠ cloud endpoints
-4. `external_cloud` → deny-by-default
-5. Отказ доверенного узла не блокирует LocalSnapshot
-6. Web retrieval выключен по умолчанию
-7. Trafilatura → Camoufox fallback
-8. Все web Evidence содержат URL и origin
-9. SSH tunnel управляется операционным слоем
-10. Минимальный offline reference profile работает без удалённых узлов
+ADR считается реализованным, когда:
+
+1. Config schema поддерживает `deployment_class`.
+2. Для каждого remote service задаются policy и timeout.
+3. `trusted_node` и `ssh_tunneled` endpoints не считаются cloud endpoints.
+4. `external_cloud` использует deny-by-default.
+5. Отказ доверенного узла не блокирует LocalSnapshot retrieval.
+6. Health различает configured, reachable и ready.
+7. Web retrieval выключен по умолчанию.
+8. Trafilatura используется до Camoufox (quality-gated fallback).
+9. Camoufox имеет resource и security isolation:
+   - SSRF-фильтр (запрет localhost/private/link-local);
+   - валидация схемы `http/https`;
+   - ограничение redirects;
+   - без `--no-sandbox` без доказанной внешней контейнеризации.
+10. Все web Evidence содержат URL и origin.
+11. SSH tunnel управляется операционным слоем, а не gateway.
+12. Архитектурная документация маркирует `CURRENT / AVAILABLE / TARGET`.
+13. Один пользователь и один персональный trust domain остаются продуктовой границей.
+14. Ни один новый endpoint не получает document content без явной policy.
+15. Минимальный offline reference profile работает без удалённых узлов.
+
+## Product boundaries
+
+ADR-005 разрешает сложную и распределённую архитектуру, но не разрешает:
+
+* multi-tenant control plane;
+* общий индекс для произвольного числа пользователей;
+* централизованное управление персональными credentials;
+* неявную передачу корпоративных документов во внешний cloud;
+* обязательную зависимость от доверенного удалённого узла;
+* превращение SSH transport в собственный orchestration subsystem;
+* автоматическое включение web retrieval без policy.
+
+### Positive
+
+* Тяжёлые сервисы можно вынести с ноутбука.
+* Сохраняется единая локальная персональная RAG-система.
+* Offline retrieval продолжает работать без доверенного узла.
+* Появляется единая policy-модель для local, trusted и external endpoints.
+
+### Accepted trade-off
+
+Сложность оправдана: Auto-RAG — полноценная RAG-платформа инженера, а не минимальный файловый поиск. Распределение компонентов внутри доверенного контура сохраняет автономность и безопасность.<｜end▁of▁thinking｜>Любое расширение к shared enterprise platform требует отдельного ADR.

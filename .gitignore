@@ -1,17 +1,17 @@
-__pycache__/
-*.pyc
-.pytest_cache/
-.env
-.venv-memvid/
-routing_log.jsonl
-
-# Runtime data: local-only, may contain episodic memory.
-memvid_capsules/
-*.mv2
-*.mv2e
-*.vecidx.jsonl
 
 # Local review and audit artifacts.
+# Runtime data: local-only, may contain episodic memory.
+*.mv2
+*.mv2e
+*.pyc
+*.vecidx.jsonl
+.auto-rag-gateway/
+.env
+.pytest_cache/
+.venv-memvid/
+__pycache__/
 AUDIT_*.md
 docs/cursor-review/
 docs/plans/auto-rag-decisions-analysis.md
+memvid_capsules/
+routing_log.jsonl

@@ -17,7 +17,7 @@ class WebExtractConnector:
     """Downloads and extracts text from web pages via Trafilatura."""
 
     source = "web"
-    retrieval_kind = "live"
+    retrieval_kind = "web"
 
     def __init__(self) -> None:
         self._client = httpx.AsyncClient(timeout=15, trust_env=False,

@@ -15,7 +15,7 @@ class SearXNGConnector(SourceConnector):
     """SearXNG meta-search on trusted node (autolycus-agent.ru:8080 → localhost:8888)."""
 
     source = "web"
-    retrieval_kind = "live"
+    retrieval_kind = "web"
 
     def __init__(self, base_url: str = "http://localhost:8888") -> None:
         self._base = base_url.rstrip("/")

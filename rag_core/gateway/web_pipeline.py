@@ -86,4 +86,4 @@ class WebPipeline:
             except Exception as exc:
                 logger.warning("Camoufox fallback failed for %s: %s", url, exc)
 
-        return evidence if len(text) >= 50 else None
+        return evidence if len(text) > 0 else None

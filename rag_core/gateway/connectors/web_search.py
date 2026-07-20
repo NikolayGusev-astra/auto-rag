@@ -14,7 +14,7 @@ class WebSearchConnector(SourceConnector):
     """DuckDuckGo instant answers + web results. Rate-limited, offline-safe."""
 
     source = "web"
-    retrieval_kind = "live"
+    retrieval_kind = "web"
 
     async def search_live(self, request: SearchRequest) -> list[Evidence]:
         try:
