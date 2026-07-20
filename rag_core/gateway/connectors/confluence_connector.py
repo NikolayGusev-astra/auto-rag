@@ -50,6 +50,13 @@ class ConfluenceConnector:
             return {"source": self.source, "available": False, "reason": str(exc)}
         return {"source": self.source, "available": True}
 
+    async def child_pages(self, page_id: str) -> list[dict[str, Any]]:
+        """Return the direct child pages of a Confluence page."""
+        payload = await self._get(
+            f"/rest/api/content/{page_id}/child/page", params={"limit": 250}
+        )
+        return list(payload.get("results", []))
+
     async def sync_changes(self, cursor: str | None) -> SyncBatch:
         del cursor
         return SyncBatch(added=[])
