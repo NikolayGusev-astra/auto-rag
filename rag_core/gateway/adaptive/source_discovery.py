@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import re
 from typing import Any
@@ -51,8 +52,8 @@ class SourceDiscovery:
         )
         if source is None:
             return None
-        base_url = source.extra.get("base_url")
-        if not isinstance(base_url, str) or not base_url:
+        base_url = source.extra.get("base_url") or os.environ.get("CONFLUENCE_BASE_URL", "")
+        if not base_url:
             return None
         try:
             token = resolve_credential(source.credential_ref)
@@ -67,7 +68,7 @@ def _routing_path() -> Path:
 
 def _frontmatter(path: Path) -> dict[str, Any]:
     content = path.read_text(encoding="utf-8")
-    match = re.match(r"^---\s*\n(.*?)\n---\s*(?:\n|$)", content, re.DOTALL)
+    match = re.match(r"^---\s*\r?\n(.*?)\r?\n---\s*(?:\r?\n|$)", content, re.DOTALL)
     if not match:
         return {}
     parsed = yaml.safe_load(match.group(1))
