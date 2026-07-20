@@ -25,7 +25,7 @@ class OpenAICompatibleEmbeddingProvider:
     def _ensure(self) -> None:
         if self._client is None:
             headers = {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}
-            self._client = httpx.AsyncClient(base_url=self._base, headers=headers)
+            self._client = httpx.AsyncClient(base_url=self._base, headers=headers, trust_env=False, timeout=30)
 
     @property
     def capabilities(self) -> EmbeddingCapabilities:
