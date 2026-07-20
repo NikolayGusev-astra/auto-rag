@@ -142,6 +142,7 @@ async def search(
         txt = d.fields.get("text", "") or d.fields.get("content", "")
         if txt:
             chunks.append({
+                "id": str(getattr(d, "id", "") or (d.fields or {}).get("id", "")),
                 "text": txt[:500],
                 "score": d.score,
                 "source": (d.fields or {}).get("source", "zvec/wiki"),
