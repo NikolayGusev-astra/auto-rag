@@ -1,6 +1,104 @@
 # Operations Guide
 
-## Prerequisites
+## Local Workstation Gateway (Phase 7 — ADR-004)
+
+Auto-RAG gateway is a local, offline-capable MCP stdio server for ONE engineer.
+It serves `search` and `sync` tools to a coding agent (Hermes Agent, Codex, Cursor, Claude).
+
+### Install
+
+```bash
+pip install -e .[gateway]   # installs official MCP SDK
+```
+
+Core retrieval/sync works without the `gateway` extra; the MCP transport needs it.
+
+### 1. Create a local config
+
+```toml
+# ~/.config/auto-rag/gateway.toml
+knowledge_root = "~/.local/share/auto-rag"
+local_snapshot = true
+web = false
+adaptive = false
+
+[sources.jira]
+kind = "jira"
+enabled = false            # offline-safe stub until real connector lands
+credential_ref = "env:JIRA_TOKEN"   # NEVER put the token value here
+```
+
+`LocalSnapshotConnector` is registered automatically. `web` is off by default.
+Relative `knowledge_root` resolves from this file's directory.
+
+### 2. Build the local snapshot
+
+The gateway serves whatever the sync engine already published. To publish a source:
+
+```python
+from rag_core.gateway.sync.engine import SyncEngine
+from rag_core.gateway.models import Document, SyncBatch
+
+engine = SyncEngine("~/.local/share/auto-rag")
+await engine.sync_source(my_source)   # my_source.sync_changes() -> SyncBatch
+```
+
+After publish, `LocalSnapshotConnector.health()` returns `available=True`.
+
+### 3. Start the gateway
+
+```bash
+python -m rag_core.gateway.server --config ~/.config/auto-rag/gateway.toml
+```
+
+No corporate network? Live sources show `unhealthy` in diagnostics; local search still works.
+Legacy debug transport (newline-delimited JSON) is available with `--legacy-jsonl`.
+
+### 4. Register with Hermes Agent (7.10 manual smoke)
+
+Add to the Hermes MCP config (this is the one real-agent acceptance step from ADR-004):
+
+```json
+{
+  "mcpServers": {
+    "auto-rag": {
+      "command": "python",
+      "args": ["-m", "rag_core.gateway.server", "--config", "~/.config/auto-rag/gateway.toml"]
+    }
+  }
+}
+```
+
+Then in Hermes: the `auto-rag` server exposes `search` and `sync`. A real `search` call
+returns `Evidence[]` from the local snapshot. Stdio stderr must not corrupt the JSON-RPC
+stream — the server writes diagnostics to stderr only, never stdout.
+
+### 5. Verify
+
+```bash
+python -m pytest tests/gateway/test_phase7_mcp_client.py -q   # official ClientSession smoke
+```
+
+This launches the server as a subprocess with a real `--config` and a published snapshot,
+then drives `initialize` → `list_tools` → `call_tool("search")` via the SDK `ClientSession`.
+
+### Startup diagnostics
+
+```python
+from rag_core.gateway.connector_factory import build_connectors
+from rag_core.gateway.config_loader import load_config
+from rag_core.gateway.diagnostics import collect_startup_diagnostics
+
+diag = collect_startup_diagnostics(build_connectors(load_config(cfg_path)))
+# diag["connectors"]["local_snapshot"]["health"]  -> True only if a revision is published
+# diag["offline"]["healthy"] / ["unhealthy"]       -> which sources are up
+```
+
+A registered-but-empty local snapshot reports `health=False` with a reason — not a false positive.
+
+---
+
+## Prerequisites (legacy full-RAG pipeline)
 
 - Python 3.11+
 - LM Studio serving an embedding model at `http://localhost:1234/v1/embeddings`

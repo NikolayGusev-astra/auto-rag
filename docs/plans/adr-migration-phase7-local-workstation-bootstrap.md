@@ -247,3 +247,23 @@ These two verify the already-assembled vertical path; run after 7.1–7.8 are pu
 - 7.10 Real Codex/Cursor smoke + OPERATIONS.md steps (manual integration).
 
 **After 7.10:** Phase 7 complete per ADR-004 acceptance (10 criteria).
+
+---
+
+## Phase 7.10 — Manual agent smoke + OPERATIONS.md
+
+**Status:** Documented. 7.10 is a USER-ENVIRONMENT verification, not code change.
+
+`docs/OPERATIONS.md` now has "Local Workstation Gateway (Phase 7 — ADR-004)" section:
+- install `pip install -e .[gateway]`
+- create `~/.config/auto-rag/gateway.toml` (local_snapshot=true, web=false, credential_ref only)
+- publish a source via `SyncEngine.sync_source`
+- start `python -m rag_core.gateway.server --config <toml>`
+- register with Hermes Agent via mcpServers stdio config
+- verify with `tests/gateway/test_phase7_mcp_client.py` (official ClientSession smoke)
+
+Acceptance (ADR-004 §Acceptance): one real coding agent (Hermes) gets Evidence from local snapshot.
+Run this manually in your environment; no further code needed — the vertical path is proven by 7.9.
+
+**Phase 7 COMPLETE** after 7.10 manual smoke confirms in your env.
+
