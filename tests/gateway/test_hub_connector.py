@@ -9,29 +9,60 @@ from rag_core.gateway.models import EvidenceOrigin
 
 
 @pytest.mark.asyncio
-async def test_search_live_maps_collections_to_latest_versions():
+async def test_search_live_filters_all_collections_and_merges_index_results():
     collections = httpx.Response(
         200,
         request=httpx.Request("GET", "https://hub.example.test/api/galaxy/v3/collections/"),
-        json={"data": [{"namespace": {"name": "astra"}, "name": "network"}]},
+        json={
+            "data": [
+                {"namespace": {"name": "astra"}, "name": "NETWORK_Utils"},
+                {"namespace": {"name": "astra"}, "name": "unrelated"},
+            ]
+        },
     )
-    versions = httpx.Response(
+    indexed = httpx.Response(
         200,
         request=httpx.Request(
-            "GET", "https://hub.example.test/api/galaxy/v3/plugin/ansible/content/published/astra/network/"
+            "GET",
+            "https://hub.example.test/api/galaxy/v3/plugin/ansible/content/published/collections/index/",
+        ),
+        json={
+            "data": [
+                {"namespace": {"name": "astra"}, "name": "network_utils"},
+                {"namespace": {"name": "astra"}, "name": "network_tools"},
+            ]
+        },
+    )
+    utils_versions = httpx.Response(
+        200,
+        request=httpx.Request(
+            "GET", "https://hub.example.test/api/galaxy/v3/plugin/ansible/content/published/astra/NETWORK_Utils/"
         ),
         json={"data": [{"version": "2.4.0"}]},
     )
-    with patch.object(httpx.AsyncClient, "get", new=AsyncMock(side_effect=[collections, versions])) as get:
+    tools_versions = httpx.Response(
+        200,
+        request=httpx.Request(
+            "GET", "https://hub.example.test/api/galaxy/v3/plugin/ansible/content/published/astra/network_tools/"
+        ),
+        json={"data": [{"version": "1.0.0"}]},
+    )
+    with patch.object(
+        httpx.AsyncClient,
+        "get",
+        new=AsyncMock(side_effect=[collections, indexed, utils_versions, tools_versions]),
+    ) as get:
         result = await HubConnector("https://hub.example.test/", "secret").search_live(
-            SearchRequest(query="network", topk=3)
+            SearchRequest(query="network utils", topk=3)
         )
 
-    assert get.await_args_list[0].kwargs == {"params": {"namespace": "astra", "name__icontains": "network"}}
-    assert result[0].document_id == "astra.network"
-    assert result[0].title == "network"
-    assert result[0].text == "collection: network latest: 2.4.0"
-    assert result[0].uri == "https://hub.example.test/ui/repo/published/astra/network"
+    assert [call.kwargs["params"] for call in get.await_args_list[:2]] == [
+        {"namespace": "astra", "limit": 50},
+        {"namespace": "astra", "keywords": "network utils"},
+    ]
+    assert [item.document_id for item in result] == ["astra.NETWORK_Utils", "astra.network_tools"]
+    assert result[0].text == "collection: NETWORK_Utils latest: 2.4.0"
+    assert result[0].uri == "https://hub.example.test/ui/repo/published/astra/NETWORK_Utils"
     assert result[0].source == "hub"
     assert result[0].origin is EvidenceOrigin.LIVE_CORPORATE
 

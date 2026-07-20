@@ -18,11 +18,18 @@ class HubConnector:
         self.source = source
 
     async def search_live(self, request: SearchRequest) -> list[Evidence]:
-        payload = await self._get(
+        collections_payload = await self._get(
             "/api/galaxy/v3/collections/",
-            params={"namespace": "astra", "name__icontains": request.query},
+            params={"namespace": "astra", "limit": 50},
         )
-        collections = _items(payload)
+        index_payload = await self._get(
+            "/api/galaxy/v3/plugin/ansible/content/published/collections/index/",
+            params={"namespace": "astra", "keywords": request.query},
+        )
+        collections = _merge_collections(
+            _matching_collections(_items(collections_payload), request.query),
+            _items(index_payload),
+        )
         results: list[Evidence] = []
         for collection in collections[: request.topk]:
             namespace = _namespace(collection)
@@ -77,6 +84,28 @@ def _namespace(collection: dict[str, Any]) -> str:
     if isinstance(namespace, dict):
         return str(namespace.get("name") or "")
     return str(namespace or "")
+
+
+def _matching_collections(collections: list[dict[str, Any]], query: str) -> list[dict[str, Any]]:
+    keywords = query.casefold().split()
+    return [
+        collection
+        for collection in collections
+        if all(keyword in str(collection.get("name") or "").casefold() for keyword in keywords)
+    ]
+
+
+def _merge_collections(*collection_lists: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for collections in collection_lists:
+        for collection in collections:
+            key = (_namespace(collection).casefold(), str(collection.get("name") or "").casefold())
+            if not all(key) or key in seen:
+                continue
+            seen.add(key)
+            merged.append(collection)
+    return merged
 
 
 def _latest_version(payload: Any) -> str:
