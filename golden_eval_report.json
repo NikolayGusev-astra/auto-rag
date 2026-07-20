@@ -1,0 +1,91 @@
+{
+  "summary": {
+    "evaluation_schema_version": "1.0",
+    "queries": 4,
+    "precision_at_k": 0.0,
+    "recall_at_k": 0.0,
+    "mrr": 0.0,
+    "ndcg": 0.0,
+    "citation_correctness": 0.0,
+    "source_coverage": {},
+    "latency_s": {
+      "p50": 4e-06,
+      "p95": 1.3e-05,
+      "p99": 1.4e-05
+    },
+    "empty_query_rate": 0.0,
+    "empty_result_rate": 1.0,
+    "per_query": [
+      {
+        "query": "INT-6515 ПМИ",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ALD Pro версия код развертывания",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM документация",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "Astra Automation ПМИ",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      }
+    ]
+  },
+  "results": [
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.4699995517730713e-05
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 4.799978341907263e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 3.200024366378784e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 3.100023604929447e-06
+    }
+  ],
+  "regression_check": {
+    "passed": true,
+    "reason": "no baseline supplied"
+  }
+}
