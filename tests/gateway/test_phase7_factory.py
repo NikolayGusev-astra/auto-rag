@@ -19,3 +19,13 @@ def test_factory_builds_enabled_live_source_without_network(monkeypatch):
 
     assert isinstance(connectors["jira"], ConnectorStub)
     assert connectors["jira"].credential == "from-env"
+
+
+def test_default_config_registers_only_mandatory_local_snapshot():
+    from rag_core.gateway.config_schema import GatewayConfig
+    from rag_core.gateway.connector_factory import build_connectors
+
+    connectors = build_connectors(GatewayConfig())
+
+    assert list(connectors) == ["local_snapshot"]
+    assert connectors["local_snapshot"].retrieval_kind == "local"
