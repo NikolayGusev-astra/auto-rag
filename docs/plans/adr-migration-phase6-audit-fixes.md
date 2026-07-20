@@ -364,6 +364,38 @@ Commit: `b391fe6 feat(adaptive): persistent FeedbackStore + MemvidEnricher (P1-4
 
 ---
 
+## Phase 6.6 — Real MCP transport (SDK-first) — DONE
+
+- Official MCP SDK (`mcp>=1.0.0`) as `gateway` extra in pyproject.toml — core works without it.
+- `FastMCP("auto-rag-gateway")` with `@server.tool()` for `search(query, top_k, include_web)` and `sync(source)` — full MCP lifecycle: `initialize` (+serverInfo/capabilities), `tools/list`, `tools/call`, `ping`.
+- `serve_mcp_stdio()` → `FastMCP.run(transport="stdio")` — real MCP transport.
+- Old JSON-lines dispatch (`dispatch_legacy`, `serve_legacy_jsonl`) preserved behind `--legacy-jsonl` flag as debug/legacy transport only.
+- Guarded SDK import: `ImportError` with message `pip install 'auto-rag[gateway]'` when SDK absent.
+- 4 MCP smoke tests: initialize advertises capabilities, tools/list returns search+sync, tools/call search returns structuredContent+metadata, gateway name verified.
+
+Commit: `1546bed feat(mcp): real MCP transport via SDK (P0-2 / 6.6)`. 4 MCP tests pass; full suite 319 passed.
+
+---
+
+## Phase 6 — Final Summary
+
+**All 2 P0 + 6 P1 from initial audit closed.**
+
+| Phase | Находка | Status | Key commit |
+|-------|---------|--------|------------|
+| P0-1 | Non-destructive sync + fail-closed | ✅ Signed off | `f667443`, `f307106` |
+| 6.2 | Unified RevisionManifestStore | ✅ Signed off | `67cdc31`, `35b07eb` |
+| 6.3 | Real index build + hybrid retrieval | ✅ Signed off | `909e32e` |
+| 6.4 | AdaptiveLoop: plan-driven, kind routing, budget | ✅ Signed off | `cded9d3` |
+| 6.5 | Persistent FeedbackStore + MemvidEnricher | ✅ Implemented | `b391fe6` |
+| 6.6 | MCP transport (SDK-first) | ✅ Implemented | `1546bed` |
+
+**Full suite: 319 passed, 4 skipped, 1 xfailed.**
+
+**P2 hardening backlog (not blocking):** preprocessing_revision mismatch, strict partial-failure semantics, query embedding in connector, full ZVec/Chroma/FTS publish, domains advisory, double-health optimization, useful_document_ids as telemetry.
+
+---
+
 ## Phase 6 Verification Gate
 
 ```bash
