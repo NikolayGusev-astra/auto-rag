@@ -16,17 +16,20 @@ from rag_core.gateway.connectors.zvec_http import ZVecHttpConnector
 from rag_core.gateway.secrets import resolve_credential
 from rag_core.gateway.sync.engine import SyncEngine
 
+
 McpSessionFactory = Callable[[], Any]
 _mcp_session_factories: dict[str, McpSessionFactory] = {}
 
 
 def register_mcp_session_factory(server: str, factory: McpSessionFactory) -> None:
+    """Register a Hermes-managed MCP session factory for one server."""
     _mcp_session_factories[server] = factory
 
 
 async def discover_hermes_mcp_tools(
     server: str, session_factory: McpSessionFactory
 ) -> dict[str, GenericMcpConnector]:
+    """Discover a Hermes MCP server's tools and expose each as a connector."""
     session = session_factory()
     if hasattr(session, "__await__"):
         session = await session
@@ -41,6 +44,8 @@ async def discover_hermes_mcp_tools(
 
 
 class ConnectorStub:
+    """Offline-safe placeholder for optional live connectors not bundled locally."""
+
     retrieval_kind = "live"
 
     def __init__(self, source: str, kind: str, credential: str | None = None, **extra: Any) -> None:
@@ -52,22 +57,33 @@ class ConnectorStub:
     async def search_live(self, request: SearchRequest) -> list:
         raise NotImplementedError(f"{self.kind} connector is unavailable on this workstation")
 
+    async def fetch(self, ref: object) -> object:
+        raise NotImplementedError
+
+    async def sync_changes(self, cursor: str | None) -> object:
+        raise NotImplementedError
+
     async def health(self) -> dict[str, object]:
-        return {"source": self.source, "available": False, "detail": "offline"}
+        return {"source": self.source, "available": False, "reason": f"{self.kind} connector unavailable"}
+
+
+class ConnectorMap(dict[str, SourceConnector]):
+    """Connector mapping with non-fatal startup notes for unsupported sources."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.diagnostics: list[str] = []
 
 
 def build_connectors(config: GatewayConfig) -> dict[str, SourceConnector]:
-    connectors: dict[str, SourceConnector] = {}
-    diagnostics: list[str] = []
+    connectors = ConnectorMap()
+    engine = SyncEngine(config.knowledge_root)
     if config.local_snapshot:
-        connectors["local_snapshot"] = LocalSnapshotConnector(
-            config=config, engine=SyncEngine(config=config)
-        )
+        connectors["local_snapshot"] = LocalSnapshotConnector(engine, "local_snapshot")
     for name, source in config.sources.items():
         if not source.enabled:
-            diagnostics.append(f"skipped {name}: disabled")
             continue
-        connector = _build_source(name, source, diagnostics)
+        connector = _build_source(name, source, connectors.diagnostics)
         if connector is not None:
             connectors[name] = connector
     return connectors
@@ -107,18 +123,18 @@ def _build_source(name: str, source: SourceConfig, diagnostics: list[str]) -> So
         if source.kind == "confluence":
             return ConfluenceConnector(base_url, credential, source=name)
         return HubConnector(base_url, credential, source=name)
-    if source.kind == "wiki":
-        return _wiki_connector(credential, diagnostics, source)
-    if source.kind == "mcp":
-        return ConnectorStub(name, source.kind, credential, **source.extra)
-    return None
+    return ConnectorStub(name, source.kind, credential, **source.extra)
 
 
-def _base_url(source: SourceConfig) -> str:
-    return source.extra.get("base_url", os.environ.get(f"{source.name.upper()}_BASE_URL", ""))
-
-
-def _wiki_connector(
-    credential: str | None, diagnostics: list[str], source: SourceConfig
-) -> SourceConnector:
-    return ConnectorStub(source.name, "wiki", credential, **source.extra)
+def _base_url(source: SourceConfig) -> str | None:
+    configured = source.extra.get("base_url")
+    if isinstance(configured, str) and configured:
+        return configured
+    environment_key = {
+        "jira": "JIRA_BASE_URL",
+        "confluence": "CONFLUENCE_BASE_URL",
+        "hub": "HUB_BASE_URL",
+    }.get(source.kind)
+    if environment_key is None:
+        return None
+    return os.environ.get(environment_key)
