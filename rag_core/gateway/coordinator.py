@@ -51,7 +51,11 @@ class RetrievalCoordinator:
                 evidence.extend(results)
         fused = self.fuse(evidence)
         if self._reranker is not None:
-            fused = await self._reranker.rerank(request.query, fused, request.topk)
+            try:
+                fused = await self._reranker.rerank(request.query, fused, request.topk)
+            except Exception as error:
+                self._record_failure("reranker", error)
+                fused = fused[:request.topk]
         return fused[:request.topk]
 
     async def health_map(self) -> dict[str, bool]:

@@ -30,7 +30,7 @@ class RerankAdapter:
                 document_embedding = await self._embedding_provider.embed_query(document.text)
                 score = self._cosine(query_embedding, document_embedding)
                 scored.append(replace(document, reranker_score=score))
-        except httpx.HTTPError as error:
+        except (httpx.HTTPError, OSError, Exception) as error:
             logger.warning("embedding reranker unavailable; returning retrieval order: %s", error)
             return list(documents)[:top_k]
         scored.sort(key=lambda document: document.reranker_score or 0.0, reverse=True)
