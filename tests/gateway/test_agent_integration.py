@@ -8,7 +8,7 @@ import pytest
 def _stdio_client(client_name: str):
     def call(message: dict) -> dict:
         completed = subprocess.run(
-            [sys.executable, "-m", "rag_core.gateway.server"],
+            [sys.executable, "-m", "rag_core.gateway.server", "--legacy-jsonl"],
             input=json.dumps(message) + "\n",
             capture_output=True,
             text=True,
