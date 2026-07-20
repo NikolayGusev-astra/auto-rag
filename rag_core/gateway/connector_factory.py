@@ -15,6 +15,7 @@ from rag_core.gateway.connectors.mcp_proxy import GenericMcpConnector
 from rag_core.gateway.connectors.zvec_http import ZVecHttpConnector
 from rag_core.gateway.connectors.web_search import WebSearchConnector
 from rag_core.gateway.connectors.searxng import SearXNGConnector
+from rag_core.gateway.connectors.web_browser import CamoufoxConnector
 from rag_core.gateway.secrets import resolve_credential
 from rag_core.gateway.sync.engine import SyncEngine
 
@@ -92,7 +93,7 @@ def build_connectors(config: GatewayConfig) -> dict[str, SourceConnector]:
 
 
 def _build_source(name: str, source: SourceConfig, diagnostics: list[str]) -> SourceConnector | None:
-    if source.kind not in {"jira", "confluence", "hub", "wiki", "mcp", "mcp-proxy", "zvec", "web-search", "searxng"}:
+    if source.kind not in {"jira", "confluence", "hub", "wiki", "mcp", "mcp-proxy", "zvec", "web-search", "searxng", "web-browser"}:
         diagnostics.append(f"skipped {name}: unsupported connector kind {source.kind!r}")
         return None
     if source.kind == "web-search":
@@ -100,6 +101,8 @@ def _build_source(name: str, source: SourceConfig, diagnostics: list[str]) -> So
     if source.kind == "searxng":
         base_url = source.extra.get("url", "http://localhost:8888")
         return SearXNGConnector(base_url=base_url)
+    if source.kind == "web-browser":
+        return CamoufoxConnector()
     if source.kind == "zvec":
         base_url = source.extra.get("url", "http://127.0.0.1:8678")
         return ZVecHttpConnector(base_url=base_url)
