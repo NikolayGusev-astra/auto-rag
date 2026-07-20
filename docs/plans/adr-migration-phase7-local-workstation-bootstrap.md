@@ -267,3 +267,15 @@ Run this manually in your environment; no further code needed — the vertical p
 
 **Phase 7 COMPLETE** after 7.10 manual smoke confirms in your env.
 
+---
+
+## Phase 7 — FINAL STATUS
+
+**Code + automated tests: COMPLETE (sign-off 7.9 obtained).**
+**7.10:** user-environment verification (Hermes Agent MCP registration). Author runs this manually per OPERATIONS.md; no code change required. Does NOT block Phase 7 closure — vertical path proven by 7.9 official ClientSession smoke.
+
+**ADR-004 acceptance:** 9/10 automated, #7 (real agent) is user-side smoke documented in OPERATIONS.md.
+
+**Phase 7 closed.**
+
+
