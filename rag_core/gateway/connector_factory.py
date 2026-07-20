@@ -8,6 +8,7 @@ from rag_core.gateway.config_schema import GatewayConfig, SourceConfig
 from rag_core.gateway.connector import SearchRequest, SourceConnector
 from rag_core.gateway.connectors.snapshot import LocalSnapshotConnector
 from rag_core.gateway.connectors.confluence_connector import ConfluenceConnector
+from rag_core.gateway.connectors.hub_connector import HubConnector
 from rag_core.gateway.connectors.jira_connector import JiraConnector
 from rag_core.gateway.secrets import resolve_credential
 from rag_core.gateway.sync.engine import SyncEngine
@@ -60,7 +61,7 @@ def build_connectors(config: GatewayConfig) -> dict[str, SourceConnector]:
 
 
 def _build_source(name: str, source: SourceConfig, diagnostics: list[str]) -> SourceConnector | None:
-    if source.kind not in {"jira", "confluence", "wiki", "mcp"}:
+    if source.kind not in {"jira", "confluence", "hub", "wiki", "mcp"}:
         diagnostics.append(f"skipped {name}: unsupported connector kind {source.kind!r}")
         return None
     try:
@@ -68,7 +69,7 @@ def _build_source(name: str, source: SourceConfig, diagnostics: list[str]) -> So
     except KeyError:
         credential = None
         diagnostics.append(f"{name}: credential environment variable is unavailable; source is offline")
-    if source.kind in {"jira", "confluence"}:
+    if source.kind in {"jira", "confluence", "hub"}:
         base_url = _base_url(source)
         if not credential or not base_url:
             missing = "credential" if not credential else "base URL"
@@ -76,7 +77,9 @@ def _build_source(name: str, source: SourceConfig, diagnostics: list[str]) -> So
             return ConnectorStub(name, source.kind, credential, **source.extra)
         if source.kind == "jira":
             return JiraConnector(base_url, credential, source=name)
-        return ConfluenceConnector(base_url, credential, source=name)
+        if source.kind == "confluence":
+            return ConfluenceConnector(base_url, credential, source=name)
+        return HubConnector(base_url, credential, source=name)
     return ConnectorStub(name, source.kind, credential, **source.extra)
 
 
@@ -84,5 +87,11 @@ def _base_url(source: SourceConfig) -> str | None:
     configured = source.extra.get("base_url")
     if isinstance(configured, str) and configured:
         return configured
-    environment_key = "JIRA_BASE_URL" if source.kind == "jira" else "CONFLUENCE_BASE_URL"
+    environment_key = {
+        "jira": "JIRA_BASE_URL",
+        "confluence": "CONFLUENCE_BASE_URL",
+        "hub": "HUB_BASE_URL",
+    }.get(source.kind)
+    if environment_key is None:
+        return None
     return os.environ.get(environment_key)
