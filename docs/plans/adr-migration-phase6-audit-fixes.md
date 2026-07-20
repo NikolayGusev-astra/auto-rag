@@ -354,6 +354,16 @@ Commit: `7303f93 fix(adaptive): plan-driven coordinator, origin, health, topk, d
 
 ---
 
+## Phase 6.5 — Persistent FeedbackStore + MemvidEnricher — DONE
+
+- `FeedbackStore(persist_path)` — JSONL append/reload, `aggregate()` (total, by_source, success_rate, avg_latency), `evaluate(golden)` (canary for forbidden sources, candidate_policy eligible/review/canary).
+- `MemvidEnricher(persist_path)` — `persist_episode` writes to JSONL, reloads on init; `build_episode` sets `created_at=datetime.now()`.
+- `AdaptiveLoop.run()` accepts `feedback_path`/`enrichment_path` kwargs — auto-creates store/enricher if object not passed (backward-compatible).
+
+Commit: `b391fe6 feat(adaptive): persistent FeedbackStore + MemvidEnricher (P1-4 / 6.5)`. 3 persistence tests pass; full suite 315 passed.
+
+---
+
 ## Phase 6 Verification Gate
 
 ```bash
