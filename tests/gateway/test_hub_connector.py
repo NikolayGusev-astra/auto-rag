@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, call, patch
 
 import httpx
 import pytest
@@ -15,7 +15,11 @@ async def test_search_live_filters_all_collections_and_merges_index_results():
         request=httpx.Request("GET", "https://hub.example.test/api/galaxy/v3/collections/"),
         json={
             "data": [
-                {"namespace": {"name": "astra"}, "name": "NETWORK_Utils"},
+                {
+                    "namespace": {"name": "astra"},
+                    "name": "NETWORK_Utils",
+                    "highest_version": {"version": "2.4.0"},
+                },
                 {"namespace": {"name": "astra"}, "name": "unrelated"},
             ]
         },
@@ -29,36 +33,32 @@ async def test_search_live_filters_all_collections_and_merges_index_results():
         json={
             "data": [
                 {"namespace": {"name": "astra"}, "name": "network_utils"},
-                {"namespace": {"name": "astra"}, "name": "network_tools"},
+                {
+                    "namespace": {"name": "astra"},
+                    "name": "network_tools",
+                    "highest_version": {"version": "1.9.0"},
+                },
             ]
         },
-    )
-    utils_versions = httpx.Response(
-        200,
-        request=httpx.Request(
-            "GET", "https://hub.example.test/api/galaxy/v3/plugin/ansible/content/published/astra/NETWORK_Utils/"
-        ),
-        json={"data": [{"version": "2.4.0"}]},
-    )
-    tools_versions = httpx.Response(
-        200,
-        request=httpx.Request(
-            "GET", "https://hub.example.test/api/galaxy/v3/plugin/ansible/content/published/astra/network_tools/"
-        ),
-        json={"data": [{"version": "1.0.0"}]},
     )
     with patch.object(
         httpx.AsyncClient,
         "get",
-        new=AsyncMock(side_effect=[collections, indexed, utils_versions, tools_versions]),
+        new=AsyncMock(side_effect=[collections, indexed]),
     ) as get:
         result = await HubConnector("https://hub.example.test/", "secret").search_live(
             SearchRequest(query="network utils", topk=3)
         )
 
-    assert [call.kwargs["params"] for call in get.await_args_list[:2]] == [
-        {"namespace": "astra", "limit": 50},
-        {"namespace": "astra", "keywords": "network utils"},
+    assert get.await_args_list == [
+        call(
+            "https://hub.example.test/api/galaxy/v3/collections/",
+            params={"namespace": "astra", "limit": 50},
+        ),
+        call(
+            "https://hub.example.test/api/galaxy/v3/plugin/ansible/content/published/collections/index/",
+            params={"namespace": "astra", "keywords": "network utils"},
+        ),
     ]
     assert [item.document_id for item in result] == ["astra.NETWORK_Utils", "astra.network_tools"]
     assert result[0].text == "collection: NETWORK_Utils latest: 2.4.0"
