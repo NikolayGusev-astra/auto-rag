@@ -23,16 +23,25 @@ class HubConnector:
             params={"namespace": "astra", "limit": 50},
         )
         try:
-            index_payload = await self._get(
+            published_payload = await self._get(
                 "/api/galaxy/v3/plugin/ansible/content/published/collections/index/",
                 params={"namespace": "astra", "keywords": request.query},
             )
-            index_items = _items(index_payload)
+            published_items = _items(published_payload)
         except Exception:
-            index_items = []
+            published_items = []
+        try:
+            validated_payload = await self._get(
+                "/api/galaxy/v3/plugin/ansible/content/validated/collections/index/",
+                params={"namespace": "astra", "limit": 50},
+            )
+            validated_items = _items(validated_payload)
+        except Exception:
+            validated_items = []
         collections = _merge_collections(
             _matching_collections(_items(collections_payload), request.query),
-            index_items,
+            published_items,
+            validated_items,
         )
         results: list[Evidence] = []
         for collection in collections[: request.topk]:
