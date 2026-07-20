@@ -20,15 +20,28 @@ class ConfluenceConnector:
         self.source = source
 
     async def search_live(self, request: SearchRequest) -> list[Evidence]:
-        payload = await self._get(
-            "/rest/api/content/search",
-            params={
-                "cql": f'text~"{_escape_query(request.query)}"',
-                "limit": request.topk,
-                "expand": "body.storage",
-            },
-        )
-        return [_evidence(page, self._base, self.source) for page in payload.get("results", [])]
+        cql_queries = []
+        page_id = _extract_page_id(request.query)
+        if page_id:
+            cql_queries.append(f"id={page_id}")
+        elif _looks_like_title(request.query):
+            cql_queries.append(f'title~"{_escape_query(request.query)}"')
+        cql_queries.append(f'text~"{_escape_query(request.query)}"')
+
+        pages: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+        for cql in cql_queries:
+            payload = await self._get(
+                "/rest/api/content/search",
+                params={"cql": cql, "limit": request.topk, "expand": "body.storage"},
+            )
+            for page in payload.get("results", []):
+                page_id = str(page["id"])
+                if page_id not in seen_ids:
+                    seen_ids.add(page_id)
+                    pages.append(page)
+
+        return [_evidence(page, self._base, self.source) for page in pages[: request.topk]]
 
     async def health(self) -> dict[str, object]:
         try:
@@ -79,6 +92,15 @@ class _StorageTextParser(HTMLParser):
 
 def _escape_query(query: str) -> str:
     return query.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _extract_page_id(query: str) -> str | None:
+    match = re.search(r"(?<!\w)(\d{6,})(?!\w)", query)
+    return match.group(1) if match else None
+
+
+def _looks_like_title(query: str) -> bool:
+    return bool(query.strip()) and len(query) <= 100 and all(char.isalpha() or char.isspace() for char in query)
 
 
 def _evidence(page: dict[str, Any], base_url: str, source: str) -> Evidence:

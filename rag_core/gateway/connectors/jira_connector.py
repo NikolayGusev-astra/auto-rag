@@ -1,6 +1,7 @@
 """Live Jira retrieval through the Jira REST API."""
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import httpx
@@ -18,15 +19,30 @@ class JiraConnector:
         self.source = source
 
     async def search_live(self, request: SearchRequest) -> list[Evidence]:
-        payload = await self._get(
-            "/rest/api/2/search",
-            params={
-                "jql": f'text~"{_escape_query(request.query)}"',
-                "maxResults": request.topk,
-                "fields": "summary,description,updated",
-            },
-        )
-        return [_evidence(issue, self._base, self.source) for issue in payload.get("issues", [])]
+        issue_key = _extract_issue_key(request.query)
+        jql_queries = []
+        if issue_key:
+            jql_queries.append(f"issueKey={issue_key}")
+        jql_queries.append(f'text~"{_escape_query(request.query)}"')
+
+        issues: list[dict[str, Any]] = []
+        seen_keys: set[str] = set()
+        for jql in jql_queries:
+            payload = await self._get(
+                "/rest/api/2/search",
+                params={
+                    "jql": jql,
+                    "maxResults": request.topk,
+                    "fields": "summary,description,updated",
+                },
+            )
+            for issue in payload.get("issues", []):
+                key = str(issue["key"])
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    issues.append(issue)
+
+        return [_evidence(issue, self._base, self.source) for issue in issues[: request.topk]]
 
     async def health(self) -> dict[str, object]:
         try:
@@ -56,6 +72,11 @@ class JiraConnector:
 
 def _escape_query(query: str) -> str:
     return query.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _extract_issue_key(query: str) -> str | None:
+    match = re.search(r"\b([A-Z]+-\d+)\b", query)
+    return match.group(1) if match else None
 
 
 def _evidence(issue: dict[str, Any], base_url: str, source: str) -> Evidence:

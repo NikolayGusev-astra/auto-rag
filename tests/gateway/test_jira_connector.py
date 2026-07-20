@@ -43,6 +43,37 @@ async def test_search_live_maps_jira_issues():
 
 
 @pytest.mark.asyncio
+async def test_search_live_merges_exact_issue_key_and_text_results():
+    exact_response = httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://jira.example.test/rest/api/2/search"),
+        json={"issues": [{"key": "INT-6515", "fields": {"summary": "Exact"}}]},
+    )
+    text_response = httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://jira.example.test/rest/api/2/search"),
+        json={
+            "issues": [
+                {"key": "INT-6515", "fields": {"summary": "Duplicate"}},
+                {"key": "INT-6516", "fields": {"summary": "Related"}},
+            ]
+        },
+    )
+    with patch.object(
+        httpx.AsyncClient, "get", new=AsyncMock(side_effect=[exact_response, text_response])
+    ) as get:
+        result = await JiraConnector("https://jira.example.test", "secret").search_live(
+            SearchRequest(query="INT-6515", topk=2)
+        )
+
+    assert [call.kwargs["params"]["jql"] for call in get.await_args_list] == [
+        "issueKey=INT-6515",
+        'text~"INT-6515"',
+    ]
+    assert [evidence.document_id for evidence in result] == ["INT-6515", "INT-6516"]
+
+
+@pytest.mark.asyncio
 async def test_health_reports_unavailable_when_request_fails():
     with patch.object(httpx.AsyncClient, "get", new=AsyncMock(side_effect=httpx.HTTPError("offline"))):
         health = await JiraConnector("https://jira.example.test", "secret").health()

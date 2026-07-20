@@ -28,7 +28,10 @@ async def test_search_live_maps_confluence_storage_body_to_text():
             SearchRequest(query="restart gateway", topk=2)
         )
 
-    assert get.await_args.kwargs == {
+    assert get.await_args_list[0].kwargs == {
+        "params": {"cql": 'title~"restart gateway"', "limit": 2, "expand": "body.storage"}
+    }
+    assert get.await_args_list[1].kwargs == {
         "params": {"cql": "text~\"restart gateway\"", "limit": 2, "expand": "body.storage"}
     }
     assert result[0].document_id == "42"
@@ -36,6 +39,37 @@ async def test_search_live_maps_confluence_storage_body_to_text():
     assert result[0].text == "Runbook Restart the gateway."
     assert result[0].uri == "https://wiki.example.test/pages/viewpage.action?pageId=42"
     assert result[0].origin is EvidenceOrigin.LIVE_CORPORATE
+
+
+@pytest.mark.asyncio
+async def test_search_live_merges_exact_page_id_and_text_results():
+    exact_response = httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://wiki.example.test/rest/api/content/search"),
+        json={"results": [{"id": "123456", "title": "Exact"}]},
+    )
+    text_response = httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://wiki.example.test/rest/api/content/search"),
+        json={
+            "results": [
+                {"id": "123456", "title": "Duplicate"},
+                {"id": "123457", "title": "Related"},
+            ]
+        },
+    )
+    with patch.object(
+        httpx.AsyncClient, "get", new=AsyncMock(side_effect=[exact_response, text_response])
+    ) as get:
+        result = await ConfluenceConnector("https://wiki.example.test", "secret").search_live(
+            SearchRequest(query="123456", topk=2)
+        )
+
+    assert [call.kwargs["params"]["cql"] for call in get.await_args_list] == [
+        "id=123456",
+        'text~"123456"',
+    ]
+    assert [evidence.document_id for evidence in result] == ["123456", "123457"]
 
 
 @pytest.mark.asyncio
