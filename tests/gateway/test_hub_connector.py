@@ -41,10 +41,18 @@ async def test_search_live_filters_all_collections_and_merges_index_results():
             ]
         },
     )
+    validated_astra = httpx.Response(
+        200,
+        request=httpx.Request(
+            "GET",
+            "https://hub.example.test/api/galaxy/v3/plugin/ansible/content/validated/collections/index/",
+        ),
+        json={"data": []},
+    )
     with patch.object(
         httpx.AsyncClient,
         "get",
-        new=AsyncMock(side_effect=[collections, indexed]),
+        new=AsyncMock(side_effect=[collections, indexed, validated_astra]),
     ) as get:
         result = await HubConnector("https://hub.example.test/", "secret").search_live(
             SearchRequest(query="network utils", topk=3)
@@ -58,6 +66,10 @@ async def test_search_live_filters_all_collections_and_merges_index_results():
         call(
             "https://hub.example.test/api/galaxy/v3/plugin/ansible/content/published/collections/index/",
             params={"namespace": "astra", "keywords": "network utils"},
+        ),
+        call(
+            "https://hub.example.test/api/galaxy/v3/plugin/ansible/content/validated/collections/index/",
+            params={"namespace": "astra", "limit": 50},
         ),
     ]
     assert [item.document_id for item in result] == ["astra.NETWORK_Utils", "astra.network_tools"]
