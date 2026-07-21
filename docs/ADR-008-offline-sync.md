@@ -1,6 +1,6 @@
 # ADR-008: Offline Sync for Live Corporate Connectors
 
-**Status:** Proposed
+**Status:** Accepted — phased: Jira sync before 10-user pilot, Confluence sync before 50-user expansion
 **Date:** 2026-07-22
 **Extends:** ADR-001 (knowledge gateway), ADR-004 (offline-capable), ADR-006 (sync engine)
 

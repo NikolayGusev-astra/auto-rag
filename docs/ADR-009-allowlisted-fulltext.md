@@ -1,6 +1,6 @@
 # ADR-009: Full-Text Extraction for Allowlisted Web
 
-**Status:** Proposed
+**Status:** Accepted — implemented in commit @90b463c with Trafilatura full-text extraction
 **Date:** 2026-07-22
 **Extends:** ADR-006 (web research), ADR-004 (trusted execution domain)
 

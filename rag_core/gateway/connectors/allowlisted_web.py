@@ -5,15 +5,20 @@ Only runs when the query is explicitly about public documentation
 
 Uses SearXNG with domain-scoped queries.  Evidence is marked
 PUBLIC_WEB with authoritative=true.
+
+Top-N results are enriched with Trafilatura full-text extraction
+(with snippet fallback).
 """
 
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
+import trafilatura
 
 from rag_core.gateway.connector import SearchRequest
 from rag_core.gateway.models import Evidence, EvidenceOrigin, SyncBatch
@@ -50,6 +55,11 @@ _PUBLIC_DOC_INTENT = re.compile(
     re.IGNORECASE,
 )
 
+# ── Full-text extraction tunables ─────────────────────────────────
+_MAX_FULLTEXT_URLS = 3
+_FULLTEXT_TIMEOUT = 10.0  # seconds per URL
+_MAX_FULLTEXT_CHARS = 24000
+
 
 def is_public_doc_query(query: str) -> bool:
     """Return True when the query triggers allowlisted public retrieval.
@@ -70,6 +80,32 @@ def _looks_like_internal(query: str) -> bool:
 def _build_domain_query(query: str) -> str:
     sites = "|".join(_AUTHORITATIVE_DOMAINS)
     return f"({query}) site:{sites}"
+
+
+async def _extract_full_text(url: str, timeout: float = _FULLTEXT_TIMEOUT) -> str:
+    """Fetch URL and extract main text via Trafilatura. Returns '' on failure."""
+    try:
+        async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+            resp = await client.get(url, headers={"User-Agent": "auto-rag/1.0"})
+            resp.raise_for_status()
+            html = resp.text
+    except Exception:
+        return ""
+
+    try:
+        text = await asyncio.to_thread(
+            trafilatura.extract, html,
+            include_comments=False,
+            include_tables=True,
+            include_links=False,
+            include_images=False,
+            output_format="txt",
+            target_language="ru",
+        )
+    except Exception:
+        return ""
+
+    return (text or "").strip()
 
 
 class AllowlistedWebConnector:
@@ -101,17 +137,20 @@ class AllowlistedWebConnector:
         except Exception:
             return []
 
+        # ── Build evidence from snippets first ──────────────────────
         results: list[Evidence] = []
-        for item in data.get("results", []):
+        urls_for_fulltext: list[tuple[int, str]] = []
+        for idx, item in enumerate(data.get("results", [])):
             url = str(item.get("url", ""))
             if not _is_allowlisted_url(url):
                 continue
             title = str(item.get("title", ""))
+            snippet = str(item.get("content", ""))
             results.append(Evidence(
                 id=f"aldpro_pub:{url}",
                 document_id=url,
                 title=title,
-                text=str(item.get("content", "")),
+                text=snippet,
                 source=self.source,
                 uri=url,
                 origin=EvidenceOrigin.PUBLIC_WEB,
@@ -119,11 +158,38 @@ class AllowlistedWebConnector:
                     "url": url,
                     "authoritative": True,
                     "domain": _extract_domain(url),
+                    "extraction_method": "snippet_fallback",
                 },
             ))
-            if len(results) == request.topk:
-                break
-        return results
+            if idx < _MAX_FULLTEXT_URLS:
+                urls_for_fulltext.append((len(results) - 1, url))
+
+        # ── Enrich top-N with full text (parallel, non-blocking) ────
+        if urls_for_fulltext:
+            extractions = await asyncio.gather(
+                *[_extract_full_text(url) for _, url in urls_for_fulltext],
+                return_exceptions=True,
+            )
+            for (result_idx, url), full_text in zip(urls_for_fulltext, extractions):
+                if isinstance(full_text, str) and full_text:
+                    results[result_idx] = Evidence(
+                        id=f"aldpro_pub:{url}",
+                        document_id=url,
+                        title=results[result_idx].title,
+                        text=full_text[:_MAX_FULLTEXT_CHARS],
+                        source=self.source,
+                        uri=url,
+                        origin=EvidenceOrigin.PUBLIC_WEB,
+                        metadata={
+                            "url": url,
+                            "authoritative": True,
+                            "domain": _extract_domain(url),
+                            "extraction_method": "fulltext",
+                            "fulltext_chars": len(full_text),
+                        },
+                    )
+
+        return results[: request.topk]
 
     async def health(self) -> dict[str, object]:
         try:
