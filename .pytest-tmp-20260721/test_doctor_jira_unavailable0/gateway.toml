@@ -1,0 +1,6 @@
+knowledge_root = "C:/Users/n.gusev/projects/auto-rag/.pytest-tmp-20260721/test_doctor_jira_unavailable0/knowledge"
+local_snapshot = true
+
+[sources.jira]
+kind = "jira"
+credential_ref = "env:MISSING_JIRA_TOKEN"

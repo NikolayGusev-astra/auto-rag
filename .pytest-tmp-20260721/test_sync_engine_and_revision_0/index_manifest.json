@@ -1,0 +1,1 @@
+{"schema_version": 1, "profile": {"provider_family": "family", "model_id": "model", "model_revision": "r1", "dimension": 3, "normalized": true, "distance_metric": "cosine", "preprocessing_revision": "p1"}, "active_revision": "C:\\Users\\n.gusev\\projects\\auto-rag\\.pytest-tmp-20260721\\test_sync_engine_and_revision_0\\reindex-staged\\model@r1", "cursor": null}

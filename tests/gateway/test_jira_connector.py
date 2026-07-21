@@ -140,6 +140,46 @@ async def test_comments_error_diagnostics():
 
 
 @pytest.mark.asyncio
+async def test_linked_issue_error_diagnostics():
+    search_response = httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://jira.example.test/rest/api/2/search"),
+        json={"issues": [{"key": "BUG-1", "fields": {"summary": "Broken"}}]},
+    )
+    comments_response = httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://jira.example.test/rest/api/2/issue/BUG-1/comment"),
+        json={"comments": [], "total": 0},
+    )
+    issue_response = httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://jira.example.test/rest/api/2/issue/BUG-1"),
+        json={
+            "fields": {
+                "issuelinks": [
+                    {"outwardIssue": {"key": "BUG-2", "fields": {"summary": "Related"}}}
+                ]
+            }
+        },
+    )
+
+    with patch.object(httpx.AsyncClient, "get", new=AsyncMock(side_effect=[
+        search_response,
+        search_response,
+        comments_response,
+        issue_response,
+        httpx.HTTPError("linked issue unavailable"),
+    ])):
+        result = await JiraConnector("https://jira.example.test", "secret").search_live(
+            SearchRequest(query="BUG-1", topk=1)
+        )
+
+    enrichment = result[0].metadata["enrichment"]
+    assert enrichment["linked_issues_status"] == "failed"
+    assert "unavailable" in enrichment["linked_issues_error"]
+
+
+@pytest.mark.asyncio
 async def test_health_reports_unavailable_when_request_fails():
     with patch.object(httpx.AsyncClient, "get", new=AsyncMock(side_effect=httpx.HTTPError("offline"))):
         health = await JiraConnector("https://jira.example.test", "secret").health()

@@ -62,11 +62,9 @@ class HubConnector:
         return {"source": self.source, "available": True}
 
     async def sync_changes(self, cursor: str | None) -> SyncBatch:
-        del cursor
         return SyncBatch(added=[])
 
     async def fetch(self, ref: object) -> object:
-        del ref
         raise NotImplementedError("Hub fetch is not implemented")
 
     async def _get(self, path: str, *, params: dict[str, Any] | None = None) -> Any:

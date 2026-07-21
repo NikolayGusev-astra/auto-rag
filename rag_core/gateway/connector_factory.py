@@ -133,12 +133,11 @@ def _build_source(
         return AllowlistedWebConnector(searxng_url=url)
     if source.kind == "lodestone":
         endpoint = source.extra.get("url", "")
-        token = source.extra.get("token", "")
-        if not token:
-            try:
-                token = resolve_credential(source.credential_ref)
-            except KeyError:
-                token = ""
+        try:
+            token = resolve_credential(source.credential_ref)
+        except KeyError:
+            token = ""
+            diagnostics.append(f"{name}: credential environment variable is unavailable; source is offline")
         return LodestoneConnector(token=token, endpoint=endpoint, source=name)
     if source.kind == "zvec":
         base_url = source.extra.get("url", "http://127.0.0.1:8678")

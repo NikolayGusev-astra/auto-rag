@@ -1,0 +1,19 @@
+{
+  "source_affinity": {
+    "deployment": {
+      "live": 0.9,
+      "web": 0.8
+    },
+    "guide": {
+      "live": 0.8,
+      "web": 0.8
+    },
+    "kubernetes": {
+      "live": 0.9,
+      "web": 0.8
+    },
+    "troubleshooting": {
+      "live": 1.0
+    }
+  }
+}

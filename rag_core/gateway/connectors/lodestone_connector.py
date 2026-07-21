@@ -105,7 +105,6 @@ class LodestoneConnector:
                 resp = await client.post(self._url, json=payload, headers=hdr)
                 resp.raise_for_status()
                 body = resp.content
-                # Parse SSE
                 for event_block in body.split(b"\n\n"):
                     if not event_block.strip():
                         continue
@@ -151,7 +150,6 @@ class LodestoneConnector:
     _URL_RE = re.compile(r"\*\*Source URL.*?:\*\*\s*(https?://\S+)")
 
     def _parse_structured(self, raw: str, query: str) -> list[Evidence]:
-        """Split Lodestone's markdown output into per-result Evidence."""
         results: list[Evidence] = []
 
         # Try structured splitting
@@ -184,7 +182,7 @@ class LodestoneConnector:
             uri = url_match.group(1).strip() if url_match else self._url
             digest = _stable_digest(f"{source_id}:{title}")
 
-            # Trim instruction lines
+            # Drop instruction lines
             body = re.sub(r"\n*lodestone_document\(.*?\).*", "", block)
             body = re.sub(r"\n*To retrieve full document.*", "", body)
 
@@ -232,11 +230,9 @@ class LodestoneConnector:
             return {"source": self.source, "available": False, "reason": str(exc)[:200]}
 
     async def sync_changes(self, cursor: str | None) -> SyncBatch:
-        del cursor
         return SyncBatch(added=[])
 
     async def fetch(self, ref: object) -> object:
-        del ref
         raise NotImplementedError
 
 

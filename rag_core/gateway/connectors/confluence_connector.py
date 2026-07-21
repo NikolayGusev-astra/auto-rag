@@ -1,14 +1,4 @@
-"""Live Confluence retrieval — with PDF attachment text extraction.
-
-Fixes the regression found in the ALD Pro upgrade procedure search:
-pages whose body is empty but whose attached PDF contains the real content
-were indexed as valid documents with zero text.  Now:
-
-* Empty-body pages trigger attachment inspection.
-* PDF attachments are downloaded and text-extracted via pymupdf (fitz).
-* The evidence metadata records ``content_status`` so the retrieval layer
-  knows whether the page delivered its text or only metadata.
-"""
+"""Live Confluence retrieval — with PDF attachment text extraction."""
 
 from __future__ import annotations
 
@@ -103,11 +93,9 @@ class ConfluenceConnector:
         return list(payload.get("results", []))
 
     async def sync_changes(self, cursor: str | None) -> SyncBatch:
-        del cursor
         return SyncBatch(added=[])
 
     async def fetch(self, ref: object) -> object:
-        del ref
         raise NotImplementedError("Confluence fetch is not implemented")
 
     async def _get(self, path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -129,7 +117,6 @@ _PDF_EXTENSIONS = {".pdf"}
 
 
 async def _extract_pdf_text(http: httpx.AsyncClient, base_url: str, page_id: str, attachments: list[dict[str, Any]]) -> tuple[str, str]:
-    """Return (text, status).  status is 'ok' | 'no_pdf' | 'extraction_failed:...'."""
     for att in attachments:
         title = str(att.get("title") or "")
         if not any(title.lower().endswith(ext) for ext in _PDF_EXTENSIONS):
@@ -148,12 +135,11 @@ async def _extract_pdf_text(http: httpx.AsyncClient, base_url: str, page_id: str
 
 
 def _parse_pdf_bytes(data: bytes) -> str:
-    """Try pymupdf, fall back to pdfplumber."""
     try:
         import fitz  # pymupdf
         doc = fitz.open(stream=data, filetype="pdf")
         parts: list[str] = []
-        for page in doc:  # noqa: B007 — page shadow
+        for page in doc:  # noqa: B007
             text = page.get_text()
             if text.strip():
                 parts.append(text.strip())
@@ -213,7 +199,6 @@ async def _evidence(
     content_status = "body" if text.strip() else "empty"
     attachments_checked = False
 
-    # ── Empty body → try PDF attachment extraction ──
     attachments: list[dict[str, Any]] = []
     if not text.strip():
         try:

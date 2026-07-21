@@ -61,3 +61,23 @@ async def test_public_query_searches():
     assert len(result) == 1
     assert result[0].metadata["authoritative"] is True
     assert result[0].metadata["domain"] == "aldpro.ru"
+
+
+@pytest.mark.asyncio
+async def test_search_discards_results_outside_the_allowlist():
+    connector = AllowlistedWebConnector("http://localhost:8888")
+    response = httpx.Response(
+        200,
+        request=httpx.Request("GET", "http://localhost:8888/search"),
+        json={
+            "results": [
+                {"url": "https://example.test/copied-doc", "title": "Copy", "content": "unsafe"},
+                {"url": "https://aldpro.ru/docs/guide", "title": "Guide", "content": "safe"},
+            ]
+        },
+    )
+
+    with patch.object(httpx.AsyncClient, "get", new=AsyncMock(return_value=response)):
+        result = await connector.search_live(SearchRequest(query="ALD Pro guide", topk=1))
+
+    assert [evidence.uri for evidence in result] == ["https://aldpro.ru/docs/guide"]

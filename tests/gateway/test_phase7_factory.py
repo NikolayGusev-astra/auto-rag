@@ -54,3 +54,26 @@ def test_default_config_registers_only_mandatory_local_snapshot():
 
     assert list(connectors) == ["local_snapshot"]
     assert connectors["local_snapshot"].retrieval_kind == "local"
+
+
+def test_factory_resolves_lodestone_only_from_credential_ref(monkeypatch):
+    from rag_core.gateway.config_schema import GatewayConfig, SourceConfig
+    from rag_core.gateway.connector_factory import build_connectors
+    from rag_core.gateway.connectors.lodestone_connector import LodestoneConnector
+
+    monkeypatch.setenv("LODESTONE_TOKEN", "from-environment")
+    connectors = build_connectors(
+        GatewayConfig(
+            sources={
+                "lodestone": SourceConfig(
+                    name="lodestone",
+                    kind="lodestone",
+                    credential_ref="env:LODESTONE_TOKEN",
+                    extra={"token": "hardcoded", "url": "https://lodestone.example.test/mcp/"},
+                )
+            }
+        )
+    )
+
+    assert isinstance(connectors["lodestone"], LodestoneConnector)
+    assert connectors["lodestone"]._token == "from-environment"

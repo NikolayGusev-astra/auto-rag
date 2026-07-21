@@ -1,13 +1,4 @@
-"""Live Jira retrieval — full-content diagnostics edition.
-
-What changed (SIRIUS-195479 regression fix):
-
-* Exact-key hits fetch paginated comments (configurable cap) + linked issues
-  with their summaries/descriptions.
-* Error metadata: if comment/linked-issue enrichment fails, the evidence
-  carries ``enrichment_status`` so silence is never mistaken for completeness.
-* Comment count + loaded count are always recorded.
-"""
+"""Live Jira retrieval — full-content diagnostics edition."""
 
 from __future__ import annotations
 
@@ -101,7 +92,6 @@ class JiraConnector:
     # ── comments (paginated) ───────────────────────────────────────
 
     async def _fetch_comments(self, key: str) -> tuple[str, int, int, str]:
-        """Return (text, total, loaded, error_or_empty).  Paginated up to 10 pages."""
         parts: list[str] = []
         total = 0
         loaded = 0
@@ -136,7 +126,6 @@ class JiraConnector:
     async def _fetch_linked_issues(
         self, key: str,
     ) -> tuple[list[dict[str, str]], list[dict[str, str]], int, str]:
-        """Return (meta_list, content_list, loaded_count, error)."""
         meta: list[dict[str, str]] = []
         content: list[dict[str, str]] = []
         error = ""
@@ -144,7 +133,7 @@ class JiraConnector:
             data = await self._get(f"/rest/api/2/issue/{key}")
             fields = data.get("fields") or {}
             links = fields.get("issuelinks") or []
-            fetched = 0
+            attempted = 0
             for link in links:
                 link_type = (link.get("type") or {}).get("name", "relates to")
                 target = link.get("outwardIssue") or link.get("inwardIssue")
@@ -153,8 +142,8 @@ class JiraConnector:
                 lk = str(target.get("key", ""))
                 ls = str((target.get("fields") or {}).get("summary", ""))
                 meta.append({"key": lk, "summary": ls, "type": str(link_type)})
-                if fetched < _MAX_LINKED:
-                    lk_desc = ""
+                if attempted < _MAX_LINKED:
+                    attempted += 1
                     try:
                         lk_data = await self._get(
                             f"/rest/api/2/issue/{lk}",
@@ -164,14 +153,14 @@ class JiraConnector:
                         lk_desc = lk_fields.get("description") or ""
                         if isinstance(lk_desc, dict):
                             lk_desc = lk_desc.get("content", str(lk_desc))
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        error = error or str(exc)[:200]
+                        continue
                     content.append({
                         "key": lk,
                         "summary": ls,
                         "description": str(lk_desc)[:2000],
                     })
-                    fetched += 1
         except Exception as exc:
             error = str(exc)[:200]
         return meta, content, len(content), error
@@ -186,11 +175,9 @@ class JiraConnector:
         return {"source": self.source, "available": True}
 
     async def sync_changes(self, cursor: str | None) -> SyncBatch:
-        del cursor
         return SyncBatch(added=[])
 
     async def fetch(self, ref: object) -> object:
-        del ref
         raise NotImplementedError("Jira fetch is not implemented")
 
     async def _get(self, path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:

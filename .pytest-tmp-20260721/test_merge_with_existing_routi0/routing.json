@@ -1,0 +1,14 @@
+{
+  "astra-linux": {
+    "name": "Astra Linux",
+    "space": "AL"
+  },
+  "source_affinity": {
+    "astra": {
+      "local": 1.0
+    },
+    "update": {
+      "local": 1.0
+    }
+  }
+}

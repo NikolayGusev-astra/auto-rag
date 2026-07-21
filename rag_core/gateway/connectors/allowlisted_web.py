@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -51,8 +52,6 @@ def _build_domain_query(query: str) -> str:
 
 
 class AllowlistedWebConnector:
-    """SearXNG-backed connector restricted to authoritative domains."""
-
     retrieval_kind = "web"
     source = "aldpro_public"
 
@@ -82,8 +81,10 @@ class AllowlistedWebConnector:
             return []
 
         results: list[Evidence] = []
-        for item in data.get("results", [])[: request.topk]:
+        for item in data.get("results", []):
             url = str(item.get("url", ""))
+            if not _is_allowlisted_url(url):
+                continue
             title = str(item.get("title", ""))
             results.append(Evidence(
                 id=f"aldpro_pub:{url}",
@@ -99,6 +100,8 @@ class AllowlistedWebConnector:
                     "domain": _extract_domain(url),
                 },
             ))
+            if len(results) == request.topk:
+                break
         return results
 
     async def health(self) -> dict[str, object]:
@@ -111,14 +114,20 @@ class AllowlistedWebConnector:
             return {"source": self.source, "available": False}
 
     async def sync_changes(self, cursor: str | None) -> SyncBatch:
-        del cursor
         return SyncBatch(added=[])
 
     async def fetch(self, ref: object) -> object:
-        del ref
         raise NotImplementedError
 
 
 def _extract_domain(url: str) -> str:
-    m = re.search(r"https?://([^/]+)", url)
-    return m.group(1) if m else ""
+    return urlsplit(url).hostname or ""
+
+
+def _is_allowlisted_url(url: str) -> bool:
+    parsed = urlsplit(url)
+    hostname = (parsed.hostname or "").lower().rstrip(".")
+    return parsed.scheme in {"http", "https"} and any(
+        hostname == domain or hostname.endswith(f".{domain}")
+        for domain in _AUTHORITATIVE_DOMAINS
+    )

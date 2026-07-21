@@ -1,0 +1,1 @@
+{"schema_version": 1, "profile": {"provider_family": "sentence-transformers", "model_id": "intfloat/multilingual-e5-base", "model_revision": "abc123", "dimension": 768, "normalized": true, "distance_metric": "cosine", "preprocessing_revision": "q-p-v1"}, "active_revision": "rev-0001", "cursor": null}

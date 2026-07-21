@@ -1,0 +1,1 @@
+{"id": "ep-607344616864970328", "query": "deploy", "summary": "deploy", "route": ["local_snapshot"], "document_ids": ["jira:1"], "source_uris": [], "entities": [], "successful": true, "created_at": "2026-07-21T23:35:31.326306", "index_revision": null, "embedding_profile_id": null, "reranker_score": null}
