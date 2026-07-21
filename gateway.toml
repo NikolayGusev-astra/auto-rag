@@ -1,3 +1,7 @@
+[retrieval]
+exact_id_boost = 1.0
+exact_slug_title_boost = 0.7
+
 [sources.memvid]
 kind = "memvid"
 enabled = true

@@ -30,10 +30,16 @@ async def handle_search(
         for connector in active_connectors.values()
     ):
         active_connectors = {"memvid": MemvidConnector(enricher), **active_connectors}
-    coordinator = RetrievalCoordinator(active_connectors, reranker=reranker)
+    retrieval_config = getattr(connectors, "retrieval_config", {})
+    coordinator = RetrievalCoordinator(
+        active_connectors,
+        reranker=reranker,
+        exact_id_boost=retrieval_config.get("exact_id_boost", 1.0),
+        exact_slug_title_boost=retrieval_config.get("exact_slug_title_boost", 0.7),
+    )
     t0 = time.perf_counter()
     results = await coordinator.search(request)
-    elapsed_ms = round((time.perf_counter() - t0) * 1000)
+    elapsed_ms = coordinator.last_latency["search"]["duration_ms"]
 
     # Persist memory episode from search results
     if enricher is not None and results and any(result.source != "memvid" for result in results):
@@ -63,10 +69,12 @@ async def handle_search(
             "connector_count": len(active_connectors),
             "result_count": len(results),
             "elapsed_ms": elapsed_ms,
+            "latency": coordinator.last_latency,
             "reranker": {
                 "enabled": reranker is not None,
                 "provider": type(reranker).__name__ if reranker is not None else None,
             },
+            "deduplication": coordinator.last_deduplication,
         },
         "runtime": {
             "source_status": {

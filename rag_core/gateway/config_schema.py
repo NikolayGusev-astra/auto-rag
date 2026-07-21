@@ -27,6 +27,8 @@ class GatewayConfig:
     sources: dict[str, SourceConfig] = field(default_factory=dict)
     web: bool = False
     adaptive: bool = False
+    exact_id_boost: float = 1.0
+    exact_slug_title_boost: float = 0.7
 
     def __post_init__(self) -> None:
         if self.version != 1:

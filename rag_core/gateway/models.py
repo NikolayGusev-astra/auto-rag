@@ -52,6 +52,17 @@ class Evidence:
     updated_at: datetime | None = None
     synced_at: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    canonical_id: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.canonical_id is None:
+            from rag_core.gateway.identity import canonical_document_id
+
+            object.__setattr__(
+                self,
+                "canonical_id",
+                canonical_document_id(self.source, self.document_id, self.metadata),
+            )
 
 
 @dataclass(frozen=True)

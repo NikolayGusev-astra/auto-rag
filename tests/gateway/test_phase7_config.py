@@ -40,6 +40,21 @@ def test_load_config_reads_toml(tmp_path):
     assert config.sources["jira"].credential_ref == "env:JIRA_TOKEN"
 
 
+def test_load_config_reads_exact_match_boosts(tmp_path):
+    from rag_core.gateway.config_loader import load_config
+
+    path = tmp_path / "gateway.toml"
+    path.write_text(
+        "[retrieval]\nexact_id_boost = 1.0\nexact_slug_title_boost = 0.7\n",
+        encoding="utf-8",
+    )
+
+    config = load_config(path)
+
+    assert config.exact_id_boost == 1.0
+    assert config.exact_slug_title_boost == 0.7
+
+
 def test_load_config_rejects_missing_explicit_file(tmp_path):
     from rag_core.gateway.config_loader import ConfigNotFound, load_config
 

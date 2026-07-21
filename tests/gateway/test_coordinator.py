@@ -54,6 +54,25 @@ async def test_unavailable_source_is_skipped_without_error():
     assert results == []
 
 
+@pytest.mark.asyncio
+async def test_coordinator_records_latency():
+    class Connector:
+        source = "local"
+
+        async def health(self):
+            return {"available": True}
+
+        async def search_live(self, request):
+            return []
+
+    coordinator = RetrievalCoordinator({"local": Connector()})
+    await coordinator.search(SearchRequest(query="q"))
+
+    stage = coordinator.last_latency["local"]
+    assert stage["status"] == "completed"
+    assert stage["duration_ms"] >= 0
+
+
 def test_final_score_computed():
     evidence = Evidence(
         id="a#c0", document_id="a", title="t", text="x", source="local",

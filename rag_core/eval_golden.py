@@ -124,6 +124,22 @@ def latency_metrics(latencies: Sequence[float]) -> dict[str, float]:
     return {"p50": percentile(0.50), "p95": percentile(0.95), "p99": percentile(0.99)}
 
 
+def latency_summary(latencies: Sequence[float]) -> dict[str, float]:
+    metrics = latency_metrics(latencies)
+    return {"p50": metrics["p50"], "p95": metrics["p95"], "max": max(latencies, default=0.0)}
+
+
+def retrieval_type(result: Mapping[str, Any]) -> str:
+    if result.get("retrieval_type"):
+        return str(result["retrieval_type"])
+    sources = {str(source).lower() for source in result.get("returned_sources", [])}
+    if sources & {"web", "public_web"}:
+        return "corporate+web"
+    if sources and sources <= {"local", "local_snapshot", "zvec", "memvid"}:
+        return "local-only"
+    return "corporate"
+
+
 def evaluate_retrieval(golden: Sequence[Mapping[str, Any]], results: Sequence[Mapping[str, Any]], k: int = DEFAULT_K) -> dict[str, Any]:
     """Evaluate a retrieval run deterministically without invoking an LLM."""
     if len(golden) != len(results):
@@ -145,6 +161,14 @@ def evaluate_retrieval(golden: Sequence[Mapping[str, Any]], results: Sequence[Ma
 
     count = len(per_query)
     average = lambda name: sum(row[name] for row in per_query) / count if count else 0.0
+    latency_by_retrieval_type = {
+        category: latency_summary([
+            float(result.get("latency_s", 0.0))
+            for result in results
+            if retrieval_type(result) == category
+        ])
+        for category in ("local-only", "corporate", "corporate+web")
+    }
     return {
         "evaluation_schema_version": EVALUATION_SCHEMA_VERSION,
         "queries": count,
@@ -156,6 +180,7 @@ def evaluate_retrieval(golden: Sequence[Mapping[str, Any]], results: Sequence[Ma
         "citation_precision": average("citation_precision"),
         "source_coverage": source_coverage(results),
         "latency_s": latency_metrics([result.get("latency_s", 0.0) for result in results]),
+        "latency_by_retrieval_type": latency_by_retrieval_type,
         "empty_query_rate": sum(not str(item.get("query", "")).strip() for item in golden) / count if count else 0.0,
         "empty_result_rate": sum(row["empty_result"] for row in per_query) / count if count else 0.0,
         "per_query": per_query,
@@ -257,8 +282,23 @@ async def run_retrieval(golden: Sequence[Mapping[str, Any]], coordinator: Retrie
             "scored_results": [{"document_id": entry.document_id, "score": entry.final_score} for entry in evidence],
             "evidence_texts": [entry.text for entry in evidence],
             "latency_s": time.perf_counter() - started,
+            "latency": coordinator.last_latency,
+            "retrieval_type": _retrieval_type_from_sources(coordinator.last_latency),
         })
     return results
+
+
+def _retrieval_type_from_sources(latency: Mapping[str, Mapping[str, Any]]) -> str:
+    completed = {
+        stage.removeprefix("web:")
+        for stage, details in latency.items()
+        if stage != "search" and details.get("status") == "completed"
+    }
+    if any(stage.startswith("web:") for stage, details in latency.items() if details.get("status") == "completed"):
+        return "corporate+web"
+    if completed and completed <= {"local", "local_snapshot", "zvec", "memvid"}:
+        return "local-only"
+    return "corporate"
 
 
 def regression_check(current: Mapping[str, Any], baseline: Mapping[str, Any] | None) -> dict[str, Any]:

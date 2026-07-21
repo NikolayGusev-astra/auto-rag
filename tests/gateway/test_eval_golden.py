@@ -68,6 +68,28 @@ def test_empty_rate() -> None:
     assert report["latency_s"]["p50"] == 0.3
 
 
+def test_eval_latency_percentiles() -> None:
+    report = evaluate_retrieval(
+        [{"query": "one"}, {"query": "two"}, {"query": "three"}],
+        [
+            {"returned_document_ids": [], "latency_s": 0.1, "retrieval_type": "local-only"},
+            {"returned_document_ids": [], "latency_s": 0.3, "retrieval_type": "local-only"},
+            {"returned_document_ids": [], "latency_s": 0.5, "retrieval_type": "corporate+web"},
+        ],
+    )
+
+    assert report["latency_by_retrieval_type"]["local-only"] == {
+        "p50": 0.2,
+        "p95": 0.29,
+        "max": 0.3,
+    }
+    assert report["latency_by_retrieval_type"]["corporate+web"] == {
+        "p50": 0.5,
+        "p95": 0.5,
+        "max": 0.5,
+    }
+
+
 def test_qwen_judge_skipped_when_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     judge = Qwen25Judge(base_url="http://unavailable/v1")
     monkeypatch.setattr(judge, "is_available", lambda: False)

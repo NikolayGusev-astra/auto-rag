@@ -25,6 +25,11 @@ def load_config(path: Path | None = None) -> GatewayConfig:
         if not knowledge_root.is_absolute():
             raw["knowledge_root"] = (config_path.parent / knowledge_root).resolve()
     raw_sources = raw.pop("sources", {})
+    retrieval = raw.pop("retrieval", {})
+    if retrieval:
+        if not isinstance(retrieval, dict):
+            raise ValueError("retrieval configuration must be a table")
+        raw.update(retrieval)
     sources = {
         name: SourceConfig(name=name, **source)
         for name, source in raw_sources.items()

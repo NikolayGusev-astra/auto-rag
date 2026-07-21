@@ -78,12 +78,17 @@ class ConnectorMap(dict[str, SourceConnector]):
     def __init__(self) -> None:
         super().__init__()
         self.diagnostics: list[str] = []
+        self.retrieval_config: dict[str, float] = {}
 
 
 def build_connectors(
     config: GatewayConfig, *, enricher: MemvidEnricher | None = None
 ) -> dict[str, SourceConnector]:
     connectors = ConnectorMap()
+    connectors.retrieval_config = {
+        "exact_id_boost": config.exact_id_boost,
+        "exact_slug_title_boost": config.exact_slug_title_boost,
+    }
     engine = SyncEngine(config.knowledge_root)
     memvid_config = config.sources.get("memvid")
     if enricher is not None and (memvid_config is None or memvid_config.enabled):
