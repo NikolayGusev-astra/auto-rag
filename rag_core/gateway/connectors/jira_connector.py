@@ -2,28 +2,34 @@
 
 from __future__ import annotations
 
+import asyncio
+from datetime import datetime
 import re
 from typing import Any
 
 import httpx
 
 from rag_core.gateway.connector import SearchRequest
-from rag_core.gateway.models import Evidence, EvidenceOrigin, SyncBatch
+from rag_core.gateway.models import Document, Evidence, EvidenceOrigin, SyncBatch
 
 # ── Tunables ──────────────────────────────────────────────────────
 _MAX_COMMENTS = 50       # per page    → Jira default page size
 _MAX_COMMENT_PAGES = 10  # max pages   → 500 comments total
 _MAX_LINKED = 5          # linked issues whose content we fetch
+_MAX_SYNC_ISSUES = 500
+_SYNC_PAGE_SIZE = 100
+_DEFAULT_SYNC_JQL = "project IS NOT EMPTY"
 # ───────────────────────────────────────────────────────────────────
 
 
 class JiraConnector:
     retrieval_kind = "live"
 
-    def __init__(self, base_url: str, token: str, source: str = "jira") -> None:
+    def __init__(self, base_url: str, token: str, source: str = "jira", sync_jql: str = _DEFAULT_SYNC_JQL) -> None:
         self._base = base_url.rstrip("/")
         self._token = token
         self.source = source
+        self._sync_jql = sync_jql
         self._client: httpx.AsyncClient | None = None
 
     @property
@@ -193,13 +199,59 @@ class JiraConnector:
         return {"source": self.source, "available": True}
 
     async def sync_changes(self, cursor: str | None) -> SyncBatch:
-        return SyncBatch(added=[])
+        since = cursor or "2020-01-01"
+        issues: list[dict[str, Any]] = []
+        start_at = 0
+        while len(issues) < _MAX_SYNC_ISSUES:
+            page_size = min(_SYNC_PAGE_SIZE, _MAX_SYNC_ISSUES - len(issues))
+            payload = await self._get(
+                "/rest/api/2/search",
+                params={
+                    "jql": f"({self._sync_jql}) AND updated >= \"{since}\" ORDER BY updated ASC",
+                    "startAt": start_at,
+                    "maxResults": page_size,
+                    "fields": "summary,description,updated",
+                },
+            )
+            page = list(payload.get("issues", []))
+            issues.extend(page[:page_size])
+            total = int(payload.get("total", len(page)))
+            start_at += len(page)
+            if not page or start_at >= total:
+                break
+
+        documents: list[Document] = []
+        latest_cursor = cursor
+        for issue in issues:
+            key = str(issue["key"])
+            fields = issue.get("fields") or {}
+            comments, _, _, _ = await self._fetch_comments(key)
+            updated = str(fields.get("updated") or "")
+            if updated and (latest_cursor is None or updated > latest_cursor):
+                latest_cursor = updated
+            documents.append(
+                Document(
+                    id=f"{self.source}:{key}",
+                    source=self.source,
+                    source_instance=self.source,
+                    title=str(fields.get("summary") or ""),
+                    text=_issue_text(fields, comments),
+                    uri=f"{self._base}/browse/{key}",
+                    version=updated or None,
+                    updated_at=_parse_updated_at(updated),
+                    metadata={"issue_key": key, "updated": updated},
+                )
+            )
+        return SyncBatch(added=documents, cursor=latest_cursor)
 
     async def fetch(self, ref: object) -> object:
         raise NotImplementedError("Jira fetch is not implemented")
 
     async def _get(self, path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
         response = await self._http.get(f"{self._base}{path}", params=params)
+        if response.status_code == 429:
+            await asyncio.sleep(1)
+            response = await self._http.get(f"{self._base}{path}", params=params)
         response.raise_for_status()
         return response.json()
 
@@ -213,6 +265,23 @@ def _escape_query(query: str) -> str:
 def _extract_issue_key(query: str) -> str | None:
     match = re.search(r"\b([A-Z]+-\d+)\b", query)
     return match.group(1) if match else None
+
+
+def _issue_text(fields: dict[str, Any], comments: str) -> str:
+    description = fields.get("description") or ""
+    if isinstance(description, dict):
+        description = description.get("content") or ""
+    text = f"{fields.get('summary') or ''}\n{description}"
+    return f"{text}\n\n--- COMMENTS ---\n{comments}" if comments else text
+
+
+def _parse_updated_at(value: str) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def _evidence(

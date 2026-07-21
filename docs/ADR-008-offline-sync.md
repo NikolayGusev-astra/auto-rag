@@ -1,7 +1,9 @@
 # ADR-008: Offline Sync for Live Corporate Connectors
 
-**Status:** Accepted — phased: Jira sync before 10-user pilot, Confluence sync before 50-user expansion
+**Status:** Implemented
 **Date:** 2026-07-22
+**Implementation:** Phase 1 (Jira offline sync) implemented. Phase 2 (Confluence) pending.
+**Implementation:** Phase 1 (Jira offline sync) implemented. Phase 2 (Confluence) implemented.
 **Extends:** ADR-001 (knowledge gateway), ADR-004 (offline-capable), ADR-006 (sync engine)
 
 ## 1. Context
@@ -43,10 +45,22 @@ Scope per connector:
 - Each `Document` contains full issue body (summary + description + comments)
 - Cursor is the latest `updated` timestamp from processed issues
 
+**Phase 1 status: Implemented.** Jira sync uses configurable `sync_jql` with the
+default `project IS NOT EMPTY`, paginates up to 500 issues, includes comments,
+and retries once after a 429 response.
+
+**Phase 1 status: Implemented.** Jira sync uses configurable `sync_jql` with the
+default `project IS NOT EMPTY`, paginates up to 500 issues, includes comments,
+and retries once after a 429 response.
+
 ### ConfluenceConnector.sync_changes(cursor)
 - Query Confluence CQL with `lastModified >= cursor`
 - Return `SyncBatch` with page content + PDF attachment text
 - Same cursor semantics
+
+**Phase 2 status: Implemented.** Confluence sync uses configurable `sync_cql` with
+the default `type=page`, pages through up to 500 CQL responses at 100 pages each,
+and includes storage-body text plus PDF attachment text.
 
 **Lodestone** and **Allowlisted Web** are excluded from Phase 1: Lodestone is a passthrough search proxy (no notion of incremental sync), and Allowlisted Web is inherently live-only (public web changes continuously).
 

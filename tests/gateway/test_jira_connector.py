@@ -185,3 +185,69 @@ async def test_health_reports_unavailable_when_request_fails():
         health = await JiraConnector("https://jira.example.test", "secret").health()
 
     assert health == {"source": "jira", "available": False, "reason": "offline"}
+
+
+def _issue(key: str, updated: str = "2026-07-20T12:00:00.000+0000") -> dict:
+    return {"key": key, "fields": {"summary": f"Summary {key}", "description": "Description", "updated": updated}}
+
+
+def _response(url: str, payload: dict, status_code: int = 200) -> httpx.Response:
+    return httpx.Response(status_code, request=httpx.Request("GET", url), json=payload)
+
+
+@pytest.mark.asyncio
+async def test_sync_returns_real_batch():
+    search = _response("https://jira.example.test/rest/api/2/search", {"total": 1, "issues": [_issue("PROJ-1")]})
+    comments = _response("https://jira.example.test/rest/api/2/issue/PROJ-1/comment", {"total": 1, "comments": [{"author": {"displayName": "Ada"}, "created": "2026-07-20", "body": "Fixed"}]})
+    with patch.object(httpx.AsyncClient, "get", new=AsyncMock(side_effect=[search, comments])):
+        batch = await JiraConnector("https://jira.example.test", "secret").sync_changes(None)
+
+    assert batch.cursor == "2026-07-20T12:00:00.000+0000"
+    assert batch.added[0].id == "jira:PROJ-1"
+    assert batch.added[0].text == "Summary PROJ-1\nDescription\n\n--- COMMENTS ---\n[2026-07-20] Ada: Fixed"
+
+
+@pytest.mark.asyncio
+async def test_sync_incremental():
+    first_search = _response("https://jira.example.test/rest/api/2/search", {"total": 3, "issues": [_issue("PROJ-1"), _issue("PROJ-2"), _issue("PROJ-3")]})
+    second_search = _response("https://jira.example.test/rest/api/2/search", {"total": 1, "issues": [_issue("PROJ-4", "2026-07-21T12:00:00.000+0000")]})
+    comments = [_response("https://jira.example.test/rest/api/2/issue/comment", {"comments": []}) for _ in range(4)]
+    with patch.object(httpx.AsyncClient, "get", new=AsyncMock(side_effect=[first_search, *comments[:3], second_search, comments[3]])):
+        connector = JiraConnector("https://jira.example.test", "secret")
+        first = await connector.sync_changes(None)
+        second = await connector.sync_changes(first.cursor)
+
+    assert len(first.added) == 3
+    assert [document.id for document in second.added] == ["jira:PROJ-4"]
+
+
+@pytest.mark.asyncio
+async def test_sync_pagination():
+    page_one = _response("https://jira.example.test/rest/api/2/search", {"total": 150, "issues": [_issue(f"PROJ-{number}") for number in range(100)]})
+    page_two = _response("https://jira.example.test/rest/api/2/search", {"total": 150, "issues": [_issue(f"PROJ-{number}") for number in range(100, 150)]})
+    comments = [_response("https://jira.example.test/rest/api/2/issue/comment", {"comments": []}) for _ in range(150)]
+    with patch.object(httpx.AsyncClient, "get", new=AsyncMock(side_effect=[page_one, page_two, *comments])) as get:
+        batch = await JiraConnector("https://jira.example.test", "secret").sync_changes(None)
+
+    assert len(batch.added) == 150
+    search_calls = [call for call in get.await_args_list if call.kwargs["params"].get("jql")]
+    assert [call.kwargs["params"]["startAt"] for call in search_calls] == [0, 100]
+
+
+@pytest.mark.asyncio
+async def test_sync_empty_cursor():
+    search = _response("https://jira.example.test/rest/api/2/search", {"total": 0, "issues": []})
+    with patch.object(httpx.AsyncClient, "get", new=AsyncMock(return_value=search)) as get:
+        await JiraConnector("https://jira.example.test", "secret", sync_jql="project = PROJ").sync_changes(None)
+
+    assert get.await_args.kwargs["params"]["jql"] == '(project = PROJ) AND updated >= "2020-01-01" ORDER BY updated ASC'
+
+
+@pytest.mark.asyncio
+async def test_sync_rate_limit():
+    limited = _response("https://jira.example.test/rest/api/2/search", {}, 429)
+    search = _response("https://jira.example.test/rest/api/2/search", {"total": 0, "issues": []})
+    with patch("rag_core.gateway.connectors.jira_connector.asyncio.sleep", new=AsyncMock()) as sleep, patch.object(httpx.AsyncClient, "get", new=AsyncMock(side_effect=[limited, search])):
+        await JiraConnector("https://jira.example.test", "secret").sync_changes(None)
+
+    sleep.assert_awaited_once_with(1)

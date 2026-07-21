@@ -165,7 +165,11 @@ def _build_source(
             diagnostics.append(f"{name}: {missing} is unavailable; source is offline")
             return ConnectorStub(name, source.kind, credential, **source.extra)
         if source.kind == "jira":
-            return JiraConnector(base_url, credential, source=name)
+            sync_jql = source.extra.get("sync_jql", "project IS NOT EMPTY")
+            if not isinstance(sync_jql, str):
+                diagnostics.append(f"{name}: sync_jql must be a string")
+                return None
+            return JiraConnector(base_url, credential, source=name, sync_jql=sync_jql)
         if source.kind == "confluence":
             return ConfluenceConnector(base_url, credential, source=name)
         return HubConnector(base_url, credential, source=name)
