@@ -56,15 +56,17 @@ def log_usage(query: str, evidence: list[Evidence], elapsed_ms: int, model: str 
     )
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(LOG_PATH, "a", encoding="utf-8") as f:
-        f.write(json.dumps(asdict(entry), ensure_ascii=False) + "
-")
+        f.write(json.dumps(asdict(entry), ensure_ascii=False) + "\n")
 
 
 def usage_summary() -> dict:
     if not LOG_PATH.exists():
         return {"entries": 0}
-    entries = [json.loads(line) for line in LOG_PATH.read_text(encoding="utf-8").strip().split("
-") if line]
+    entries = []
+    for line in LOG_PATH.read_text(encoding="utf-8").strip().split("\n"):
+        line = line.strip()
+        if line:
+            entries.append(json.loads(line))
     hits = sum(1 for e in entries if e["hit"])
     latencies = [e["latency_ms"] for e in entries if e["latency_ms"] > 0]
     problems = [e["problem"] for e in entries if e["problem"]]
