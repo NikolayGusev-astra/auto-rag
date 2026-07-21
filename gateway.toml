@@ -1,3 +1,5 @@
+version = 1
+
 [retrieval]
 exact_id_boost = 1.0
 exact_slug_title_boost = 0.7

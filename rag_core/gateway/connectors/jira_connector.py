@@ -81,11 +81,13 @@ class JiraConnector:
                     enrichment["linked_issues_status"] = "failed"
                     enrichment["linked_issues_error"] = lk_err
 
-            ev = _evidence(
-                issue, self._base, self.source,
-                comments_text, linked_meta, linked_content, enrichment,
+            evidence_list.append(
+                _evidence(
+                    issue, self._base, self.source,
+                    comments_text, linked_meta, linked_content, enrichment,
+                    retrieval_score=0.9,
+                )
             )
-            evidence_list.append(ev)
 
         return evidence_list
 
@@ -210,6 +212,7 @@ def _evidence(
     linked_meta: list[dict[str, str]] | None = None,
     linked_content: list[dict[str, str]] | None = None,
     enrichment: dict[str, Any] | None = None,
+    retrieval_score: float = 0.0,
 ) -> Evidence:
     fields = issue.get("fields") or {}
     key = str(issue["key"])
@@ -245,4 +248,5 @@ def _evidence(
         uri=f"{base_url}/browse/{key}",
         origin=EvidenceOrigin.LIVE_CORPORATE,
         metadata=metadata,
+        retrieval_score=retrieval_score,
     )

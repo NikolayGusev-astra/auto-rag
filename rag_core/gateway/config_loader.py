@@ -21,9 +21,11 @@ def load_config(path: Path | None = None) -> GatewayConfig:
     with config_path.open("rb") as handle:
         raw: dict[str, Any] = tomllib.load(handle)
     if "knowledge_root" in raw:
-        knowledge_root = Path(raw["knowledge_root"])
+        knowledge_root = Path(raw["knowledge_root"]).expanduser()
         if not knowledge_root.is_absolute():
             raw["knowledge_root"] = (config_path.parent / knowledge_root).resolve()
+        else:
+            raw["knowledge_root"] = knowledge_root
     raw_sources = raw.pop("sources", {})
     retrieval = raw.pop("retrieval", {})
     if retrieval:
