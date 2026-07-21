@@ -9,6 +9,10 @@ import sys
 
 
 def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "doctor":
+        from rag_core.gateway.doctor import main as doctor_main
+
+        sys.exit(doctor_main(sys.argv[2:]))
     from rag_core.rag_search import main as search_main
     sys.exit(search_main())
 

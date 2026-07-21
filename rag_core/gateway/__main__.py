@@ -27,6 +27,9 @@ def main() -> None:
         "--routing", type=Path,
         default=Path.home() / ".config" / "auto-rag" / "routing.json",
     )
+    doctor = subcommands.add_parser("doctor", help="run read-only health checks")
+    doctor.add_argument("--config", type=Path)
+    doctor.add_argument("--json", action="store_true", dest="json_output")
     args = parser.parse_args()
     if args.command == "discover":
         routing = asyncio.run(SourceDiscovery(args.wiki, load_config(args.config)).update_routing())
@@ -34,6 +37,13 @@ def main() -> None:
     if args.command == "dcd-learn":
         routing = DcdLearner(args.episodes, args.routing).learn()
         print(json.dumps(routing, ensure_ascii=False, indent=2, sort_keys=True))
+    if args.command == "doctor":
+        from rag_core.gateway.doctor import main as doctor_main
+
+        doctor_args = (["--config", str(args.config)] if args.config else [])
+        if args.json_output:
+            doctor_args.append("--json")
+        raise SystemExit(doctor_main(doctor_args))
 
 
 if __name__ == "__main__":
