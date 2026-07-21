@@ -5,8 +5,8 @@ import pytest
 from rag_core.gateway.adaptive.enrichment import MemvidEnricher
 from rag_core.gateway.config_schema import GatewayConfig, SourceConfig
 from rag_core.gateway.connector import SearchRequest
-from rag_core.gateway.connector_factory import build_connectors
 from rag_core.gateway.connectors.memvid_connector import MemvidConnector
+from rag_core.gateway.coordinator import RetrievalCoordinator
 from rag_core.gateway.mcp_handlers import handle_search
 from rag_core.gateway.models import Evidence, EvidenceOrigin
 
