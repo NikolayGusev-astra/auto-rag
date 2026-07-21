@@ -1,6 +1,7 @@
 """Embedding-based reranking for gateway evidence."""
 from __future__ import annotations
 
+import asyncio
 import math
 import logging
 from collections.abc import Sequence
@@ -37,7 +38,7 @@ class RerankAdapter:
                 scored.append(replace(document, reranker_score=score))
             if not scored:
                 return list(documents)[:top_k]
-        except (httpx.HTTPError, OSError, Exception) as error:
+        except (httpx.HTTPError, OSError, asyncio.TimeoutError) as error:
             logger.warning("embedding reranker unavailable; returning retrieval order: %s", error)
             return list(documents)[:top_k]
         scored.sort(key=lambda document: document.reranker_score or 0.0, reverse=True)

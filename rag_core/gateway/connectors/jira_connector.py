@@ -24,6 +24,22 @@ class JiraConnector:
         self._base = base_url.rstrip("/")
         self._token = token
         self.source = source
+        self._client: httpx.AsyncClient | None = None
+
+    @property
+    def _http(self) -> httpx.AsyncClient:
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                headers={"Authorization": f"Bearer {self._token}"},
+                timeout=30.0,
+                trust_env=False,
+            )
+        return self._client
+
+    async def aclose(self) -> None:
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
 
     # ── search_live ────────────────────────────────────────────────
 
@@ -183,14 +199,9 @@ class JiraConnector:
         raise NotImplementedError("Jira fetch is not implemented")
 
     async def _get(self, path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        async with httpx.AsyncClient(
-            headers={"Authorization": f"Bearer {self._token}"},
-            timeout=30.0,
-            trust_env=False,
-        ) as client:
-            response = await client.get(f"{self._base}{path}", params=params)
-            response.raise_for_status()
-            return response.json()
+        response = await self._http.get(f"{self._base}{path}", params=params)
+        response.raise_for_status()
+        return response.json()
 
 
 # ── helpers ────────────────────────────────────────────────────────
