@@ -38,6 +38,10 @@ web = [
     # environments that want explicit web-retrieval capability enabled.
     "requests>=2.31.0",
 ]
+pdf = [
+    "pymupdf>=1.23.0",
+    "pdfplumber>=0.10.0",
+]
 
 [project.scripts]
 auto-rag = "rag_core.cli:main"
