@@ -39,8 +39,10 @@ def test_source_coverage() -> None:
 
 
 def test_citation_correctness() -> None:
-    assert citation_correctness(["doc-1", "doc-2"], ["doc-2", "wrong"]) == 0.5
-    assert citation_correctness([], []) == 1.0
+    assert citation_correctness(["doc-1", "doc-2"], ["doc-2", "wrong"]) == 1.0  # found doc-2
+    assert citation_correctness(["doc-1"], ["wrong", "wrong2"]) == 0.0  # none found
+    assert citation_correctness([], []) == 1.0  # nothing expected
+    assert citation_correctness(["doc-1"], []) == 0.0  # expected but returned empty
 
 
 def test_empty_rate() -> None:

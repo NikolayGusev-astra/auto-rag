@@ -79,11 +79,12 @@ def compute_ndcg(expected: Sequence[str], scored_results: Sequence[Mapping[str, 
 
 
 def citation_correctness(expected_ids: Sequence[str], returned_ids: Sequence[str]) -> float:
-    """Return the fraction of returned citations that cite expected documents."""
+    """Return 1.0 if any expected document appears in returned citations, else 0.0."""
+    if not expected_ids:
+        return 1.0
     if not returned_ids:
-        return 1.0 if not expected_ids else 0.0
-    expected = set(expected_ids)
-    return sum(document_id in expected for document_id in returned_ids) / len(returned_ids)
+        return 0.0
+    return 1.0 if set(expected_ids) & set(returned_ids) else 0.0
 
 
 def source_coverage(results: Sequence[Mapping[str, Any]]) -> dict[str, float]:
