@@ -1,7 +1,7 @@
 {
   "summary": {
     "evaluation_schema_version": "1.0",
-    "queries": 4,
+    "queries": 105,
     "precision_at_k": 0.0,
     "recall_at_k": 0.0,
     "mrr": 0.0,
@@ -9,15 +9,15 @@
     "citation_correctness": 0.0,
     "source_coverage": {},
     "latency_s": {
-      "p50": 4e-06,
-      "p95": 1.3e-05,
-      "p99": 1.4e-05
+      "p50": 2e-06,
+      "p95": 3e-06,
+      "p99": 9e-06
     },
     "empty_query_rate": 0.0,
     "empty_result_rate": 1.0,
     "per_query": [
       {
-        "query": "INT-6515 ПМИ",
+        "query": "ACM-13951 контроль соответствия дистрибутиву версии 1.7 и 2.0",
         "precision_at_k": 0.0,
         "recall_at_k": 0.0,
         "mrr": 0.0,
@@ -26,7 +26,7 @@
         "empty_result": true
       },
       {
-        "query": "ALD Pro версия код развертывания",
+        "query": "ACM-14029 повышение версии 34 сервисов до 2.0.1",
         "precision_at_k": 0.0,
         "recall_at_k": 0.0,
         "mrr": 0.0,
@@ -35,7 +35,7 @@
         "empty_result": true
       },
       {
-        "query": "ACM документация",
+        "query": "ACM-13545 HTTP для PXE загрузки ACM 1.6.0",
         "precision_at_k": 0.0,
         "recall_at_k": 0.0,
         "mrr": 0.0,
@@ -44,7 +44,916 @@
         "empty_result": true
       },
       {
-        "query": "Astra Automation ПМИ",
+        "query": "ACM-13114 известные ошибки urllib3",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM-11517 ПМИ ACM 1.6.0",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM-13409 документация ACM 2.0.0",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM-3412 нагрузочное тестирование HTTPS",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM-7984 ACM presale задача",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM-13979 ACM 2.0 release notes",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM-12112 ACM сертификация",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA-8579 постустановочные проверки ПМИ aa-setup",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA-9028 aa-brest-laika AI-agent адаптация",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA-8530 сборка образов k8s release/2.1",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA-8847 Poetry версия CI vs lock",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA-2351 обновление awx Ansible Automation Platform",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA-8592 ARFA zvirt коллекция актуальность",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA-6260 ПМИ Astra Automation 2.0",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA-1117 AA пресейл задача",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA-8373 анализ постустановочных проверок",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA-8770 CI проверки fast stage",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "MON-1726 ПМИ Astra Monitoring",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "MON-4016 ПМИ AM 1.4 актуализация",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "MON-3885 документация AM Epic",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "MON-4550 единый Source of Truth документации AM",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "MON-4258 документация ЗПС агента",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "MON-4440 документация Termidesk exporter 1.5.0",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "MON-3076 ленивая загрузка графиков",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "MON-4330 SSO через доменное имя Keycloak",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "MON-3839 документация типовая ВМ",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "MON-4488 AM 1.5 release",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "INT-6515 ревизия проектных артефактов",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "PRESALE-9943 ACM пресейл задача",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "PRESALE-10513 ALD Pro Termidesk консультация",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "PRESALE-10885 АЛАБУГА внедрение ПМИ ACM",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "POLLUX-31750 АТОМ Day пресейл",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "POLLUX-24173 вебинар Astra Monitoring Тринити",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "SIRIUS-118897 интеграция ALD PRO",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "SIRIUS-115486 ALD Pro билет",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "RAIT-5145 профиль нагрузочного тестирования AA",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "SUP-58760 стенд VMmanager",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA-8773 аудит build/test кода",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA-8769 эпик аудита aa-setup",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM-12834 ACM 1.5 changelog",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM-13012 ACM миграция 1.5→1.6",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "MON-4320 AM мониторинг алертов",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "MON-4415 AM экспортер метрик",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ALD-1234 ALD Pro сертификация",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ALD-2267 ALD Pro мультисайт",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM-14200 ACM 2.0 roadmap",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM-14150 ACM 2.0 API spec",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "639737224 ПМИ ALD Pro 3.3.0",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "648249629 изменения в ПМИ ALD Pro 3.3.0",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "639737096 документация ALD Pro 3.3.0",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "639737097 Release Notes ALD Pro 3.3.0",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "639737149 руководство администратора ALD Pro 3.3.0",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "639737287 руководство пользователя ALD Pro 3.3.0",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "639737589 ФТТ ALD Pro 3.3.0",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "221420993 документация ACM",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "604953189 документация ACM версии 1.6.0",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "682737386 ПМИ Astra Automation 0601",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "682737385 новые сценарии ТП AA",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "253912119 технологическая карта Astra Automation",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "585668424 тест-план нагрузочного тестирования ALD Pro",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "217441953 технологическая карта ALD Pro",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "335060609 коллекция установки ACM",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "538887911 инструкция формирования релизной документации ACM",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "667352769 сценарий 0111 ALD Pro",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "667352821 сценарий 0112 ALD Pro",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "667352808 сценарий 0113 ALD Pro",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "667352797 сценарий 0114 ALD Pro",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "667352836 сценарий 0191 ACM",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "667352825 сценарий 0192 ACM",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "667352844 сценарий 0193 ACM",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "667352803 сценарий 0251 AA",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "667352843 сценарий 0252 AA",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "667352848 сценарий 0253 AA",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "682752698 отчёт ревизии INT-6515",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "682748311 страница задачи INT-6515",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "604953413 RN ACM 1.6.0",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "221420979 раздел ACM разработка",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "astra.ald_pro ALD Pro коллекция",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "astra.acm ACM коллекция validated",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "astra.aa_controller AA Controller коллекция",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "astra.repo_mirror repo mirror коллекция",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "astra.etcd etcd коллекция",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ald-pro ALD Pro продукт",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "acm ACM продукт",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "astra-automation Astra Automation продукт",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "astra-monitoring Astra Monitoring продукт",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "presale пресейл активность",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "nova NOVA продукт",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "rupost RuPost продукт",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "workspad WorksPad продукт",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "alse ALSE продукт",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "pollux POLLUX продукт",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM версия коллекция hub 1.6.0 документация",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ALD Pro 3.3.0 ПМИ hub ald_pro",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA 2.0 контроллер коллекция hub документация",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM 1.6.0 HTTP PXE загрузка",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA постустановочные проверки ПМИ 2.1",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM devops повышение версий 2.0.1",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ALD Pro сценарий 0111 один сайт DC",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ACM сценарий 0191 один сервер",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "AA сценарий 0253 базовая конфигурация",
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "citation_correctness": 0.0,
+        "empty_result": true
+      },
+      {
+        "query": "ASTRA MONITORING документация 1.5.0",
         "precision_at_k": 0.0,
         "recall_at_k": 0.0,
         "mrr": 0.0,
@@ -60,28 +969,735 @@
       "returned_sources": [],
       "scored_results": [],
       "evidence_texts": [],
-      "latency_s": 1.4699995517730713e-05
+      "latency_s": 8.800008799880743e-06
     },
     {
       "returned_document_ids": [],
       "returned_sources": [],
       "scored_results": [],
       "evidence_texts": [],
-      "latency_s": 4.799978341907263e-06
+      "latency_s": 3.7999707274138927e-06
     },
     {
       "returned_document_ids": [],
       "returned_sources": [],
       "scored_results": [],
       "evidence_texts": [],
-      "latency_s": 3.200024366378784e-06
+      "latency_s": 2.600019797682762e-06
     },
     {
       "returned_document_ids": [],
       "returned_sources": [],
       "scored_results": [],
       "evidence_texts": [],
-      "latency_s": 3.100023604929447e-06
+      "latency_s": 2.300017513334751e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.9999570213258266e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.00001522898674e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 3.00002284348011e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 7.800001185387373e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.900022082030773e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.100015990436077e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.5999539755284786e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.800013706088066e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.700012944638729e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.600012183189392e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.4999532140791416e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.600012183189392e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.700012944638729e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.8999638743698597e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.600012183189392e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.500019036233425e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.6999547369778156e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.600012183189392e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.800013706088066e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.400010660290718e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.4999532140791416e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.600019797682762e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.600012183189392e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.4999532140791416e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 4.7600013203918934e-05
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.00001522898674e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.800013706088066e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.6999547369778156e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.700012944638729e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.9000144675374031e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.600012183189392e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.4999532140791416e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.400010660290718e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.400010660290718e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.4999532140791416e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.700020559132099e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.800013706088066e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.600012183189392e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.7999554984271526e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.800021320581436e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.00001522898674e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.6999547369778156e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.700012944638729e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.5999539755284786e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.700012944638729e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.700012944638729e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.600019797682762e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.3999524526298046e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.700012944638729e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.600012183189392e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.3999524526298046e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.600012183189392e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.4999532140791416e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.400018274784088e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.3999524526298046e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.600012183189392e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.600012183189392e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.400010660290718e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.400010660290718e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.400018274784088e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.4999532140791416e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.400010660290718e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.400010660290718e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.600019797682762e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.3999524526298046e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.700012944638729e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.4999532140791416e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.4999532140791416e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 2.500019036233425e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.600012183189392e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.4999532140791416e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
+    },
+    {
+      "returned_document_ids": [],
+      "returned_sources": [],
+      "scored_results": [],
+      "evidence_texts": [],
+      "latency_s": 1.500011421740055e-06
     }
   ],
   "regression_check": {

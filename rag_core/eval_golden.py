@@ -25,6 +25,7 @@ from rag_core.gateway.coordinator import RetrievalCoordinator
 
 DEFAULT_GOLDEN_PATH = Path(os.path.expanduser("~/wiki/eval/golden_set.jsonl"))
 DEFAULT_REPORT_PATH = Path("golden_eval_report.json")
+DEFAULT_CONFIG_PATH = Path(os.path.expanduser("~/.config/auto-rag/gateway.toml"))
 DEFAULT_K = 5
 EVALUATION_SCHEMA_VERSION = "1.0"
 JUDGE_PROMPT_VERSION = "qwen25-evidence-v1"
@@ -265,8 +266,14 @@ def regression_check(current: Mapping[str, Any], baseline: Mapping[str, Any] | N
 
 
 async def _main(args: argparse.Namespace) -> dict[str, Any]:
+    from rag_core.gateway.connector_factory import build_connectors
+    from rag_core.gateway.config_loader import load_config
     golden = load_golden_set(Path(args.golden).expanduser())
-    results = await run_retrieval(golden, RetrievalCoordinator(), args.k)
+    config_path = os.environ.get("AUTORAG_CONFIG", str(DEFAULT_CONFIG_PATH))
+    config = load_config(Path(config_path).expanduser()) if Path(config_path).expanduser().exists() else None
+    connectors = build_connectors(config) if config else {}
+    coordinator = RetrievalCoordinator(connectors)
+    results = await run_retrieval(golden, coordinator, args.k)
     metrics = evaluate_retrieval(golden, results, args.k)
     if args.judge:
         judge = Qwen25Judge(model_id=args.judge_model_id, judge_revision=args.judge_revision)
