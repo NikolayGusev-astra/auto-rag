@@ -36,47 +36,89 @@ class RetrievalCoordinator:
         self.last_latency: dict[str, dict[str, object]] = {}
         self.last_deduplication: dict[str, int] = {"input": 0, "output": 0, "removed": 0}
 
-    async def search(self, request: SearchRequest) -> list[Evidence]:
+    async def search(self, request: SearchRequest, source_timeout: float = 30.0) -> list[Evidence]:
         self.last_failed_sources = []
         self.last_successful_sources = []
         self.last_timed_out_sources = []
         timer = StageTimer()
         timer.start("search")
+
+        # ── parallel health check ──────────────────────────────────
+        names, connectors = zip(*self._connectors.items()) if self._connectors else ((), ())
+        health_results = await asyncio.gather(
+            *[self._check_health(name, conn) for name, conn in self._connectors.items()],
+            return_exceptions=True,
+        ) if self._connectors else []
+
+        # ── parallel search with per-source timeout ───────────────
+        search_tasks = []
+        for (name, connector), health in zip(self._connectors.items(), health_results):
+            if isinstance(health, Exception):
+                continue
+            if not health:
+                timer.skip(self._latency_stage(name, connector), reason="unavailable")
+                continue
+            if self._is_web_connector(connector) and not request.include_web:
+                timer.skip(self._latency_stage(name, connector), reason="web_disabled")
+                continue
+            search_tasks.append((name, connector, self._search_one(name, connector, request, timer, source_timeout)))
+
+        gathered = await asyncio.gather(
+            *[task for _, _, task in search_tasks], return_exceptions=True,
+        ) if search_tasks else []
+
         evidence: list[Evidence] = []
+        for (name, connector, _), result in zip(search_tasks, gathered):
+            if result is None:
+                continue
+            if isinstance(result, Exception):
+                self._record_failure(name, result)
+                timer.stop(self._latency_stage(name, connector), status="failed")
+                continue
+            if result:
+                self.last_successful_sources.append(name)
+                evidence.extend(result)
+
+        timer.stop("search")
+        self.last_latency = timer.summary()
+        return await self._finalize(request, evidence)
+
+    async def _check_health(self, name: str, connector: SourceConnector) -> bool:
         try:
-            for name, connector in self._connectors.items():
-                stage = self._latency_stage(name, connector)
-                if self._is_web_connector(connector) and not request.include_web:
-                    timer.skip(stage, reason="web_disabled")
-                    continue
-                try:
-                    available = await self._is_available(connector)
-                except Exception as error:
-                    self._record_failure(name, error)
-                    timer.skip(stage, reason="health_check_failed")
-                    continue
-                if not available:
-                    timer.skip(stage, reason="unavailable")
-                    continue
-                timer.start(stage)
-                try:
-                    results = await connector.search_live(request)
-                except asyncio.CancelledError:
-                    timer.stop(stage, status="cancelled")
-                    self.last_timed_out_sources.append(name)
-                    raise
-                except Exception as error:
-                    timer.stop(stage, status="failed")
-                    self._record_failure(name, error)
-                    continue
-                timer.stop(stage)
-                if results:
-                    self.last_successful_sources.append(name)
-                    evidence.extend(results)
-            return await self._finalize(request, evidence)
-        finally:
-            timer.stop("search")
-            self.last_latency = timer.summary()
+            health = await connector.health()
+            if isinstance(health, Mapping):
+                return bool(health.get("available", False))
+            return bool(getattr(health, "available", False))
+        except Exception as error:
+            self._record_failure(name, error)
+            return False
+
+    async def _search_one(
+        self,
+        name: str,
+        connector: SourceConnector,
+        request: SearchRequest,
+        timer: StageTimer,
+        timeout: float,
+    ) -> list[Evidence] | None:
+        stage = self._latency_stage(name, connector)
+        timer.start(stage)
+        try:
+            results = await asyncio.wait_for(connector.search_live(request), timeout=timeout)
+        except asyncio.TimeoutError:
+            timer.stop(stage, status="timeout")
+            self.last_timed_out_sources.append(name)
+            return None
+        except asyncio.CancelledError:
+            timer.stop(stage, status="cancelled")
+            self.last_timed_out_sources.append(name)
+            raise
+        except Exception as error:
+            timer.stop(stage, status="failed")
+            self._record_failure(name, error)
+            return None
+        timer.stop(stage)
+        return results
 
     async def _finalize(self, request: SearchRequest, evidence: list[Evidence]) -> list[Evidence]:
         fused = self.fuse(

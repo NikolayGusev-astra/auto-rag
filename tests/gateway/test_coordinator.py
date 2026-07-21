@@ -93,3 +93,31 @@ def test_memory_not_dominant_by_similarity():
     )
     fused = RetrievalCoordinator().fuse([memory, document])
     assert any(item.origin == EvidenceOrigin.LOCAL_SNAPSHOT for item in fused)
+
+
+@pytest.mark.asyncio
+async def test_parallel_partial_failure():
+    class FailingConnector:
+        source = "bad"
+
+        async def health(self):
+            return {"available": True}
+
+        async def search_live(self, request):
+            raise RuntimeError("boom")
+
+    class GoodConnector:
+        source = "good"
+
+        async def health(self):
+            return {"available": True}
+
+        async def search_live(self, request):
+            return [_evidence("g", 0.8)]
+
+    coordinator = RetrievalCoordinator({"bad": FailingConnector(), "good": GoodConnector()})
+    results = await coordinator.search(SearchRequest(query="q"))
+
+    assert [result.document_id for result in results] == ["g"]
+    assert "bad" in coordinator.last_failed_sources
+    assert "good" in coordinator.last_successful_sources
