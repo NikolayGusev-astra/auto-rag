@@ -54,7 +54,9 @@ class SearXNGConnector(SourceConnector):
 
     async def health(self) -> dict[str, object]:
         try:
-            resp = await self._client.get(f"{self._base}/health", timeout=5)
+            resp = await self._client.get(
+                f"{self._base}/search", params={"q": "health", "format": "json"}, timeout=5
+            )
             return {"source": self.source, "available": resp.status_code == 200}
         except Exception:
             return {"source": self.source, "available": False}
