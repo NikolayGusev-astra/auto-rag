@@ -62,6 +62,9 @@ async def handle_search(
         except Exception:
             pass  # DCD learn is best-effort, never blocks retrieval
 
+    # Usage logging (ADR-006 Step 5)
+    _log_usage(request, results, elapsed_ms, enricher is not None)
+
     return {
         "results": [asdict(result) for result in results],
         "trace": {
@@ -85,5 +88,14 @@ async def handle_search(
                 and len(results) > 0
                 and any(result.source != "memvid" for result in results)
             ),
+            "usage_logged": False,
         },
     }
+
+
+def _log_usage(request, results, elapsed_ms, enricher_enabled):
+    try:
+        from rag_core.gateway.usage_log import log_usage
+        log_usage(request.query, results, elapsed_ms)
+    except Exception:
+        pass
