@@ -2,7 +2,7 @@
 
 Corporate-first knowledge gateway for AI agents. MCP transport, structured Evidence, 8 live connectors — Jira, Confluence, Lodestone, Allowlisted Web, Hub, ZVec, SearXNG, Local Snapshot. Runs locally, degrades offline, 437 tests.
 
-![Architecture](infographic/auto-rag-architecture.svg)
+![Architecture](infographic/auto-rag-architecture.png)
 
 ## Start Here
 
