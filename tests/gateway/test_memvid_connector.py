@@ -68,26 +68,25 @@ async def test_handler_adds_memvid_to_connectors_when_enriching():
 
 
 @pytest.mark.asyncio
-async def test_memvid_hit_skips_corporate_search():
+async def test_memvid_runs_alongside_corporate_not_short_circuit():
     enricher = MemvidEnricher()
     enricher.persist_episode(enricher.build_episode("deploy payments", []))
-    corporate_health_called = False
+    corporate_called = False
 
     class CorporateConnector:
         source = "corporate"
 
         async def health(self):
-            nonlocal corporate_health_called
-            corporate_health_called = True
             return {"available": True}
 
         async def search_live(self, request):
-            raise AssertionError("corporate search must not run after a Memvid hit")
+            nonlocal corporate_called
+            corporate_called = True
+            return []
 
-    response = await handle_search(
-        SearchRequest(query="deploy"), {"corporate": CorporateConnector()}, enricher=enricher
+    coordinator = RetrievalCoordinator(
+        {"memvid": MemvidConnector(enricher), "corporate": CorporateConnector()}
     )
-
-    assert [result["source"] for result in response["results"]] == ["memvid"]
-    assert corporate_health_called is False
-    assert response["runtime"]["episode_persisted"] is False
+    results = await coordinator.search(SearchRequest(query="deploy payments", topk=3, include_web=False))
+    assert corporate_called, "corporate must run alongside memvid, not be skipped"
+    assert any(result.source == "memvid" for result in results)
