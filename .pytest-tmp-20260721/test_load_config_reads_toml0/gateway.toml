@@ -1,9 +1,0 @@
-version = 1
-knowledge_root = "./knowledge"
-local_snapshot = true
-web = false
-
-[sources.jira]
-kind = "jira"
-enabled = true
-credential_ref = "env:JIRA_TOKEN"

@@ -1,1 +1,0 @@
-{"query": "query", "plan_id": "plan", "selected_sources": ["local", "web"], "successful_sources": ["local"], "useful_document_ids": ["doc-1"], "result_count": 1, "latency_ms": 25, "agent_feedback": null, "explicit_success": null}

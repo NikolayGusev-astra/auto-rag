@@ -1,1 +1,0 @@
-{"schema_version": 1, "profile": {"provider_family": "f", "model_id": "model-a", "model_revision": "r", "dimension": 768, "normalized": true, "distance_metric": "cosine", "preprocessing_revision": "q-p-v1"}, "active_revision": "rev1", "cursor": null}
