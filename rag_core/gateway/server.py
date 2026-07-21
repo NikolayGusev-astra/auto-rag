@@ -38,8 +38,10 @@ from rag_core.gateway.sync.engine import SyncEngine
 MCP_SDK_INSTALL_MESSAGE = "MCP transport requires the official MCP SDK. Install it with: pip install 'auto-rag[gateway]'"
 
 
-def _factory_connectors(config_path: Path | None = None) -> dict[str, SourceConnector]:
-    return build_connectors(load_config(config_path))
+def _factory_connectors(
+    config_path: Path | None = None, *, enricher: MemvidEnricher | None = None
+) -> dict[str, SourceConnector]:
+    return build_connectors(load_config(config_path), enricher=enricher)
 
 
 def _sync_engine() -> SyncEngine:
@@ -121,9 +123,11 @@ def create_mcp_server(
     if FastMCP is None:
         raise ImportError(MCP_SDK_INSTALL_MESSAGE) from _MCP_IMPORT_ERROR
 
-    active_connectors = dict(connectors if connectors is not None else _factory_connectors(config_path))
-    engine = sync_engine or _sync_engine()
     enricher = MemvidEnricher(Path(os.getenv("RAG_ENRICHMENT_PATH", ".auto-rag-gateway/episodes.jsonl")))
+    active_connectors = dict(
+        connectors if connectors is not None else _factory_connectors(config_path, enricher=enricher)
+    )
+    engine = sync_engine or _sync_engine()
     embedding_url = os.getenv(
         "EMBED_URL", os.getenv("RAG_EMBED_URL", "http://localhost:1234/v1/embeddings")
     )

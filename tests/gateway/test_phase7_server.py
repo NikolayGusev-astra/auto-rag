@@ -13,8 +13,9 @@ def test_mcp_server_uses_factory_when_connectors_not_supplied(monkeypatch):
 
     captured = {}
 
-    def fake_build(config):
+    def fake_build(config, *, enricher=None):
         captured["config"] = config
+        captured["enricher"] = enricher
         return {"local_snapshot": object()}
 
     monkeypatch.setattr(server, "FastMCP", FakeMCP)
@@ -24,6 +25,7 @@ def test_mcp_server_uses_factory_when_connectors_not_supplied(monkeypatch):
 
     assert result.name == "auto-rag-gateway"
     assert captured["config"].knowledge_root == Path.home() / ".local" / "share" / "auto-rag"
+    assert captured["enricher"] is not None
 
 
 def test_mcp_search_uses_embedding_runtime_from_environment(monkeypatch):

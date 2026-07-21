@@ -6,12 +6,14 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from rag_core.gateway.config_schema import GatewayConfig, SourceConfig
+from rag_core.gateway.adaptive.enrichment import MemvidEnricher
 from rag_core.gateway.connector import SearchRequest, SourceConnector
 from rag_core.gateway.connectors.snapshot import LocalSnapshotConnector
 from rag_core.gateway.connectors.confluence_connector import ConfluenceConnector
 from rag_core.gateway.connectors.hub_connector import HubConnector
 from rag_core.gateway.connectors.jira_connector import JiraConnector
 from rag_core.gateway.connectors.mcp_proxy import GenericMcpConnector
+from rag_core.gateway.connectors.memvid_connector import MemvidConnector
 from rag_core.gateway.connectors.zvec_http import ZVecHttpConnector
 from rag_core.gateway.connectors.web_search import WebSearchConnector
 from rag_core.gateway.connectors.searxng import SearXNGConnector
@@ -78,24 +80,40 @@ class ConnectorMap(dict[str, SourceConnector]):
         self.diagnostics: list[str] = []
 
 
-def build_connectors(config: GatewayConfig) -> dict[str, SourceConnector]:
+def build_connectors(
+    config: GatewayConfig, *, enricher: MemvidEnricher | None = None
+) -> dict[str, SourceConnector]:
     connectors = ConnectorMap()
     engine = SyncEngine(config.knowledge_root)
+    memvid_config = config.sources.get("memvid")
+    if enricher is not None and (memvid_config is None or memvid_config.enabled):
+        connectors["memvid"] = MemvidConnector(enricher)
     if config.local_snapshot:
         connectors["local_snapshot"] = LocalSnapshotConnector(engine, "local_snapshot")
     for name, source in config.sources.items():
-        if not source.enabled:
+        if not source.enabled or source.kind == "memvid":
             continue
-        connector = _build_source(name, source, connectors.diagnostics)
+        connector = _build_source(name, source, connectors.diagnostics, enricher=enricher)
         if connector is not None:
             connectors[name] = connector
     return connectors
 
 
-def _build_source(name: str, source: SourceConfig, diagnostics: list[str]) -> SourceConnector | None:
-    if source.kind not in {"jira", "confluence", "hub", "wiki", "mcp", "mcp-proxy", "zvec", "web-search", "searxng", "web-browser"}:
+def _build_source(
+    name: str,
+    source: SourceConfig,
+    diagnostics: list[str],
+    *,
+    enricher: MemvidEnricher | None = None,
+) -> SourceConnector | None:
+    if source.kind not in {"jira", "confluence", "hub", "wiki", "mcp", "mcp-proxy", "zvec", "web-search", "searxng", "web-browser", "memvid"}:
         diagnostics.append(f"skipped {name}: unsupported connector kind {source.kind!r}")
         return None
+    if source.kind == "memvid":
+        if enricher is None:
+            diagnostics.append(f"{name}: Memvid enricher is unavailable")
+            return None
+        return MemvidConnector(enricher)
     if source.kind == "web-search":
         return WebSearchConnector()
     if source.kind == "searxng":

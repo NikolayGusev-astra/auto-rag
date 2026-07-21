@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 
 import pytest
@@ -26,7 +27,6 @@ async def test_official_mcp_client_session_searches_published_local_snapshot(tmp
         from mcp.client.stdio import StdioServerParameters, stdio_client
     except ImportError:
         pytest.skip("installed MCP SDK does not provide the stdio client API")
-
     engine = SyncEngine(tmp_path)
     source = _PublishedSnapshotSource(
         SyncBatch(
@@ -61,6 +61,7 @@ async def test_official_mcp_client_session_searches_published_local_snapshot(tmp
     parameters = StdioServerParameters(
         command=sys.executable,
         args=["-m", "rag_core.gateway.server", "--config", str(cfg_path)],
+        env={**os.environ, "RAG_ENRICHMENT_PATH": str(tmp_path / "episodes.jsonl")},
     )
     async with stdio_client(parameters) as (read_stream, write_stream):
         async with mcp.ClientSession(read_stream, write_stream) as session:

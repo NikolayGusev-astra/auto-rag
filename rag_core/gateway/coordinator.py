@@ -31,12 +31,16 @@ class RetrievalCoordinator:
         self.last_failed_sources = []
         self.last_successful_sources = []
         self.last_timed_out_sources = []
-        health = await self.health_map()
-        evidence = []
+        evidence: list[Evidence] = []
         for name, connector in self._connectors.items():
             if self._is_web_connector(connector) and not request.include_web:
                 continue
-            if not health.get(name, False):
+            try:
+                available = await self._is_available(connector)
+            except Exception as error:
+                self._record_failure(name, error)
+                continue
+            if not available:
                 continue
             try:
                 results = await connector.search_live(request)
@@ -49,6 +53,11 @@ class RetrievalCoordinator:
             if results:
                 self.last_successful_sources.append(name)
                 evidence.extend(results)
+                if getattr(connector, "source", "").lower() == "memvid":
+                    return await self._finalize(request, evidence)
+        return await self._finalize(request, evidence)
+
+    async def _finalize(self, request: SearchRequest, evidence: list[Evidence]) -> list[Evidence]:
         fused = self.fuse(evidence)
         if self._reranker is not None:
             try:
