@@ -177,20 +177,26 @@ class CamoufoxConnector:
         async def _validate_route(route):
             nonlocal redirect_count, blocked
             req_url = route.request.url
+            # SSRF gate for EVERY request (subresources included)
             try:
                 _validate_url(req_url, allow_dns=self._allow_dns)
             except ValueError as exc:
                 blocked = True
-                logger.warning("Camoufox redirect blocked %s: %s", req_url, exc)
+                logger.warning("Camoufox SSRF blocked %s: %s", req_url, exc)
                 await route.abort()
                 return
 
-            redirect_count += 1
-            if self._max_redirects > 0 and redirect_count > self._max_redirects:
-                blocked = True
-                logger.warning("Camoufox max redirects (%d) exceeded for %s", self._max_redirects, url)
-                await route.abort()
-                return
+            # Redirect counter: only count navigation redirects, not subresources
+            if route.request.is_navigation_request():
+                redirected_from = route.request.redirected_from
+                if redirected_from is not None:
+                    redirect_count += 1
+                    if self._max_redirects > 0 and redirect_count > self._max_redirects:
+                        blocked = True
+                        logger.warning("Camoufox max redirects (%d) exceeded for %s",
+                                       self._max_redirects, url)
+                        await route.abort()
+                        return
             await route.continue_()
 
         try:
