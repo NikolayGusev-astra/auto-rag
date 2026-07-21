@@ -135,4 +135,5 @@ def _evidence(namespace: str, name: str, version: str, base_url: str, source: st
         source=source,
         uri=f"{base_url}/ui/repo/published/{namespace}/{name}",
         origin=EvidenceOrigin.LIVE_CORPORATE,
+        retrieval_score=0.5,
     )
