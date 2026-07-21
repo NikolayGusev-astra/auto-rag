@@ -53,8 +53,6 @@ class RetrievalCoordinator:
             if results:
                 self.last_successful_sources.append(name)
                 evidence.extend(results)
-                if getattr(connector, "source", "").lower() == "memvid":
-                    return await self._finalize(request, evidence)
         return await self._finalize(request, evidence)
 
     async def _finalize(self, request: SearchRequest, evidence: list[Evidence]) -> list[Evidence]:
