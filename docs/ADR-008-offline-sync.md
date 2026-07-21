@@ -2,7 +2,6 @@
 
 **Status:** Implemented
 **Date:** 2026-07-22
-**Implementation:** Phase 1 (Jira offline sync) implemented. Phase 2 (Confluence) pending.
 **Implementation:** Phase 1 (Jira offline sync) implemented. Phase 2 (Confluence) implemented.
 **Extends:** ADR-001 (knowledge gateway), ADR-004 (offline-capable), ADR-006 (sync engine)
 
