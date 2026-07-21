@@ -19,6 +19,7 @@ from rag_core.gateway.connectors.web_search import WebSearchConnector
 from rag_core.gateway.connectors.searxng import SearXNGConnector
 from rag_core.gateway.connectors.web_browser import CamoufoxConnector
 from rag_core.gateway.connectors.lodestone_connector import LodestoneConnector
+from rag_core.gateway.connectors.allowlisted_web import AllowlistedWebConnector
 from rag_core.gateway.secrets import resolve_credential
 from rag_core.gateway.sync.engine import SyncEngine
 
@@ -112,7 +113,7 @@ def _build_source(
     *,
     enricher: MemvidEnricher | None = None,
 ) -> SourceConnector | None:
-    if source.kind not in {"jira", "confluence", "hub", "wiki", "mcp", "mcp-proxy", "zvec", "web-search", "searxng", "web-browser", "memvid", "lodestone"}:
+    if source.kind not in {"jira", "confluence", "hub", "wiki", "mcp", "mcp-proxy", "zvec", "web-search", "searxng", "web-browser", "memvid", "lodestone", "allowlisted-web"}:
         diagnostics.append(f"skipped {name}: unsupported connector kind {source.kind!r}")
         return None
     if source.kind == "memvid":
@@ -127,6 +128,9 @@ def _build_source(
         return SearXNGConnector(base_url=base_url)
     if source.kind == "web-browser":
         return CamoufoxConnector()
+    if source.kind == "allowlisted-web":
+        url = source.extra.get("searxng_url", "http://localhost:8888")
+        return AllowlistedWebConnector(searxng_url=url)
     if source.kind == "lodestone":
         endpoint = source.extra.get("url", "")
         token = source.extra.get("token", "")
