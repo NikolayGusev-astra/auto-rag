@@ -1,4 +1,16 @@
-"""Live Jira retrieval through the Jira REST API."""
+"""Live Jira retrieval through the Jira REST API — full-content diagnostics edition.
+
+Exactly what changed (per the SIRIUS-195479 regression analysis):
+
+* Before: summary + description only. Comments, linked issues, and attachments were
+  missing from the indexed evidence.  Result: Auto-RAG could not answer questions
+  about OS versions, resolutions, or related tickets (all in comments).
+* After: exact-key hits fetch comments AND linked issues alongside the issue body.
+  The evidence text now contains the full comment thread; linked-issue keys and
+  summaries appear in metadata.  This closes the biggest gap found in the ЦБ РФ
+  investigation.
+"""
+
 from __future__ import annotations
 
 import re
@@ -20,7 +32,7 @@ class JiraConnector:
 
     async def search_live(self, request: SearchRequest) -> list[Evidence]:
         issue_key = _extract_issue_key(request.query)
-        jql_queries = []
+        jql_queries: list[str] = []
         if issue_key:
             jql_queries.append(f"issueKey={issue_key}")
         jql_queries.append(f'text~"{_escape_query(request.query)}"')
@@ -33,7 +45,7 @@ class JiraConnector:
                 params={
                     "jql": jql,
                     "maxResults": request.topk,
-                    "fields": "summary,description,updated",
+                    "fields": "summary,description,updated,issuelinks",
                 },
             )
             for issue in payload.get("issues", []):
@@ -42,7 +54,61 @@ class JiraConnector:
                     seen_keys.add(key)
                     issues.append(issue)
 
-        return [_evidence(issue, self._base, self.source) for issue in issues[: request.topk]]
+        evidence_list: list[Evidence] = []
+        for issue in issues[: request.topk]:
+            key = str(issue["key"])
+            comments_text = ""
+            linked: list[dict[str, str]] = []
+
+            # ── Exact-key enrichment: pull comments + linked issues ──
+            if issue_key and key == issue_key:
+                comments_text = await self._fetch_comments(key)
+                linked = await self._fetch_linked_issues(key)
+
+            ev = _evidence(issue, self._base, self.source, comments_text, linked)
+            evidence_list.append(ev)
+
+        return evidence_list
+
+    async def _fetch_comments(self, key: str) -> str:
+        """Pull the full comment thread for a single issue."""
+        try:
+            data = await self._get(f"/rest/api/2/issue/{key}/comment")
+            comments = data.get("comments", [])
+            if not comments:
+                return ""
+            parts: list[str] = []
+            for c in comments[:50]:  # guard against gigantic threads
+                author = (c.get("author") or {}).get("displayName", "unknown")
+                created = c.get("created", "")
+                body = c.get("body", "")
+                if isinstance(body, dict):
+                    body = body.get("content", str(body))
+                parts.append(f"[{created}] {author}: {body}")
+            return "\n\n".join(parts)
+        except Exception:
+            return ""
+
+    async def _fetch_linked_issues(self, key: str) -> list[dict[str, str]]:
+        """Pull linked-issue references (blocked by, relates to, etc.)."""
+        try:
+            data = await self._get(f"/rest/api/2/issue/{key}")
+            fields = data.get("fields") or {}
+            links = fields.get("issuelinks") or []
+            result: list[dict[str, str]] = []
+            for link in links[:20]:
+                link_type = (link.get("type") or {}).get("name", "relates to")
+                target = link.get("outwardIssue") or link.get("inwardIssue")
+                if target is None:
+                    continue
+                result.append({
+                    "key": str(target.get("key", "")),
+                    "summary": str((target.get("fields") or {}).get("summary", "")),
+                    "type": str(link_type),
+                })
+            return result
+        except Exception:
+            return []
 
     async def health(self) -> dict[str, object]:
         try:
@@ -79,20 +145,35 @@ def _extract_issue_key(query: str) -> str | None:
     return match.group(1) if match else None
 
 
-def _evidence(issue: dict[str, Any], base_url: str, source: str) -> Evidence:
+def _evidence(
+    issue: dict[str, Any],
+    base_url: str,
+    source: str,
+    comments: str = "",
+    linked: list[dict[str, str]] | None = None,
+) -> Evidence:
     fields = issue.get("fields") or {}
     key = str(issue["key"])
     summary = str(fields.get("summary") or "")
     description = fields.get("description") or ""
     if isinstance(description, dict):
         description = description.get("content") or ""
+
+    text = f"{summary}\n{description}"
+    if comments:
+        text += f"\n\n--- COMMENTS ---\n{comments}"
+
+    metadata: dict[str, Any] = {"updated": fields.get("updated")}
+    if linked:
+        metadata["linked_issues"] = linked
+
     return Evidence(
         id=f"{source}:{key}",
         document_id=key,
         title=summary,
-        text=f"{summary}\n{description}",
+        text=text,
         source=source,
         uri=f"{base_url}/browse/{key}",
         origin=EvidenceOrigin.LIVE_CORPORATE,
-        metadata={"updated": fields.get("updated")},
+        metadata=metadata,
     )

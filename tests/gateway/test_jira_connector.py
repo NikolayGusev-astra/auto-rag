@@ -32,7 +32,7 @@ async def test_search_live_maps_jira_issues():
         )
 
     assert get.await_args.kwargs == {
-        "params": {"jql": "text~\"search text\"", "maxResults": 3, "fields": "summary,description,updated"}
+        "params": {"jql": "text~\"search text\"", "maxResults": 3, "fields": "summary,description,updated,issuelinks"}
     }
     assert result[0].document_id == "PROJ-123"
     assert result[0].title == "Fix search"
@@ -59,14 +59,20 @@ async def test_search_live_merges_exact_issue_key_and_text_results():
             ]
         },
     )
+    empty_response = httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://jira.example.test/rest/api/2/issue/INT-6515/comment"),
+        json={"comments": []},
+    )
     with patch.object(
-        httpx.AsyncClient, "get", new=AsyncMock(side_effect=[exact_response, text_response])
+        httpx.AsyncClient, "get", new=AsyncMock(side_effect=[exact_response, text_response, empty_response, empty_response])
     ) as get:
         result = await JiraConnector("https://jira.example.test", "secret").search_live(
             SearchRequest(query="INT-6515", topk=2)
         )
 
-    assert [call.kwargs["params"]["jql"] for call in get.await_args_list] == [
+    jql_calls = [c for c in get.await_args_list if (c.kwargs.get("params") or {}).get("jql")]
+    assert [c.kwargs["params"]["jql"] for c in jql_calls] == [
         "issueKey=INT-6515",
         'text~"INT-6515"',
     ]
