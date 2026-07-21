@@ -6,7 +6,8 @@ import pytest
 
 from rag_core.eval_golden import (
     Qwen25Judge,
-    citation_correctness,
+    citation_hit_rate,
+    citation_precision,
     compute_mrr,
     compute_ndcg,
     compute_precision_at_k,
@@ -38,11 +39,16 @@ def test_source_coverage() -> None:
     assert coverage == {"wiki": 2 / 3, "drive": 1 / 3}
 
 
-def test_citation_correctness() -> None:
-    assert citation_correctness(["doc-1", "doc-2"], ["doc-2", "wrong"]) == 1.0  # found doc-2
-    assert citation_correctness(["doc-1"], ["wrong", "wrong2"]) == 0.0  # none found
-    assert citation_correctness([], []) == 1.0  # nothing expected
-    assert citation_correctness(["doc-1"], []) == 0.0  # expected but returned empty
+def test_citation_hit_rate() -> None:
+    assert citation_hit_rate(["doc-1", "doc-2"], ["doc-2", "wrong"]) == 1.0  # found doc-2
+    assert citation_hit_rate(["doc-1"], ["wrong", "wrong2"]) == 0.0  # none found
+    assert citation_hit_rate([], []) == 1.0  # nothing expected
+    assert citation_hit_rate(["doc-1"], []) == 0.0  # expected but returned empty
+
+
+def test_citation_precision() -> None:
+    assert citation_precision(["doc-1", "doc-2"], ["doc-2", "wrong"]) == 0.5
+    assert citation_precision([], []) == 1.0
 
 
 def test_empty_rate() -> None:

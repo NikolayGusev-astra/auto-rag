@@ -78,13 +78,21 @@ def compute_ndcg(expected: Sequence[str], scored_results: Sequence[Mapping[str, 
     return dcg / ideal_dcg if ideal_dcg else 0.0
 
 
-def citation_correctness(expected_ids: Sequence[str], returned_ids: Sequence[str]) -> float:
+def citation_hit_rate(expected_ids: Sequence[str], returned_ids: Sequence[str]) -> float:
     """Return 1.0 if any expected document appears in returned citations, else 0.0."""
     if not expected_ids:
         return 1.0
     if not returned_ids:
         return 0.0
     return 1.0 if set(expected_ids) & set(returned_ids) else 0.0
+
+
+def citation_precision(expected_ids: Sequence[str], returned_ids: Sequence[str]) -> float:
+    """Fraction of returned citations that are expected (exact ID match)."""
+    if not returned_ids:
+        return 1.0 if not expected_ids else 0.0
+    expected = set(expected_ids)
+    return sum(doc_id in expected for doc_id in returned_ids) / len(returned_ids)
 
 
 def source_coverage(results: Sequence[Mapping[str, Any]]) -> dict[str, float]:
@@ -130,7 +138,8 @@ def evaluate_retrieval(golden: Sequence[Mapping[str, Any]], results: Sequence[Ma
             "recall_at_k": compute_recall_at_k(expected_ids, returned_ids, k),
             "mrr": compute_mrr(expected_ids, returned_ids, k),
             "ndcg": compute_ndcg(expected_ids, result.get("scored_results", returned_ids), k),
-            "citation_correctness": citation_correctness(expected_ids, returned_ids),
+            "citation_hit_rate": citation_hit_rate(expected_ids, returned_ids),
+            "citation_precision": citation_precision(expected_ids, returned_ids),
             "empty_result": not returned_ids,
         })
 
@@ -143,7 +152,8 @@ def evaluate_retrieval(golden: Sequence[Mapping[str, Any]], results: Sequence[Ma
         "recall_at_k": average("recall_at_k"),
         "mrr": average("mrr"),
         "ndcg": average("ndcg"),
-        "citation_correctness": average("citation_correctness"),
+        "citation_hit_rate": average("citation_hit_rate"),
+        "citation_precision": average("citation_precision"),
         "source_coverage": source_coverage(results),
         "latency_s": latency_metrics([result.get("latency_s", 0.0) for result in results]),
         "empty_query_rate": sum(not str(item.get("query", "")).strip() for item in golden) / count if count else 0.0,
@@ -255,7 +265,7 @@ def regression_check(current: Mapping[str, Any], baseline: Mapping[str, Any] | N
     """Gate a release when deterministic metrics or completed judge scores regress."""
     if baseline is None:
         return {"passed": True, "reason": "no baseline supplied"}
-    deterministic = ("precision_at_k", "recall_at_k", "mrr", "ndcg", "citation_correctness")
+    deterministic = ("precision_at_k", "recall_at_k", "mrr", "citation_hit_rate", "citation_precision")
     regressions = [name for name in deterministic if current.get(name, 0.0) < baseline.get(name, 0.0)]
     current_judge = current.get("llm_judge", {})
     baseline_judge = baseline.get("llm_judge", {})
