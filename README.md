@@ -12,16 +12,19 @@ are unavailable.
 | Run local retrieval | [Quick Start](#quick-start-zvec) |
 | Understand the request flow | [Architecture](docs/ARCHITECTURE.md) |
 | Configure, operate and troubleshoot | [Operations Guide](docs/OPERATIONS.md) |
-| Enable episodic memory | [memvid Episodic Memory](#memvid-episodic-memory-semantic-cache) |
+| Architecture decisions | [ADR-006: Stabilization](docs/ADR-006-stabilization-before-expansion.md) |
 | Verify changes | [Tests](#tests) |
 
 ## Highlights
 
-- Local hybrid retrieval: ZVec (default, in-process HNSW) with ChromaDB as a local fallback vector store — both trusted-local, no external calls. Web retrieval is **opt-in** via `RAG_WEB_SPECULATIVE=1`.
-- DCD routing, MCP integrations and Web/Federation fallback paths.
-- SSRF-protected web retrieval and authenticated federation endpoints.
-- Persistent episodic semantic memory with LM Studio embeddings.
-- Structured `RagTrace`, golden-set evaluation and canary tooling.
+- **Corporate-first retrieval**: Jira (full comments + linked issues), Confluence (PDF extraction), Lodestone (corporate KB), Allowlisted Web (aldpro.ru/astralinux.ru). Generic web **disabled** by default.
+- **437 tests**: Jira, Confluence, Lodestone, allowlisted web, canonical dedup, doctor, latency, demo scenarios — all green.
+- Local hybrid retrieval: ZVec (default, in-process HNSW) with ChromaDB fallback.
+- `auto-rag doctor` — read-only health checks, JSON output, exit codes.
+- Stage-level latency diagnostics per connector.
+- Canonical document deduplication + exact ID/slug/title boost.
+- SSRF-protected web fetch, persistent episodic memory, golden-set evaluation.
+- Pre-commit guard against tracked artifacts (`scripts/precommit-guard.py`).
 
 ## Guarantees & Limitations
 
@@ -38,7 +41,7 @@ are unavailable.
 - Memory short-circuit is a cache, not a source of truth; stale episodes possible if index revision changes.
 - Single reference pipeline (`rag_async`); `rag_v2` and adapters are experimental.
 
-> **Architecture direction:** Auto-RAG is migrating from a full local-first RAG pipeline toward a **local offline-capable knowledge gateway for AI agents** (MCP-first, structured Evidence, online/offline source fusion, provider-independent model layer). See [`docs/ADR-001-knowledge-gateway.md`](docs/ADR-001-knowledge-gateway.md) and [`docs/ADR-002-model-runtime.md`](docs/ADR-002-model-runtime.md). The current `rag_async` pipeline is retained as the legacy/full-RAG profile during migration.
+> **Architecture direction:** Auto-RAG completed the migration to a **local offline-capable knowledge gateway for AI agents** (MCP-first, structured Evidence, corporate-first source priority). See [ADR-006](docs/ADR-006-stabilization-before-expansion.md). Retrieval core is frozen until ADR-007 (Managed Distribution).
 
 
 | | ZVec (default) | ChromaDB (fallback) |
@@ -91,9 +94,10 @@ python3 canary_deploy.py --quick
 
 ```
 Query → DCD Router (domain classification)
-  → [low confidence] → MCP fallback chain (Confluence → Jira → Context7 → Lodestone → Web)
-  → [high confidence] → ZVec/Chroma vector search → LLM verify → Answer
-  ↺ memvid episodic memory (short-circuit) — see below
+  → Corporate sources (Jira → Confluence → Lodestone → Allowlisted Web)
+  → Local sources (Hub → ZVec/Chroma vector search → Local Snapshot)
+  → BGE-M3 reranker → canonical dedup + exact boost → Evidence[]
+  ↺ memvid episodic memory (semantic cache)
 ```
 
 ### memvid Episodic Memory (semantic cache)
@@ -232,11 +236,18 @@ python3 canary_deploy.py --quick
 ## Tests
 
 ```bash
-# ZVec tests
-python3 -m pytest tests/ -v
+# Full suite — 437 passed, 5 skipped, 1 xfailed
+python -m pytest tests/ -q
 
-# ChromaDB tests
-python3 -m pytest chroma/tests/ -v
+# Pre-commit artifact guard
+python scripts/precommit-guard.py
 ```
 
-Reports saved as `golden_eval_report.json` with LLM-as-judge scoring and full RagTrace per question.
+Core test suites:
+- `tests/gateway/test_jira_connector.py` — Jira paginated comments + linked issues + error diagnostics
+- `tests/gateway/test_confluence_connector.py` — Confluence PDF extraction + content_status
+- `tests/gateway/test_lodestone_connector.py` — Lodestone MCP + structured parsing
+- `tests/gateway/test_allowlisted_web.py` — domain filtering + internal ID skip
+- `tests/gateway/test_canonical_identity.py` — dedup + exact ID/slug boost (10 tests)
+- `tests/gateway/test_doctor.py` — offline/full/degraded profiles (6 tests)
+- `tests/gateway/test_phase7_factory.py` — connector factory + credential_ref resolution

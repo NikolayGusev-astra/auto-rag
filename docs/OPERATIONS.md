@@ -1,8 +1,8 @@
 # Auto-RAG Gateway — Operations Guide
 
-> **Версия:** Phase 7 (20 июля 2026)  
-> **ADR:** [ADR-004](ADR-004-local-workstation-rag.md)  
-> **Тесты:** 368 passed, 5 skipped, 1 xfailed (commit `92a78d7`)
+> **Версия:** ADR-006 Stabilization (21 июля 2026)
+> **ADR:** [ADR-006](ADR-006-stabilization-before-expansion.md)
+> **Тесты:** 437 passed, 5 skipped, 1 xfailed (commit `d93cfab`)
 
 ## Быстрый старт — минимальный offline
 
@@ -17,11 +17,11 @@ pip install -e ".[gateway]"
 knowledge_root = "~/.local/share/auto-rag"
 local_snapshot = true
 web = false
-adaptive = false
+adaptive = true
 ```
 
 ```bash
-# Снапшот (wiki в локальный индекс)
+# Снапшот
 python -m rag_core.gateway sync --source local_snapshot
 
 # Запуск
@@ -35,9 +35,25 @@ hermes mcp add auto-rag \
 hermes mcp test auto-rag   # ✓ Connected
 ```
 
-## Опциональные источники (CURRENT)
+## Источники (все IMPLEMENTED)
 
-### Jira + Confluence + Hub
+| kind | Коннектор | Особенности |
+|------|----------|-------------|
+| `jira` | JiraConnector | Exact-key → paginated comments (≤500) + linked issues (≤5) + enrichment diagnostics |
+| `confluence` | ConfluenceConnector | Empty-body pages → PDF attachment extraction (pymupdf/pdfplumber). `content_status` metadata |
+| `lodestone` | LodestoneConnector | Corporate KB: wiki.astralinux.ru, aa-docs, aa-confluence. MCP HTTP |
+| `allowlisted-web` | AllowlistedWebConnector | SearXNG с domain filter: aldpro.ru, astralinux.ru. Подавлен для SIRIUS-*/INT-* |
+| `hub` | HubConnector | `env:HUB_TOKEN`, `env:HUB_BASE_URL` |
+| `zvec` | ZVecHttpConnector | ZVec сервер на `:8678` |
+| `searxng` | SearXNGConnector | `http://localhost:8888` |
+| `web` | WebSearchConnector | **DISABLED** — corporate-first policy |
+| `mcp-proxy` | GenericMcpConnector | Session factory инжектится в рантайме |
+
+`LocalSnapshotConnector` регистрируется автоматически при `local_snapshot=true`.
+
+Источники приоритета: Jira → Confluence → Lodestone → Allowlisted Web → Hub → ZVec → SearXNG. Web off.
+
+### Конфигурация
 
 ```toml
 [sources.jira]
@@ -54,6 +70,14 @@ credential_ref = "env:CONFLUENCE_PAT"
 kind = "hub"
 enabled = true
 credential_ref = "env:HUB_TOKEN"
+
+[sources.lodestone]
+kind = "lodestone"
+enabled = true
+
+[sources.allowlisted_web]
+kind = "allowlisted-web"
+enabled = true
 ```
 
 ```bash
@@ -68,101 +92,76 @@ hermes mcp add auto-rag \
   ...
 ```
 
-## Опциональные возможности (AVAILABLE)
+## Возможности
 
-### Реракер (AVAILABLE — требует LM Studio или CPU)
+### Реракер (BGE-M3)
 
-**LM Studio (BGE-M3):**
+**LM Studio:**
 ```bash
 --env EMBED_URL=http://localhost:1234/v1/embeddings
 --env EMBED_MODEL=text-embedding-baai-bge-m3-568m
 ```
 
-**CPU fallback (без LM Studio):**
+**CPU fallback:**
 ```bash
-pip install sentence-transformers   # ~1.5 GB скачает при первом запуске
+pip install sentence-transformers   # ~1.5 GB при первом запуске
 --env EMBED_MODEL=bge-m3
 --env CPU_EMBED_MODEL=intfloat/multilingual-e5-large
 ```
 
-**Без реранкера:** gateway работает, возвращает retrieval order без ошибок.
+Цепочка: LM Studio → CPU sentence-transformers → graceful degradation.
 
-**Цепочка:** LM Studio → CPU sentence-transformers → graceful degradation.
-
-### ZVec сервер (AVAILABLE)
+### auto-rag doctor
 
 ```bash
-python -m rag_core.zvec_server --port 8678 &
-
-# gateway.toml
-[sources.zvec]
-kind = "zvec"
-enabled = true
+python -m rag_core.gateway.doctor          # human-readable
+python -m rag_core.gateway.doctor --json   # machine-readable
 ```
 
-**Без AVX2:** `rag_core/chroma_adapter.py`
+Exit codes: 0=ready, 1=config error, 2=snapshot unavailable, 3=degraded.
 
-### DCD Routing (AVAILABLE)
-
-```bash
-# Обнаружение документации продуктов
-python -m rag_core.gateway discover
-
-# Обучение keyword→source аффинити из эпизодов
-python -m rag_core.gateway dcd-learn
-```
-
-Включить adaptive planner: `adaptive = true` в gateway.toml.
-
-### Eval Golden (AVAILABLE)
+### Eval Golden
 
 ```bash
 python -m rag_core.eval_golden           # детерминированные метрики
 python -m rag_core.eval_golden --judge   # + Qwen-2.5 judge
 ```
 
-Golden set: `~/wiki/eval/golden_set.jsonl`
+### DCD Routing
 
-### Новые MCP-источники (AVAILABLE — требует GenericMcpConnector)
-
-```toml
-[sources.bitbucket]
-kind = "mcp-proxy"
-enabled = true
-extra = { tool = "bitbucket_search_code", server = "bitbucket" }
+```bash
+python -m rag_core.gateway discover
+python -m rag_core.gateway dcd-learn   # ручное обучение
 ```
 
-## Коннекторы
+### Pre-commit Guard
 
-| kind | Статус | Коннектор | Требования |
-|------|--------|-----------|-----------|
-| `jira` | CURRENT | JiraConnector | `env:JIRA_PAT`, `env:JIRA_BASE_URL` |
-| `confluence` | CURRENT | ConfluenceConnector | `env:CONFLUENCE_PAT`, `env:CONFLUENCE_BASE_URL` |
-| `hub` | CURRENT | HubConnector | `env:HUB_TOKEN`, `env:HUB_BASE_URL` |
-| `zvec` | AVAILABLE | ZVecHttpConnector | ZVec сервер на `:8678` |
-| `mcp-proxy` | AVAILABLE | GenericMcpConnector | session factory инжектится в рантайме |
+```bash
+python scripts/precommit-guard.py        # проверка артефактов
+python scripts/precommit-guard.py --fix  # авто-очистка + .gitignore
+```
 
-`LocalSnapshotConnector` регистрируется автоматически при `local_snapshot=true`.
+Запрещены в tracked files: `.pytest-tmp-*`, `__pycache__`, `*.pyc`, `*.pyo`, `.mypy_cache`, `.ruff_cache`, `*.egg-info`, `dist/`.
 
 ## Портинг на другую машину
 
 1. `git clone` + `pip install -e ".[gateway]"`
 2. Скопировать `~/.config/auto-rag/gateway.toml` (поправить пути)
-3. Скопировать `~/wiki/rusbitech/`, `~/wiki/eval/`
-4. Настроить env-переменные в Hermes MCP регистрации
-5. Запустить ZVec-сервер: `python -m rag_core.zvec_server &` (опционально)
-6. `hermes mcp add auto-rag ...`
-7. Проверить: `hermes mcp test auto-rag` → `✓ Connected`
-8. Прогнать тесты: `python -m pytest tests -q`
+3. Настроить env-переменные в Hermes MCP регистрации
+4. `hermes mcp add auto-rag ...`
+5. `hermes mcp test auto-rag` → `✓ Connected`
+6. `python -m pytest tests -q` → 437 passed
 
 ## Troubleshooting
 
 | Симптом | Проверить |
 |---------|----------|
-| `ConnectorStub` в результатах | `credential_ref` разрешается? env-переменные установлены? |
+| `ConnectorStub` | `credential_ref` разрешается? env-переменные установлены? |
 | Пустой local_snapshot | `knowledge_root` существует? снапшот опубликован через `sync`? |
-| ZVec 503 | Сервер запущен на `:8678`? `/health` возвращает 200? |
-| LM Studio недоступен | `EMBED_URL` корректен? `NO_PROXY=*` установлен? CPU-fallback: `pip install sentence-transformers` |
-| Реракер не работает | LM Studio ИЛИ CPU fallback должны быть доступны. Graceful — retrieval order. |
-| Hermes не видит auto-rag | `hermes mcp list` → enabled? `--env` ДО `--args` в команде. |
-| 0 результатов Hub | `published` (11 коллекций) + `validated` (40). `astra.acm`, `astra.aa_controller` — в validated. |
+| Jira без комментариев | Exact key в запросе? `enrichment.comments_status` в metadata |
+| Confluence PDF пустой | `content_status` = `no_pdf`/`extraction_failed`? Есть PDF-вложения? |
+| Lodestone skipped | Транзиентная деградация. Jira+Confluence должны покрыть. |
+| ZVec 503 | Сервер на `:8678`? `/health` возвращает 200? |
+| Реракер не работает | LM Studio ИЛИ CPU fallback доступны. Graceful — retrieval order. |
+| Hermes не видит auto-rag | `hermes mcp list` → enabled? `--env` ДО `--args`. |
+| PYTHONPATH не установлен | MCP env: `PYTHONPATH=C:\Users\n.gusev\projects\auto-rag` |
