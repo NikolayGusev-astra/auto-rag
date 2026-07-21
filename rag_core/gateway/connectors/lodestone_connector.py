@@ -17,7 +17,7 @@ import httpx
 from rag_core.gateway.connector import SearchRequest
 from rag_core.gateway.models import Evidence, EvidenceOrigin, SyncBatch
 
-_DEFAULT_ENDPOINT = "https://lodestone.ai.astra-team.ru/mcp/"
+_DEFAULT_ENDPOINT = "https://lodestone.corp.example/mcp/"
 
 
 class LodestoneConnector:

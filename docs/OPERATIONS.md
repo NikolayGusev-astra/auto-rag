@@ -41,7 +41,7 @@ hermes mcp test auto-rag   # ✓ Connected
 |------|----------|-------------|
 | `jira` | JiraConnector | Exact-key → paginated comments (≤500) + linked issues (≤5) + enrichment diagnostics |
 | `confluence` | ConfluenceConnector | Empty-body pages → PDF attachment extraction (pymupdf/pdfplumber). `content_status` metadata |
-| `lodestone` | LodestoneConnector | Corporate KB: wiki.astralinux.ru, aa-docs, aa-confluence. MCP HTTP |
+| `lodestone` | LodestoneConnector | Corporate KB via MCP HTTP |
 | `allowlisted-web` | AllowlistedWebConnector | SearXNG с domain filter: aldpro.ru, astralinux.ru. Подавлен для SIRIUS-*/INT-* |
 | `hub` | HubConnector | `env:HUB_TOKEN`, `env:HUB_BASE_URL` |
 | `zvec` | ZVecHttpConnector | ZVec сервер на `:8678` |
@@ -84,11 +84,11 @@ enabled = true
 hermes mcp add auto-rag \
   --env JIRA_PAT=... \
   --env CONFLUENCE_PAT=... \
-  --env JIRA_BASE_URL=https://jira.astralinux.ru \
-  --env CONFLUENCE_BASE_URL=https://wiki.astralinux.ru \
+  --env JIRA_BASE_URL=https://jira.corp.example \
+  --env CONFLUENCE_BASE_URL=https://wiki.corp.example \
   --env HUB_TOKEN=... \
-  --env HUB_BASE_URL=https://hub.astra-automation.ru \
-  --env NO_PROXY=* \
+  --env HUB_BASE_URL=https://hub.corp.example \
+  --env NO_PROXY=127.0.0.1,localhost \
   ...
 ```
 
@@ -164,4 +164,4 @@ python scripts/precommit-guard.py --fix  # авто-очистка + .gitignore
 | ZVec 503 | Сервер на `:8678`? `/health` возвращает 200? |
 | Реракер не работает | LM Studio ИЛИ CPU fallback доступны. Graceful — retrieval order. |
 | Hermes не видит auto-rag | `hermes mcp list` → enabled? `--env` ДО `--args`. |
-| PYTHONPATH не установлен | MCP env: `PYTHONPATH=C:\Users\n.gusev\projects\auto-rag` |
+| PYTHONPATH не установлен | MCP env: `PYTHONPATH=C:\Users\<user>\projects\auto-rag` |

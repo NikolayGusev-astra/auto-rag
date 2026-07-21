@@ -29,7 +29,7 @@ Query → DCD Router (domain classification)
 |---|---|---|
 | **Jira** | live-corporate | Exact-key → paginated comments (≤500) + linked issues (≤5) + enrichment diagnostics |
 | **Confluence** | live-corporate | Empty-body pages → PDF attachment extraction (pymupdf). `content_status` metadata |
-| **Lodestone** | live-corporate | Corporate KB via MCP HTTP: wiki.astralinux.ru, aa-docs, aa-confluence |
+| **Lodestone** | live-corporate | Corporate KB via MCP HTTP |
 | **Allowlisted Web** | public-web | SearXNG with domain filter (aldpro.ru, astralinux.ru). Suppressed for SIRIUS-*/INT-* |
 | **Hub** | live-corporate | Astra Automation Hub — 51 code-deployment collections |
 | **ZVec** | local | In-process HNSW vector search (bge-m3, 1024d). AVX2 required. |
@@ -89,11 +89,11 @@ hermes mcp add auto-rag \
   --env JIRA_PAT=... \
   --env CONFLUENCE_PAT=... \
   --env HUB_TOKEN=... \
-  --env JIRA_BASE_URL=https://jira.astralinux.ru \
-  --env CONFLUENCE_BASE_URL=https://wiki.astralinux.ru \
-  --env HUB_BASE_URL=https://hub.astra-automation.ru \
-  --env PYTHONPATH=C:\Users\n.gusev\projects\auto-rag \
-  --env NO_PROXY=*
+  --env JIRA_BASE_URL=https://jira.corp.example \
+  --env CONFLUENCE_BASE_URL=https://wiki.corp.example \
+  --env HUB_BASE_URL=https://hub.corp.example \
+  --env PYTHONPATH=C:\Users\<user>\projects\auto-rag \
+  --env NO_PROXY=127.0.0.1,localhost
 
 hermes mcp test auto-rag   # ✓ Connected
 ```
