@@ -119,24 +119,49 @@ def extract_storage_text(page: dict[str, Any]) -> str:
 
 
 _PDF_EXTENSIONS = {".pdf"}
+_MAX_PDF_ATTACHMENTS = 10
 
 
-async def _extract_pdf_text(http: httpx.AsyncClient, base_url: str, page_id: str, attachments: list[dict[str, Any]]) -> tuple[str, str]:
-    for att in attachments:
+async def _extract_pdf_text(
+    http: httpx.AsyncClient, base_url: str, page_id: str, attachments: list[dict[str, Any]],
+) -> tuple[str, str, list[str]]:
+    """Extract text from ALL PDF attachments (up to _MAX_PDF_ATTACHMENTS).
+
+    Returns (combined_text, status, per_file_reports).
+    Status: "ok" (at least one extracted), "extraction_failed" (all failed),
+    "no_pdf" (no PDFs found).
+    """
+    pdf_attachments = [
+        att for att in attachments
+        if any(str(att.get("title", "")).lower().endswith(ext) for ext in _PDF_EXTENSIONS)
+    ][:_MAX_PDF_ATTACHMENTS]
+
+    if not pdf_attachments:
+        return "", "no_pdf", []
+
+    extracted: list[str] = []
+    reports: list[str] = []
+    any_success = False
+
+    for att in pdf_attachments:
         title = str(att.get("title") or "")
-        if not any(title.lower().endswith(ext) for ext in _PDF_EXTENSIONS):
-            continue
         try:
             url = f"{base_url}/download/attachments/{page_id}/{title}"
             resp = await http.get(url)
             resp.raise_for_status()
             text = _parse_pdf_bytes(resp.content)
             if text.strip():
-                return text, "ok"
-            return "", "extraction_failed:empty_pdf"
+                extracted.append(f"[{title}]\n{text.strip()}")
+                reports.append(f"{title}: ok ({len(text)} chars)")
+                any_success = True
+            else:
+                reports.append(f"{title}: extraction_failed:empty_pdf")
         except Exception as exc:
-            return "", f"extraction_failed:{exc!s}"[:200]
-    return "", "no_pdf"
+            reports.append(f"{title}: extraction_failed:{exc!s}"[:200])
+
+    if any_success:
+        return "\n\n---\n\n".join(extracted), "ok", reports
+    return "", "extraction_failed", reports
 
 
 def _parse_pdf_bytes(data: bytes) -> str:
@@ -203,6 +228,7 @@ async def _evidence(
 
     content_status = "body" if text.strip() else "empty"
     attachments_checked = False
+    metadata_extra: dict[str, Any] = {}
 
     attachments: list[dict[str, Any]] = []
     if not text.strip():
@@ -217,12 +243,14 @@ async def _evidence(
             attachments = []
 
         if attachments:
-            pdf_text, pdf_status = await _extract_pdf_text(http, base_url, page_id, attachments)
+            pdf_text, pdf_status, pdf_reports = await _extract_pdf_text(http, base_url, page_id, attachments)
             if pdf_text.strip():
                 text = f"[EXTRACTED FROM ATTACHED PDF]\n{pdf_text}"
                 content_status = "pdf_extracted"
+                metadata_extra["pdf_reports"] = pdf_reports
             else:
                 content_status = pdf_status
+                metadata_extra["pdf_reports"] = pdf_reports
         else:
             content_status = "no_pdf"  # body empty, no attachments found
 
@@ -237,6 +265,7 @@ async def _evidence(
         metadata={
             "content_status": content_status,
             "attachments_checked": attachments_checked,
+            **metadata_extra,
         },
     )
 

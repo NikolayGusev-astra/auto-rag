@@ -21,8 +21,17 @@ def test_internal_query_returns_false():
 
 def test_public_doc_query_returns_true():
     assert is_public_doc_query("матрица совместимости ALD Pro") is True
-    assert is_public_doc_query("как обновить контроллер домена") is True
-    assert is_public_doc_query("процедура обновления ALD Pro 3.2") is True
+    assert is_public_doc_query("инструкция по обновлению контроллера домена") is True
+    assert is_public_doc_query("руководство администратора Astra Linux") is True
+    assert is_public_doc_query("поддерживаемая версия ALD Pro") is True
+    assert is_public_doc_query("release notes 3.2.1") is True
+
+
+def test_public_doc_query_returns_false_for_generic():
+    """Generic operational queries without doc intent must be blocked."""
+    assert is_public_doc_query("как обновить контроллер домена") is False
+    assert is_public_doc_query("как отладить kerberos") is False
+    assert is_public_doc_query("что такое ansible role") is False
 
 
 def test_domain_query_builder():
@@ -57,7 +66,7 @@ async def test_public_query_searches():
         },
     )
     with patch.object(httpx.AsyncClient, "get", new=AsyncMock(return_value=resp)):
-        result = await c.search_live(SearchRequest(query="матрица обновлений ALD Pro", topk=3))
+        result = await c.search_live(SearchRequest(query="матрица совместимости ALD Pro", topk=3))
     assert len(result) == 1
     assert result[0].metadata["authoritative"] is True
     assert result[0].metadata["domain"] == "aldpro.ru"
@@ -78,6 +87,6 @@ async def test_search_discards_results_outside_the_allowlist():
     )
 
     with patch.object(httpx.AsyncClient, "get", new=AsyncMock(return_value=response)):
-        result = await connector.search_live(SearchRequest(query="ALD Pro guide", topk=1))
+        result = await connector.search_live(SearchRequest(query="руководство администратора Astra Linux", topk=1))
 
     assert [evidence.uri for evidence in result] == ["https://aldpro.ru/docs/guide"]

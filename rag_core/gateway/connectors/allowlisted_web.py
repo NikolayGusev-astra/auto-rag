@@ -26,20 +26,41 @@ _AUTHORITATIVE_DOMAINS = (
     "wiki.astralinux.ru",
 )
 
-
-def is_public_doc_query(query: str) -> bool:
-    """Return True when the query should trigger allowlisted public retrieval.
-
-    Excluded: exact Jira issue keys, internal project prefixes.
-    """
-    if _looks_like_internal(query):
-        return False
-    return True
-
-
 _INTERNAL_PATTERN = re.compile(
     r"\b(SIRIUS|BT|AD|PROJECT|PRESALE|INT|AKNO|NOVA)[- ]\d+\b", re.IGNORECASE
 )
+
+# ── Positive intent: only these query types trigger allowlisted web ─
+_PUBLIC_DOC_INTENT = re.compile(
+    r"\b("
+    r"матриц[аы]\s*совместимост[ией]|"
+    r"официальн[аяо][йе]\s*документаци[ия]|"
+    r"поряд[окк][а]?\s*обновлени[яй]|"
+    r"поддерживаем[аяо][яе]\s*верси[яи]|"
+    r"release\s*notes|"
+    r"инструкци[яи]\s*по\s*(установк[еи]|обновлени[ю]|настройк[еи]|миграци[и])|"
+    r"руководств[оа]\s*(администратор[ау]|пользовател[яю]|по\s*эксплуатаци[и])|"
+    r"системн[ыей]\s*требовани[яй]|"
+    r"известн[ыей]\s*проблем[ыа]|"
+    r"список\s*изменени[йя]|"
+    r"changelog|"
+    r"лицензионн[оа][егой]?|"
+    r"сертифика[тц]\s*(соответстви[яй]|ФСТЭК)"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def is_public_doc_query(query: str) -> bool:
+    """Return True when the query triggers allowlisted public retrieval.
+
+    Requires BOTH:
+    1. Positive intent match (documentation/release/compatibility topic)
+    2. Not an internal ticket ID
+    """
+    if _looks_like_internal(query):
+        return False
+    return bool(_PUBLIC_DOC_INTENT.search(query))
 
 
 def _looks_like_internal(query: str) -> bool:
