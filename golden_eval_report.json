@@ -1,16 +1,17 @@
 {
   "summary": {
     "evaluation_schema_version": "1.0",
-    "queries": 105,
-    "precision_at_k": 0.15428571428571405,
-    "recall_at_k": 0.7714285714285715,
-    "mrr": 0.6984126984126985,
-    "ndcg": 0.7174573004761943,
-    "citation_correctness": 0.49476190476190485,
+    "queries": 92,
+    "precision_at_k": 0.15869565217391282,
+    "recall_at_k": 0.7934782608695652,
+    "mrr": 0.6938405797101449,
+    "ndcg": 0.0,
+    "citation_correctness": 0.49347826086956526,
     "source_coverage": {
-      "jira": 0.6857142857142857,
-      "confluence": 0.6857142857142857,
-      "local_snapshot": 0.20952380952380953
+      "jira": 0.6956521739130435,
+      "confluence": 0.7391304347826086,
+      "local_snapshot": 0.2717391304347826,
+      "hub": 0.03260869565217391
     },
     "latency_s": {
       "p50": 0.0,
@@ -18,14 +19,14 @@
       "p99": 0.0
     },
     "empty_query_rate": 0.0,
-    "empty_result_rate": 0.01904761904761905,
+    "empty_result_rate": 0.0,
     "per_query": [
       {
         "query": "ACM-13951 контроль соответствия дистрибутиву версии 1.7 и 2.0",
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -34,7 +35,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -43,7 +44,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -52,7 +53,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -61,7 +62,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.3333333333333333,
         "empty_result": false
       },
@@ -70,7 +71,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -79,7 +80,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.2,
         "empty_result": false
       },
@@ -88,25 +89,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
-        "citation_correctness": 1.0,
-        "empty_result": false
-      },
-      {
-        "query": "ACM-13979 ACM 2.0 release notes",
-        "precision_at_k": 0.2,
-        "recall_at_k": 1.0,
-        "mrr": 1.0,
-        "ndcg": 1.0,
-        "citation_correctness": 1.0,
-        "empty_result": false
-      },
-      {
-        "query": "ACM-12112 ACM сертификация",
-        "precision_at_k": 0.2,
-        "recall_at_k": 1.0,
-        "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -115,7 +98,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -124,7 +107,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -133,7 +116,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -142,7 +125,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -151,7 +134,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.3333333333333333,
         "empty_result": false
       },
@@ -160,7 +143,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -169,7 +152,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.3333333333333333,
         "empty_result": false
       },
@@ -178,7 +161,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -187,7 +170,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -196,7 +179,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.2,
         "empty_result": false
       },
@@ -205,7 +188,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.2,
         "empty_result": false
       },
@@ -214,7 +197,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -223,7 +206,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -232,7 +215,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -241,7 +224,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.3333333333333333,
         "empty_result": false
       },
@@ -250,7 +233,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -259,7 +242,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -268,7 +251,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.25,
         "empty_result": false
       },
@@ -277,17 +260,8 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
-        "empty_result": false
-      },
-      {
-        "query": "MON-4488 AM 1.5 release",
-        "precision_at_k": 0.2,
-        "recall_at_k": 1.0,
-        "mrr": 1.0,
-        "ndcg": 1.0,
-        "citation_correctness": 0.2,
         "empty_result": false
       },
       {
@@ -295,7 +269,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.25,
         "empty_result": false
       },
@@ -304,7 +278,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -313,7 +287,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.25,
         "empty_result": false
       },
@@ -322,7 +296,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.3333333333333333,
         "empty_result": false
       },
@@ -331,7 +305,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -340,7 +314,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -349,7 +323,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -358,7 +332,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -367,7 +341,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -376,98 +350,8 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
-        "citation_correctness": 1.0,
-        "empty_result": false
-      },
-      {
-        "query": "AA-8773 аудит build/test кода",
-        "precision_at_k": 0.2,
-        "recall_at_k": 1.0,
-        "mrr": 1.0,
-        "ndcg": 1.0,
-        "citation_correctness": 0.5,
-        "empty_result": false
-      },
-      {
-        "query": "AA-8769 эпик аудита aa-setup",
-        "precision_at_k": 0.2,
-        "recall_at_k": 1.0,
-        "mrr": 1.0,
-        "ndcg": 1.0,
-        "citation_correctness": 0.2,
-        "empty_result": false
-      },
-      {
-        "query": "ACM-12834 ACM 1.5 changelog",
-        "precision_at_k": 0.2,
-        "recall_at_k": 1.0,
-        "mrr": 1.0,
-        "ndcg": 1.0,
-        "citation_correctness": 0.5,
-        "empty_result": false
-      },
-      {
-        "query": "ACM-13012 ACM миграция 1.5→1.6",
-        "precision_at_k": 0.2,
-        "recall_at_k": 1.0,
-        "mrr": 1.0,
-        "ndcg": 1.0,
-        "citation_correctness": 1.0,
-        "empty_result": false
-      },
-      {
-        "query": "MON-4320 AM мониторинг алертов",
-        "precision_at_k": 0.2,
-        "recall_at_k": 1.0,
-        "mrr": 1.0,
-        "ndcg": 1.0,
-        "citation_correctness": 1.0,
-        "empty_result": false
-      },
-      {
-        "query": "MON-4415 AM экспортер метрик",
-        "precision_at_k": 0.2,
-        "recall_at_k": 1.0,
-        "mrr": 1.0,
-        "ndcg": 1.0,
-        "citation_correctness": 1.0,
-        "empty_result": false
-      },
-      {
-        "query": "ALD-1234 ALD Pro сертификация",
-        "precision_at_k": 0.0,
-        "recall_at_k": 0.0,
-        "mrr": 0.0,
         "ndcg": 0.0,
-        "citation_correctness": 0.0,
-        "empty_result": false
-      },
-      {
-        "query": "ALD-2267 ALD Pro мультисайт",
-        "precision_at_k": 0.0,
-        "recall_at_k": 0.0,
-        "mrr": 0.0,
-        "ndcg": 0.0,
-        "citation_correctness": 0.0,
-        "empty_result": true
-      },
-      {
-        "query": "ACM-14200 ACM 2.0 roadmap",
-        "precision_at_k": 0.2,
-        "recall_at_k": 1.0,
-        "mrr": 1.0,
-        "ndcg": 1.0,
-        "citation_correctness": 0.5,
-        "empty_result": false
-      },
-      {
-        "query": "ACM-14150 ACM 2.0 API spec",
-        "precision_at_k": 0.2,
-        "recall_at_k": 1.0,
-        "mrr": 1.0,
-        "ndcg": 1.0,
-        "citation_correctness": 0.25,
+        "citation_correctness": 1.0,
         "empty_result": false
       },
       {
@@ -475,7 +359,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.2,
         "empty_result": false
       },
@@ -484,7 +368,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.25,
         "empty_result": false
       },
@@ -493,7 +377,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.2,
         "empty_result": false
       },
@@ -502,7 +386,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -511,7 +395,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -520,7 +404,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -529,7 +413,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -538,7 +422,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.2,
         "empty_result": false
       },
@@ -547,7 +431,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.3333333333333333,
         "empty_result": false
       },
@@ -556,7 +440,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.25,
         "empty_result": false
       },
@@ -565,7 +449,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.25,
         "empty_result": false
       },
@@ -574,7 +458,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.3333333333333333,
-        "ndcg": 0.5,
+        "ndcg": 0.0,
         "citation_correctness": 0.2,
         "empty_result": false
       },
@@ -583,7 +467,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -592,7 +476,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.2,
         "empty_result": false
       },
@@ -601,7 +485,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -610,7 +494,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -619,7 +503,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -628,7 +512,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -637,7 +521,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -646,7 +530,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -655,7 +539,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -664,7 +548,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -673,7 +557,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -682,7 +566,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -691,7 +575,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -700,7 +584,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -709,7 +593,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -718,7 +602,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -727,7 +611,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -736,7 +620,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 1.0,
         "empty_result": false
       },
@@ -876,15 +760,6 @@
         "empty_result": false
       },
       {
-        "query": "ACM версия коллекция hub 1.6.0 документация",
-        "precision_at_k": 0.0,
-        "recall_at_k": 0.0,
-        "mrr": 0.0,
-        "ndcg": 0.0,
-        "citation_correctness": 0.0,
-        "empty_result": false
-      },
-      {
         "query": "ALD Pro 3.3.0 ПМИ hub ald_pro",
         "precision_at_k": 0.0,
         "recall_at_k": 0.0,
@@ -903,29 +778,11 @@
         "empty_result": false
       },
       {
-        "query": "ACM 1.6.0 HTTP PXE загрузка",
-        "precision_at_k": 0.0,
-        "recall_at_k": 0.0,
-        "mrr": 0.0,
-        "ndcg": 0.0,
-        "citation_correctness": 0.0,
-        "empty_result": false
-      },
-      {
-        "query": "AA постустановочные проверки ПМИ 2.1",
-        "precision_at_k": 0.0,
-        "recall_at_k": 0.0,
-        "mrr": 0.0,
-        "ndcg": 0.0,
-        "citation_correctness": 0.0,
-        "empty_result": true
-      },
-      {
         "query": "ACM devops повышение версий 2.0.1",
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -943,7 +800,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 0.5,
-        "ndcg": 0.6309297535714575,
+        "ndcg": 0.0,
         "citation_correctness": 0.2,
         "empty_result": false
       },
@@ -952,7 +809,7 @@
         "precision_at_k": 0.2,
         "recall_at_k": 1.0,
         "mrr": 1.0,
-        "ndcg": 1.0,
+        "ndcg": 0.0,
         "citation_correctness": 0.5,
         "empty_result": false
       },
@@ -963,6 +820,33 @@
         "mrr": 0.0,
         "ndcg": 0.0,
         "citation_correctness": 0.0,
+        "empty_result": false
+      },
+      {
+        "query": "ald_pro",
+        "precision_at_k": 0.2,
+        "recall_at_k": 1.0,
+        "mrr": 0.5,
+        "ndcg": 0.0,
+        "citation_correctness": 0.2,
+        "empty_result": false
+      },
+      {
+        "query": "acm",
+        "precision_at_k": 0.2,
+        "recall_at_k": 1.0,
+        "mrr": 0.5,
+        "ndcg": 0.0,
+        "citation_correctness": 0.2,
+        "empty_result": false
+      },
+      {
+        "query": "aa_controller",
+        "precision_at_k": 0.2,
+        "recall_at_k": 1.0,
+        "mrr": 0.5,
+        "ndcg": 0.0,
+        "citation_correctness": 0.2,
         "empty_result": false
       }
     ]
@@ -982,15 +866,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "ACM-13951",
-          "title": "Разработка обновления руководства администратора по контролю",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "ACM-14029 повышение версии 34 сервисов до 2.0.1",
@@ -1006,15 +882,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "ACM-14029",
-          "title": "[devops] Разработка повышения версии сервисов до 2.0.1",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "ACM-13545 HTTP для PXE загрузки ACM 1.6.0",
@@ -1030,15 +898,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "ACM-13545",
-          "title": "HTTP для PXE загрузки",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "ACM-13114 известные ошибки urllib3",
@@ -1054,15 +914,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "ACM-13114",
-          "title": "[AL] Разработка \"Известные ошибки\" - версия urllib3",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "ACM-11517 ПМИ ACM 1.6.0",
@@ -1078,28 +930,10 @@
         "682752698"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "ACM-11517",
-          "title": "Разработка и актуализация документации для ACM 1.6.0",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "ACM-13409 документация ACM 2.0.0",
@@ -1114,23 +948,10 @@
         "682748311"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "ACM-13409",
-          "title": " [AL] Разработка релизной документации для 2.0.0",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "ACM-3412 нагрузочное тестирование HTTPS",
@@ -1148,38 +969,10 @@
         "405659100"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "ACM-3412",
-          "title": "Нагрузочное тестирование конфигурации ACM с HTTPS",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        },
-        {
-          "id": "469668974",
-          "title": "Поисковые запросы с 2022 года в Справочном центре.xlsx",
-          "score": 0
-        },
-        {
-          "id": "405659100",
-          "title": "Поисковые запросы с 2022 в Справочном центре.xlsx",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "ACM-7984 ACM presale задача",
@@ -1195,63 +988,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "ACM-7984",
-          "title": "Актуализация ПМИ ACM 1.3.0",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "ACM-13979 ACM 2.0 release notes",
-      "expected_document_ids": [
-        "ACM-13979"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [
-        "ACM-13979"
-      ],
-      "returned_sources": [
-        "jira"
-      ],
-      "scored_results": [
-        {
-          "id": "ACM-13979",
-          "title": "[scenario-service] Разработка API метода \"Клонирование шага ",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "ACM-12112 ACM сертификация",
-      "expected_document_ids": [
-        "ACM-12112"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [
-        "ACM-12112"
-      ],
-      "returned_sources": [
-        "jira"
-      ],
-      "scored_results": [
-        {
-          "id": "ACM-12112",
-          "title": "[QA] Тестирование миграции данных 1.5.0 после перехода на 1.",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "AA-8579 постустановочные проверки ПМИ aa-setup",
@@ -1267,15 +1004,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "AA-8579",
-          "title": "Разработать автоматизированные постустановочные проверки в a",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "AA-9028 aa-brest-laika AI-agent адаптация",
@@ -1291,15 +1020,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "AA-9028",
-          "title": "Адаптация aa-brest-laika под AI-agent инфраструктуру",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "AA-8530 сборка образов k8s release/2.1",
@@ -1314,23 +1035,10 @@
         "670443658"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "AA-8530",
-          "title": "Сборка всех необходимых образов для k8s и контейнеризированн",
-          "score": 0
-        },
-        {
-          "id": "670443658",
-          "title": "Release Scope - 2.1",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "AA-8847 Poetry версия CI vs lock",
@@ -1347,20 +1055,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "AA-8847",
-          "title": "Align Poetry version: lock generated by 2.3.3 (lock-version ",
-          "score": 0
-        },
-        {
-          "id": "AA-8769",
-          "title": "[CI/CD] aa-setup pipeline rework — speed, reliability, suppl",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "AA-2351 обновление awx Ansible Automation Platform",
@@ -1376,28 +1071,10 @@
         "293910094"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "AA-2351",
-          "title": "Обновление кода awx до последней версии Ansible Automation P",
-          "score": 0
-        },
-        {
-          "id": "563725848",
-          "title": "Change log - 2.0",
-          "score": 0
-        },
-        {
-          "id": "293910094",
-          "title": "Change log - 1.0-upd2",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "AA-8592 ARFA zvirt коллекция актуальность",
@@ -1413,15 +1090,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "AA-8592",
-          "title": "ARFA zvirt: проверить актуальность коллекции",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "AA-6260 ПМИ Astra Automation 2.0",
@@ -1437,28 +1106,10 @@
         "682752698"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "AA-6260",
-          "title": "Актуализация ПМИ для 2.0",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "AA-1117 AA пресейл задача",
@@ -1474,15 +1125,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "AA-1117",
-          "title": "Написать ansible роли для установки каждого компонента aa-co",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "AA-8373 анализ постустановочных проверок",
@@ -1499,20 +1142,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "AA-8373",
-          "title": "Подобрать список проверок, подлежащий автоматизации",
-          "score": 0
-        },
-        {
-          "id": "AA-8579",
-          "title": "Разработать автоматизированные постустановочные проверки в a",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "AA-8770 CI проверки fast stage",
@@ -1530,38 +1160,10 @@
         "423228323"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "AA-8770",
-          "title": "Add fast deterministic pre-gate (unit + drift-guards + lint ",
-          "score": 0
-        },
-        {
-          "id": "495597801",
-          "title": "changelog-4.7.8-rc1-full.html",
-          "score": 0
-        },
-        {
-          "id": "435335158",
-          "title": "changelog-4.7.7-rc4-full.html",
-          "score": 0
-        },
-        {
-          "id": "426291782",
-          "title": "changelog-4.7.7-rc3-full.html",
-          "score": 0
-        },
-        {
-          "id": "423228323",
-          "title": "changelog-4.7.7-rc2-full.html",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "MON-1726 ПМИ Astra Monitoring",
@@ -1579,38 +1181,10 @@
         "469668971"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "MON-1726",
-          "title": "Сформировать документ, содержащий ПМИ для АМ",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        },
-        {
-          "id": "469668974",
-          "title": "Поисковые запросы с 2022 года в Справочном центре.xlsx",
-          "score": 0
-        },
-        {
-          "id": "469668971",
-          "title": "Поисковые запросы в Справочном центре.xlsx",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "MON-4016 ПМИ AM 1.4 актуализация",
@@ -1626,15 +1200,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "MON-4016",
-          "title": "Обновление ПМИ под v. 1.4",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "MON-3885 документация AM Epic",
@@ -1649,23 +1215,10 @@
         "682748311"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "MON-3885",
-          "title": "Документация",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "MON-4550 единый Source of Truth документации AM",
@@ -1681,15 +1234,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "MON-4550",
-          "title": "Единый Source of Truth для документации",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "MON-4258 документация ЗПС агента",
@@ -1705,28 +1250,10 @@
         "469668974"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "MON-4258",
-          "title": "Описать в документации что агент может запускаться в режиме ",
-          "score": 0
-        },
-        {
-          "id": "469668971",
-          "title": "Поисковые запросы в Справочном центре.xlsx",
-          "score": 0
-        },
-        {
-          "id": "469668974",
-          "title": "Поисковые запросы с 2022 года в Справочном центре.xlsx",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "MON-4440 документация Termidesk exporter 1.5.0",
@@ -1742,15 +1269,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "MON-4440",
-          "title": "Актуализировать документацию Termidesk_exporter",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "MON-3076 ленивая загрузка графиков",
@@ -1767,20 +1286,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "MON-3076",
-          "title": "Реализовать ленивую загрузку и кеширование данных графиков",
-          "score": 0
-        },
-        {
-          "id": "MON-3280",
-          "title": "Оптимизация загрузки данных графиков на дашбордах",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "MON-4330 SSO через доменное имя Keycloak",
@@ -1797,33 +1303,10 @@
         "405659064"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "MON-4330",
-          "title": "Сбой входа по SSO через доменное имя при корректной работе п",
-          "score": 0
-        },
-        {
-          "id": "469668971",
-          "title": "Поисковые запросы в Справочном центре.xlsx",
-          "score": 0
-        },
-        {
-          "id": "469668974",
-          "title": "Поисковые запросы с 2022 года в Справочном центре.xlsx",
-          "score": 0
-        },
-        {
-          "id": "405659064",
-          "title": "Поисковые запросы с августа 2024 в Справочном центре.xlsx",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "MON-3839 документация типовая ВМ",
@@ -1839,64 +1322,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "MON-3839",
-          "title": "[docs] Описать в документации подготовку типовой ВМ для уста",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "MON-4488 AM 1.5 release",
-      "expected_document_ids": [
-        "MON-4488"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [
-        "MON-4488",
-        "435335158",
-        "426291782",
-        "423228323",
-        "407542513"
-      ],
-      "returned_sources": [
-        "jira",
-        "confluence"
-      ],
-      "scored_results": [
-        {
-          "id": "MON-4488",
-          "title": " Почистить Яндекс.Облако от неактуальных снэпшотов и виртуал",
-          "score": 0
-        },
-        {
-          "id": "435335158",
-          "title": "changelog-4.7.7-rc4-full.html",
-          "score": 0
-        },
-        {
-          "id": "426291782",
-          "title": "changelog-4.7.7-rc3-full.html",
-          "score": 0
-        },
-        {
-          "id": "423228323",
-          "title": "changelog-4.7.7-rc2-full.html",
-          "score": 0
-        },
-        {
-          "id": "407542513",
-          "title": "changelog-4.7.7-rc1-full.html",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "INT-6515 ревизия проектных артефактов",
@@ -1913,34 +1339,11 @@
         "682752698"
       ],
       "returned_sources": [
-        "jira",
         "local_snapshot",
+        "jira",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:queries/2026-07-10-int-6515-artifact-audit",
-          "title": "2026 07 10 int 6515 artifact audit",
-          "score": 1.0
-        },
-        {
-          "id": "INT-6515",
-          "title": "Ревизия проектных артефактов",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "PRESALE-9943 ACM пресейл задача",
@@ -1956,15 +1359,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "PRESALE-9943",
-          "title": "ОЭК АО. Сопровождение и Presale мероприятия. Обновление стен",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "PRESALE-10513 ALD Pro Termidesk консультация",
@@ -1981,33 +1376,10 @@
         "local:rusbitech/products/alse"
       ],
       "returned_sources": [
-        "jira",
-        "local_snapshot"
+        "local_snapshot",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "local:rusbitech/products/ald-pro",
-          "title": "ald pro",
-          "score": 1.0
-        },
-        {
-          "id": "PRESALE-10513",
-          "title": "ПМО МИАЦ. Termidesk. Консультация заказчика по развертыванию",
-          "score": 0
-        },
-        {
-          "id": "local:rusbitech/cross/deployment",
-          "title": "deployment",
-          "score": 1.0
-        },
-        {
-          "id": "local:rusbitech/products/alse",
-          "title": "alse",
-          "score": 0.8
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "PRESALE-10885 АЛАБУГА внедрение ПМИ ACM",
@@ -2023,28 +1395,10 @@
         "local:rusbitech/products/acm"
       ],
       "returned_sources": [
-        "jira",
-        "local_snapshot"
+        "local_snapshot",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "local:rusbitech/customers/alabuga",
-          "title": "alabuga",
-          "score": 1.0
-        },
-        {
-          "id": "PRESALE-10885",
-          "title": "ООО АЛАБУГА МАШИНЕРИ. Внедрение. Разработка ПМИ для ACM - 12",
-          "score": 0
-        },
-        {
-          "id": "local:rusbitech/products/acm",
-          "title": "acm",
-          "score": 0.5555555555555556
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "POLLUX-31750 АТОМ Day пресейл",
@@ -2060,15 +1414,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "POLLUX-31750",
-          "title": "12-14.05_АТОМ Day_3-4 пресейла",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "POLLUX-24173 вебинар Astra Monitoring Тринити",
@@ -2084,15 +1430,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "POLLUX-24173",
-          "title": "14 августа / Вебинар и демонстрация - ОС + Astra Monitoring ",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "SIRIUS-118897 интеграция ALD PRO",
@@ -2109,20 +1447,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "SIRIUS-118897",
-          "title": "Интеграция с ALD PRO",
-          "score": 0
-        },
-        {
-          "id": "SIRIUS-194166",
-          "title": "Создание локального пользователя и назначение ему определенн",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "SIRIUS-115486 ALD Pro билет",
@@ -2139,20 +1464,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "SIRIUS-115486",
-          "title": "ALD PRO",
-          "score": 0
-        },
-        {
-          "id": "SIRIUS-119185",
-          "title": "Настройка папки общего доступа на файл-сервере",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "RAIT-5145 профиль нагрузочного тестирования AA",
@@ -2167,23 +1479,10 @@
         "682748311"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "RAIT-5145",
-          "title": "Astra Automation. Данные для профиля нагрузочного тестирован",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "SUP-58760 стенд VMmanager",
@@ -2199,332 +1498,7 @@
       "returned_sources": [
         "jira"
       ],
-      "scored_results": [
-        {
-          "id": "SUP-58760",
-          "title": "Стенд №1 - VMmanager",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "AA-8773 аудит build/test кода",
-      "expected_document_ids": [
-        "AA-8773"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [
-        "AA-8773",
-        "AA-8847"
-      ],
-      "returned_sources": [
-        "jira"
-      ],
-      "scored_results": [
-        {
-          "id": "AA-8773",
-          "title": "Vendor Poetry from internal Artifactory (remove public curl|",
-          "score": 0
-        },
-        {
-          "id": "AA-8847",
-          "title": "Align Poetry version: lock generated by 2.3.3 (lock-version ",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "AA-8769 эпик аудита aa-setup",
-      "expected_document_ids": [
-        "AA-8769"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [
-        "AA-8769",
-        "AA-8852",
-        "AA-8851",
-        "AA-8849",
-        "AA-8848"
-      ],
-      "returned_sources": [
-        "jira"
-      ],
-      "scored_results": [
-        {
-          "id": "AA-8769",
-          "title": "[CI/CD] aa-setup pipeline rework — speed, reliability, suppl",
-          "score": 0
-        },
-        {
-          "id": "AA-8852",
-          "title": "Execute the packaged binary in CI + add ruamel.yaml PyInstal",
-          "score": 0
-        },
-        {
-          "id": "AA-8851",
-          "title": "Add molecule idempotence check — the installer's core guaran",
-          "score": 0
-        },
-        {
-          "id": "AA-8849",
-          "title": "ansible.platform collection is unpinned (git HEAD) — ships a",
-          "score": 0
-        },
-        {
-          "id": "AA-8848",
-          "title": "Hardcoded container name buildContAASetup collides across th",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "ACM-12834 ACM 1.5 changelog",
-      "expected_document_ids": [
-        "ACM-12834"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [
-        "ACM-12834",
-        "296900514"
-      ],
-      "returned_sources": [
-        "jira",
-        "confluence"
-      ],
-      "scored_results": [
-        {
-          "id": "ACM-12834",
-          "title": "[QA] Разработка плана тестирования АСМ 2.0.0",
-          "score": 0
-        },
-        {
-          "id": "296900514",
-          "title": "oval-definitions-alse-4.7.xml",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "ACM-13012 ACM миграция 1.5→1.6",
-      "expected_document_ids": [
-        "ACM-13012"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [
-        "ACM-13012"
-      ],
-      "returned_sources": [
-        "jira"
-      ],
-      "scored_results": [
-        {
-          "id": "ACM-13012",
-          "title": "[QA] Разработка тестовых данных на стенде 1.6.0 в минимально",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "MON-4320 AM мониторинг алертов",
-      "expected_document_ids": [
-        "MON-4320"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [
-        "MON-4320"
-      ],
-      "returned_sources": [
-        "jira"
-      ],
-      "scored_results": [
-        {
-          "id": "MON-4320",
-          "title": "[Front] Окно ввода формулы в метриках \"сжирает\" все простран",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "MON-4415 AM экспортер метрик",
-      "expected_document_ids": [
-        "MON-4415"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [
-        "MON-4415"
-      ],
-      "returned_sources": [
-        "jira"
-      ],
-      "scored_results": [
-        {
-          "id": "MON-4415",
-          "title": "Поменять переменные GITLAB_HOST в пайплайнах",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "ALD-1234 ALD Pro сертификация",
-      "expected_document_ids": [
-        "ALD-1234"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [
-        "454070350",
-        "452190514",
-        "452190517",
-        "217428267",
-        "300452620"
-      ],
-      "returned_sources": [
-        "confluence"
-      ],
-      "scored_results": [
-        {
-          "id": "454070350",
-          "title": "MSR 04-2025-ALD Pro.pdf",
-          "score": 0
-        },
-        {
-          "id": "452190514",
-          "title": "MSR 04-2025-ALD Pro.docx",
-          "score": 0
-        },
-        {
-          "id": "452190517",
-          "title": "MSR 04-2025-ALD Pro.pdf",
-          "score": 0
-        },
-        {
-          "id": "217428267",
-          "title": "Цели 2023 кв 4",
-          "score": 0
-        },
-        {
-          "id": "300452620",
-          "title": "IK_ASTRA_life.xlsx",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "ALD-2267 ALD Pro мультисайт",
-      "expected_document_ids": [
-        "ALD-2267"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [],
-      "returned_sources": [],
-      "scored_results": [],
-      "empty_result": true,
-      "latency_s": 0
-    },
-    {
-      "query": "ACM-14200 ACM 2.0 roadmap",
-      "expected_document_ids": [
-        "ACM-14200"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [
-        "ACM-14200",
-        "495597801"
-      ],
-      "returned_sources": [
-        "jira",
-        "confluence"
-      ],
-      "scored_results": [
-        {
-          "id": "ACM-14200",
-          "title": "[AL] Разработка процесса получения адресов репозиториев и фа",
-          "score": 0
-        },
-        {
-          "id": "495597801",
-          "title": "changelog-4.7.8-rc1-full.html",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "ACM-14150 ACM 2.0 API spec",
-      "expected_document_ids": [
-        "ACM-14150"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [
-        "ACM-14150",
-        "405659064",
-        "340403882",
-        "296900514"
-      ],
-      "returned_sources": [
-        "jira",
-        "confluence"
-      ],
-      "scored_results": [
-        {
-          "id": "ACM-14150",
-          "title": "Разработка запрета создания переменных с именами системных п",
-          "score": 0
-        },
-        {
-          "id": "405659064",
-          "title": "Поисковые запросы с августа 2024 в Справочном центре.xlsx",
-          "score": 0
-        },
-        {
-          "id": "340403882",
-          "title": "oval-definitions-alse-1.7.xml",
-          "score": 0
-        },
-        {
-          "id": "296900514",
-          "title": "oval-definitions-alse-4.7.xml",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "639737224 ПМИ ALD Pro 3.3.0",
@@ -2545,35 +1519,7 @@
         "local_snapshot",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:queries/2026-07-10-int-6515-artifact-audit",
-          "title": "2026 07 10 int 6515 artifact audit",
-          "score": 1.0
-        },
-        {
-          "id": "639737224",
-          "title": "3. ПМИ 3.3.0",
-          "score": 0
-        },
-        {
-          "id": "local:rusbitech/products/ald-pro",
-          "title": "ald pro",
-          "score": 0.6461538461538462
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "648249629 изменения в ПМИ ALD Pro 3.3.0",
@@ -2593,30 +1539,7 @@
         "local_snapshot",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:queries/2026-07-10-int-6515-artifact-audit",
-          "title": "2026 07 10 int 6515 artifact audit",
-          "score": 1.0
-        },
-        {
-          "id": "648249629",
-          "title": "Изменения в ПМИ для 3.3.0",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "639737096 документация ALD Pro 3.3.0",
@@ -2637,35 +1560,7 @@
         "local_snapshot",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:queries/2026-07-10-int-6515-artifact-audit",
-          "title": "2026 07 10 int 6515 artifact audit",
-          "score": 1.0
-        },
-        {
-          "id": "639737096",
-          "title": "[в работе] 3.33 ALD Pro - Документация версии 3.3.0",
-          "score": 0
-        },
-        {
-          "id": "local:rusbitech/products/ald-pro",
-          "title": "ald pro",
-          "score": 0.639344262295082
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "639737097 Release Notes ALD Pro 3.3.0",
@@ -2683,20 +1578,7 @@
         "local_snapshot",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:queries/2026-07-10-int-6515-artifact-audit",
-          "title": "2026 07 10 int 6515 artifact audit",
-          "score": 1.0
-        },
-        {
-          "id": "639737097",
-          "title": "0. Release Notes 3.3.0",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "639737149 руководство администратора ALD Pro 3.3.0",
@@ -2712,15 +1594,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "639737149",
-          "title": "2. Руководство администратора 3.3.0",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "639737287 руководство пользователя ALD Pro 3.3.0",
@@ -2736,15 +1610,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "639737287",
-          "title": "4. Руководство пользователя 3.3.0",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "639737589 ФТТ ALD Pro 3.3.0",
@@ -2760,15 +1626,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "639737589",
-          "title": "9. ФТТ 3.3.0",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "221420993 документация ACM",
@@ -2786,38 +1644,10 @@
         "682748311"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "SIRIUS-104928",
-          "title": "ACM",
-          "score": 0
-        },
-        {
-          "id": "221420993",
-          "title": "3. ACM  - Документация",
-          "score": 0
-        },
-        {
-          "id": "SUP-63720",
-          "title": "Изучение ACM",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "604953189 документация ACM версии 1.6.0",
@@ -2835,25 +1665,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "604953189",
-          "title": "3.1 ACM  - Документация версии 1.6.0",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "682737386 ПМИ Astra Automation 0601",
@@ -2873,30 +1685,7 @@
         "local_snapshot",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:queries/2026-07-10-int-6515-artifact-audit",
-          "title": "2026 07 10 int 6515 artifact audit",
-          "score": 1.0
-        },
-        {
-          "id": "682737386",
-          "title": "20260715 — 0601. ПМИ Astra Automation",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "682737385 новые сценарии ТП AA",
@@ -2916,30 +1705,7 @@
         "local_snapshot",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:rusbitech/products/astra-automation",
-          "title": "astra automation",
-          "score": 1.0
-        },
-        {
-          "id": "682737385",
-          "title": "20260715 — 0251. Astra Automation — Минимальная топология",
-          "score": 0
-        },
-        {
-          "id": "local:queries/2026-07-10-int-6515-artifact-audit",
-          "title": "2026 07 10 int 6515 artifact audit",
-          "score": 0.7692307692307693
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "253912119 технологическая карта Astra Automation",
@@ -2957,39 +1723,11 @@
         "682748311"
       ],
       "returned_sources": [
-        "jira",
         "local_snapshot",
+        "jira",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:rusbitech/products/astra-automation",
-          "title": "astra automation",
-          "score": 1.0
-        },
-        {
-          "id": "INT-3828",
-          "title": "Обучение Astra Automation - Константин Алиев",
-          "score": 0
-        },
-        {
-          "id": "253912119",
-          "title": "Технологическая карта Astra Automation",
-          "score": 0
-        },
-        {
-          "id": "INT-3825",
-          "title": "Обучение Astra Automation - Александр Лесняк",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "585668424 тест-план нагрузочного тестирования ALD Pro",
@@ -3006,20 +1744,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "585668424",
-          "title": "Тест-план 3.3.0",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "217441953 технологическая карта ALD Pro",
@@ -3037,38 +1762,10 @@
         "682752698"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "INT-2824",
-          "title": "Типовое развертывание ALD Pro с помощью ТК",
-          "score": 0
-        },
-        {
-          "id": "217441953",
-          "title": "Департамент внедрения ⬝ Технологические карты ALD Pro",
-          "score": 0
-        },
-        {
-          "id": "INT-5169",
-          "title": "Установка и настройка ALDPro в закрытом контуре",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "335060609 коллекция установки ACM",
@@ -3084,15 +1781,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "335060609",
-          "title": "Коллекция установки ACM",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "538887911 инструкция формирования релизной документации ACM",
@@ -3108,15 +1797,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "538887911",
-          "title": "Инструкция по формированию релизной документации",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "667352769 сценарий 0111 ALD Pro",
@@ -3133,20 +1814,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "667352769",
-          "title": "0111. ALD Pro — Один сайт, только DC",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "667352821 сценарий 0112 ALD Pro",
@@ -3162,15 +1830,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "667352821",
-          "title": "0112. ALD Pro — Один сайт, полная инсталляция",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "667352808 сценарий 0113 ALD Pro",
@@ -3186,15 +1846,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "667352808",
-          "title": "0113. ALD Pro — Мультисайт, только DC",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "667352797 сценарий 0114 ALD Pro",
@@ -3211,20 +1863,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "667352797",
-          "title": "0114. ALD Pro — Мультисайт, полная инсталляция",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "667352836 сценарий 0191 ACM",
@@ -3241,20 +1880,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "667352836",
-          "title": "0191. ACM — 1 сервер все в одном",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "667352825 сценарий 0192 ACM",
@@ -3270,15 +1896,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "667352825",
-          "title": "0192. ACM — распределенная конфигурация с одним сегментом",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "667352844 сценарий 0193 ACM",
@@ -3295,20 +1913,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "667352844",
-          "title": "0193. ACM — распределенная конфигурация с двумя и более сегм",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "667352803 сценарий 0251 AA",
@@ -3324,15 +1929,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "667352803",
-          "title": "0251. Astra Automation — Минимальная топология",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "667352843 сценарий 0252 AA",
@@ -3348,15 +1945,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "667352843",
-          "title": "0252. Astra Automation — Базовая топология",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "667352848 сценарий 0253 AA",
@@ -3372,15 +1961,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "667352848",
-          "title": "Технический проект. Сценарии технических решений ⬝ 0253. Ast",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "682752698 отчёт ревизии INT-6515",
@@ -3395,23 +1976,10 @@
         "682752698"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "INT-6515",
-          "title": "Ревизия проектных артефактов",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "682748311 страница задачи INT-6515",
@@ -3426,23 +1994,10 @@
         "682748311"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "INT-6515",
-          "title": "Ревизия проектных артефактов",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "604953413 RN ACM 1.6.0",
@@ -3458,15 +2013,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "604953413",
-          "title": "Release notes - Версия 1.6.0",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "221420979 раздел ACM разработка",
@@ -3482,15 +2029,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "221420979",
-          "title": "ACM",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "astra.ald_pro ALD Pro коллекция",
@@ -3508,39 +2047,11 @@
         "678855841"
       ],
       "returned_sources": [
-        "jira",
         "local_snapshot",
+        "jira",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:rusbitech/products/ald-pro",
-          "title": "ald pro",
-          "score": 1.0
-        },
-        {
-          "id": "AA-7548",
-          "title": "ARFA ald_pro: модуль dnsconfig ",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "AA-7053",
-          "title": "Документация АА. Проведение ревью Дополнительные материалы",
-          "score": 0
-        },
-        {
-          "id": "678855841",
-          "title": "Reference-репозитории типового развёртывания коллекций: дост",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "astra.acm ACM коллекция validated",
@@ -3561,35 +2072,7 @@
         "local_snapshot",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:rusbitech/cross/automation-hub",
-          "title": "automation hub",
-          "score": 1.0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "local:queries/2026-07-10-int-6515-artifact-audit",
-          "title": "2026 07 10 int 6515 artifact audit",
-          "score": 0.6666666666666666
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        },
-        {
-          "id": "local:rusbitech/products/acm",
-          "title": "acm",
-          "score": 0.5714285714285714
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "astra.aa_controller AA Controller коллекция",
@@ -3607,39 +2090,11 @@
         "626299024"
       ],
       "returned_sources": [
-        "jira",
         "local_snapshot",
+        "jira",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:rusbitech/products/astra-automation",
-          "title": "astra automation",
-          "score": 1.0
-        },
-        {
-          "id": "AA-3206",
-          "title": "Коллекция astra.aa_controller некорректно работает с кастомн",
-          "score": 0
-        },
-        {
-          "id": "682732458",
-          "title": "Автоматическое обновление коллекций в aa-full-ee",
-          "score": 0
-        },
-        {
-          "id": "AA-2786",
-          "title": "Документация AA. Сценарий управления контроллером через Ansi",
-          "score": 0
-        },
-        {
-          "id": "626299024",
-          "title": "2026.Q2 AA",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "astra.repo_mirror repo mirror коллекция",
@@ -3657,38 +2112,10 @@
         "AA-7405"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "AA-4749",
-          "title": "ARFA postgresql: зависимость от community.general 7.5.0",
-          "score": 0
-        },
-        {
-          "id": "639750976",
-          "title": "astra-automation-docs-2.0.pdf",
-          "score": 0
-        },
-        {
-          "id": "AA-7686",
-          "title": "Обеспечить совместимость набора коллекций с ALSE 1.7.9.UU1",
-          "score": 0
-        },
-        {
-          "id": "484593285",
-          "title": "astra-automation-docs-1.2-1-250.pdf",
-          "score": 0
-        },
-        {
-          "id": "AA-7405",
-          "title": "Обеспечить совместимость набора коллекций с ALSE 1.8.5",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "astra.etcd etcd коллекция",
@@ -3706,38 +2133,10 @@
         "AA-7687"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "AA-7686",
-          "title": "Обеспечить совместимость набора коллекций с ALSE 1.7.9.UU1",
-          "score": 0
-        },
-        {
-          "id": "353416730",
-          "title": "Статус коллекций Astra Automation",
-          "score": 0
-        },
-        {
-          "id": "AA-7405",
-          "title": "Обеспечить совместимость набора коллекций с ALSE 1.8.5",
-          "score": 0
-        },
-        {
-          "id": "324793446",
-          "title": "Реализуемые сценарии развертывания продуктов ГК Астра + парт",
-          "score": 0
-        },
-        {
-          "id": "AA-7687",
-          "title": "Обеспечить совместимость набора коллекций с ALSE 1.7.10",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "ald-pro ALD Pro продукт",
@@ -3755,39 +2154,11 @@
         "SIRIUS-122499"
       ],
       "returned_sources": [
-        "jira",
         "local_snapshot",
+        "jira",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:queries/2026-07-10-int-6515-artifact-audit",
-          "title": "2026 07 10 int 6515 artifact audit",
-          "score": 1.0
-        },
-        {
-          "id": "POLLUX-23858",
-          "title": "Демонстрация продуктов ALD PRO + ACM",
-          "score": 0
-        },
-        {
-          "id": "678873021",
-          "title": "План-график реализации сетевого МКЦ/МРД при ДДО ALD Pro <==>",
-          "score": 0
-        },
-        {
-          "id": "local:rusbitech/products/astra-automation",
-          "title": "astra automation",
-          "score": 0.29411764705882354
-        },
-        {
-          "id": "SIRIUS-122499",
-          "title": "Версионность продуктов входящих в состав решения ALD PRO",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "acm ACM продукт",
@@ -3805,39 +2176,11 @@
         "SARD-3017"
       ],
       "returned_sources": [
-        "jira",
         "local_snapshot",
+        "jira",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:queries/2026-07-10-int-6515-artifact-audit",
-          "title": "2026 07 10 int 6515 artifact audit",
-          "score": 1.0
-        },
-        {
-          "id": "SUP-50742",
-          "title": "Разработка Скрипта сопровождения Продукта ACM",
-          "score": 0
-        },
-        {
-          "id": "309217826",
-          "title": "ACM (Продукт 14)",
-          "score": 0
-        },
-        {
-          "id": "local:rusbitech/cross/automation-hub",
-          "title": "automation hub",
-          "score": 0.42857142857142855
-        },
-        {
-          "id": "SARD-3017",
-          "title": "Атлас. Скорректировать статистику по баг-трекеру по продукту",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "astra-automation Astra Automation продукт",
@@ -3855,39 +2198,11 @@
         "SUP-50869"
       ],
       "returned_sources": [
-        "jira",
         "local_snapshot",
+        "jira",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:queries/2026-07-10-int-6515-artifact-audit",
-          "title": "2026 07 10 int 6515 artifact audit",
-          "score": 1.0
-        },
-        {
-          "id": "SIRIUS-146384",
-          "title": "Загрузить последнюю версию продукта Astra Automation",
-          "score": 0
-        },
-        {
-          "id": "660794165",
-          "title": "Создание задач и их жизненный цикл в Astra Automation",
-          "score": 0
-        },
-        {
-          "id": "local:rusbitech/products/astra-monitoring",
-          "title": "astra monitoring",
-          "score": 0.8666666666666667
-        },
-        {
-          "id": "SUP-50869",
-          "title": "Обучение по продукту Astra Automation",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "astra-monitoring Astra Monitoring продукт",
@@ -3905,39 +2220,11 @@
         "SARD-1226"
       ],
       "returned_sources": [
-        "jira",
         "local_snapshot",
+        "jira",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:rusbitech/products/astra-monitoring",
-          "title": "astra monitoring",
-          "score": 1.0
-        },
-        {
-          "id": "POLLUX-12058",
-          "title": "Astra Monitoring - разработка продукта",
-          "score": 0
-        },
-        {
-          "id": "324794376",
-          "title": "ОКА. Мониторинг (Astra Monitoring)",
-          "score": 0
-        },
-        {
-          "id": "local:queries/2026-07-10-int-6515-artifact-audit",
-          "title": "2026 07 10 int 6515 artifact audit",
-          "score": 0.43333333333333335
-        },
-        {
-          "id": "SARD-1226",
-          "title": "Процесс по постановке Продукта Astra Monitoring на сопровожд",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "presale пресейл активность",
@@ -3955,38 +2242,10 @@
         "SD-7082"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "SUP-53527",
-          "title": "Конвертация задач SIRIUS->PRESALE(POLLUX)",
-          "score": 0
-        },
-        {
-          "id": "670452622",
-          "title": "Трансформация инженерных команд. Старт пресейл-проекта",
-          "score": 0
-        },
-        {
-          "id": "ATL-809",
-          "title": "Аналитика. Создать проект PRESALE в ServiceDesk - jira02 (Те",
-          "score": 0
-        },
-        {
-          "id": "493225417",
-          "title": "Статусы активных проектов ДИСТИ",
-          "score": 0
-        },
-        {
-          "id": "SD-7082",
-          "title": "Создать проект PRESALE в ServiceDesk - jira02 (Термидеск)",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "nova NOVA продукт",
@@ -4004,39 +2263,11 @@
         "670443542"
       ],
       "returned_sources": [
-        "jira",
         "local_snapshot",
+        "jira",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:rusbitech/products/nova",
-          "title": "nova",
-          "score": 1.0
-        },
-        {
-          "id": "POLLUX-31317",
-          "title": "Демонстрация продукта \"Боцман\"",
-          "score": 0
-        },
-        {
-          "id": "670442392",
-          "title": "Модель работы AI Enabling Team: поток, оценка и Jira (проект",
-          "score": 0
-        },
-        {
-          "id": "DESIGN-7601",
-          "title": "редизайн сайта Боцман",
-          "score": 0
-        },
-        {
-          "id": "670443542",
-          "title": "Цели НТП 2026Q3",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "rupost RuPost продукт",
@@ -4054,39 +2285,11 @@
         "COMDEP-52152"
       ],
       "returned_sources": [
-        "jira",
         "local_snapshot",
+        "jira",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:rusbitech/products/nova",
-          "title": "nova",
-          "score": 1.0
-        },
-        {
-          "id": "SIRIUS-178721",
-          "title": "Просьба заполнить ФТТ по продукту ruPost",
-          "score": 0
-        },
-        {
-          "id": "290908334",
-          "title": "RuPost (Продукт 6)",
-          "score": 0
-        },
-        {
-          "id": "local:rusbitech/products/keycloak",
-          "title": "keycloak",
-          "score": 1.0
-        },
-        {
-          "id": "COMDEP-52152",
-          "title": "Продление лицензии по по продуктам Rupost.",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "workspad WorksPad продукт",
@@ -4104,39 +2307,11 @@
         "159594900"
       ],
       "returned_sources": [
-        "jira",
         "local_snapshot",
+        "jira",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:rusbitech/products/workspad",
-          "title": "workspad",
-          "score": 1.0
-        },
-        {
-          "id": "LKN-9650",
-          "title": "Принадлежность продукта_бандлы RuPost+DX / WorksPad+DX",
-          "score": 0
-        },
-        {
-          "id": "290908335",
-          "title": "WorksPad (Продукт 7)",
-          "score": 0
-        },
-        {
-          "id": "SIRIUS-156194",
-          "title": "Техническая поддержка по продукту WorksPad",
-          "score": 0
-        },
-        {
-          "id": "159594900",
-          "title": "Наши продукты ⬝ WorksPad",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "alse ALSE продукт",
@@ -4154,39 +2329,11 @@
         "627836003"
       ],
       "returned_sources": [
-        "jira",
         "local_snapshot",
+        "jira",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:rusbitech/products/alse",
-          "title": "alse",
-          "score": 1.0
-        },
-        {
-          "id": "LKN-6921",
-          "title": "Скорректировать продукты ALSE в Справочнике продуктов",
-          "score": 0
-        },
-        {
-          "id": "423221344",
-          "title": "2025-03-07 Экзамен Баранова Георгия по продукту ОС ALSE КСЗ",
-          "score": 0
-        },
-        {
-          "id": "POLLUX-23147",
-          "title": "Координация тестирования продуктов с ALSE 1.8",
-          "score": 0
-        },
-        {
-          "id": "627836003",
-          "title": "Перечень пакетов продукта ALD Pro 3.2.0 и его зависимостей д",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "pollux POLLUX продукт",
@@ -4204,90 +2351,10 @@
         "VEGA-44194"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
-      ],
-      "scored_results": [
-        {
-          "id": "VEGA-46511",
-          "title": "POLLUX.Поле Состав продуктов",
-          "score": 0
-        },
-        {
-          "id": "450474185",
-          "title": "Маппинг Справочник продуктов и Pollux",
-          "score": 0
-        },
-        {
-          "id": "ATL-3164",
-          "title": "Замена поля \"Продукт ГК\" на поле \"Компоненты\" в Pollux для з",
-          "score": 0
-        },
-        {
-          "id": "293926126",
-          "title": "Унифицировать поля с продуктами в проектe Jira (Pollux)",
-          "score": 0
-        },
-        {
-          "id": "VEGA-44194",
-          "title": "Добавление продукта в Pollux/Заказ ДемоТП",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "ACM версия коллекция hub 1.6.0 документация",
-      "expected_document_ids": [
-        "astra.acm",
-        "604953189",
-        "ACM-11517"
-      ],
-      "expected_sources": [
-        "hub",
         "confluence",
         "jira"
       ],
-      "returned_document_ids": [
-        "682748311",
-        "682752698",
-        "373100835",
-        "628461253",
-        "655266434"
-      ],
-      "returned_sources": [
-        "confluence"
-      ],
-      "scored_results": [
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        },
-        {
-          "id": "373100835",
-          "title": "Справочник по решениям Группы Астра (актуальность 03.2025) +",
-          "score": 0
-        },
-        {
-          "id": "628461253",
-          "title": "Matrix_compatibility_Astra_02042026 - Группа Астра.pdf",
-          "score": 0
-        },
-        {
-          "id": "655266434",
-          "title": "Public_RoadMaps_AstraGroup_Q2_2026.pdf",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "ALD Pro 3.3.0 ПМИ hub ald_pro",
@@ -4308,25 +2375,7 @@
         "local_snapshot",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "local:queries/2026-07-10-int-6515-artifact-audit",
-          "title": "2026 07 10 int 6515 artifact audit",
-          "score": 1.0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "local:rusbitech/products/ald-pro",
-          "title": "ald pro",
-          "score": 0.6363636363636364
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "AA 2.0 контроллер коллекция hub документация",
@@ -4346,100 +2395,10 @@
         "593765344"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
-      ],
-      "scored_results": [
-        {
-          "id": "AA-6273",
-          "title": "Документация AA. Release notes 2.0.",
-          "score": 0
-        },
-        {
-          "id": "538890346",
-          "title": "03. Практическая часть AA 2.0",
-          "score": 0
-        },
-        {
-          "id": "290889940",
-          "title": "AA - продуктовые встречи",
-          "score": 0
-        },
-        {
-          "id": "670853911",
-          "title": "Алабуга. Astra Automation 2.0. Пилотирование. Технический пр",
-          "score": 0
-        },
-        {
-          "id": "593765344",
-          "title": "РХА - Astra Automation 2.0. Пилот. Технический проект",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "ACM 1.6.0 HTTP PXE загрузка",
-      "expected_document_ids": [
-        "ACM-13545"
-      ],
-      "expected_sources": [
+        "confluence",
         "jira"
       ],
-      "returned_document_ids": [
-        "670858466",
-        "648367601",
-        "604953323",
-        "660770301",
-        "678855265"
-      ],
-      "returned_sources": [
-        "confluence"
-      ],
-      "scored_results": [
-        {
-          "id": "670858466",
-          "title": "ПМИ ACM АС ИТП-С12-Э2 (исправленный)",
-          "score": 0
-        },
-        {
-          "id": "648367601",
-          "title": "v2_2026_05_20_ПМИ_ACM_1.6.0.pdf",
-          "score": 0
-        },
-        {
-          "id": "604953323",
-          "title": "v1_2026_03_12_ПМИ_ACM_1.6.0.pdf",
-          "score": 0
-        },
-        {
-          "id": "660770301",
-          "title": "v4_2026_05_29_Руководство_администратора_ACM_v1_6_0_Standard",
-          "score": 0
-        },
-        {
-          "id": "678855265",
-          "title": "ПМИ_ACM_АС_ИТП-С12-Э2_v3_исправленный.doc",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
-    },
-    {
-      "query": "AA постустановочные проверки ПМИ 2.1",
-      "expected_document_ids": [
-        "AA-8579"
-      ],
-      "expected_sources": [
-        "jira"
-      ],
-      "returned_document_ids": [],
-      "returned_sources": [],
-      "scored_results": [],
-      "empty_result": true,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "ACM devops повышение версий 2.0.1",
@@ -4454,23 +2413,10 @@
         "612611342"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "ACM-14029",
-          "title": "[devops] Разработка повышения версии сервисов до 2.0.1",
-          "score": 0
-        },
-        {
-          "id": "612611342",
-          "title": "Re: Техническое задание на разработку толстого клиента Astra",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "ALD Pro сценарий 0111 один сайт DC",
@@ -4488,38 +2434,10 @@
         "667352710"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "PRESALE-3341",
-          "title": "ГПК. Анализ опросников для ALDPro",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "632853572",
-          "title": "Генератор технических проектов",
-          "score": 0
-        },
-        {
-          "id": "159591117",
-          "title": "Технический проект. Сценарии технических решений",
-          "score": 0
-        },
-        {
-          "id": "667352710",
-          "title": "Технический проект. Сценарии технических решений",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "ACM сценарий 0191 один сервер",
@@ -4537,38 +2455,10 @@
         "632853572"
       ],
       "returned_sources": [
-        "jira",
-        "confluence"
+        "confluence",
+        "jira"
       ],
-      "scored_results": [
-        {
-          "id": "INT-5985",
-          "title": "Обновить технические сценарии продукта",
-          "score": 0
-        },
-        {
-          "id": "667352836",
-          "title": "0191. ACM — 1 сервер все в одном",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "410800723",
-          "title": "Опросник ACM",
-          "score": 0
-        },
-        {
-          "id": "632853572",
-          "title": "Генератор технических проектов",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "AA сценарий 0253 базовая конфигурация",
@@ -4585,20 +2475,7 @@
       "returned_sources": [
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "667352848",
-          "title": "Технический проект. Сценарии технических решений ⬝ 0253. Ast",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        }
-      ],
-      "empty_result": false,
-      "latency_s": 0
+      "empty_result": false
     },
     {
       "query": "ASTRA MONITORING документация 1.5.0",
@@ -4616,39 +2493,80 @@
         "SIRIUS-52146"
       ],
       "returned_sources": [
+        "confluence",
+        "jira"
+      ],
+      "empty_result": false
+    },
+    {
+      "query": "ald_pro",
+      "expected_document_ids": [
+        "astra.ald_pro"
+      ],
+      "expected_sources": [
+        "hub"
+      ],
+      "returned_document_ids": [
+        "local:rusbitech/products/ald-pro",
+        "astra.ald_pro",
+        "SIRIUS-115486",
+        "612880544",
+        "local:rusbitech/cross/automation-hub"
+      ],
+      "returned_sources": [
+        "local_snapshot",
+        "hub",
         "jira",
         "confluence"
       ],
-      "scored_results": [
-        {
-          "id": "SIRIUS-154295",
-          "title": "Предоставление документации по продукту Астра Мониторинг",
-          "score": 0
-        },
-        {
-          "id": "682752698",
-          "title": "Ревизия проектных артефактов — отчёт (20.07.2026)",
-          "score": 0
-        },
-        {
-          "id": "SIRIUS-47221",
-          "title": "Установка пакетов",
-          "score": 0
-        },
-        {
-          "id": "682748311",
-          "title": "INT-6515",
-          "score": 0
-        },
-        {
-          "id": "SIRIUS-52146",
-          "title": "1C обновление",
-          "score": 0
-        }
+      "empty_result": false
+    },
+    {
+      "query": "acm",
+      "expected_document_ids": [
+        "astra.acm"
       ],
-      "empty_result": false,
-      "latency_s": 0
+      "expected_sources": [
+        "hub"
+      ],
+      "returned_document_ids": [
+        "local:queries/2026-07-10-int-6515-artifact-audit",
+        "astra.acm",
+        "SIRIUS-193376",
+        "685311402",
+        "local:rusbitech/products/acm"
+      ],
+      "returned_sources": [
+        "local_snapshot",
+        "hub",
+        "jira",
+        "confluence"
+      ],
+      "empty_result": false
+    },
+    {
+      "query": "aa_controller",
+      "expected_document_ids": [
+        "astra.aa_controller"
+      ],
+      "expected_sources": [
+        "hub"
+      ],
+      "returned_document_ids": [
+        "local:rusbitech/products/astra-automation",
+        "astra.aa_controller",
+        "AA-1117",
+        "682748311",
+        "local:rusbitech/cross/automation-hub"
+      ],
+      "returned_sources": [
+        "local_snapshot",
+        "hub",
+        "jira",
+        "confluence"
+      ],
+      "empty_result": false
     }
   ],
-  "total_s": 865.6
+  "total_s": 735.2
 }
