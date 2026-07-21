@@ -121,3 +121,34 @@ async def test_parallel_partial_failure():
     assert [result.document_id for result in results] == ["g"]
     assert "bad" in coordinator.last_failed_sources
     assert "good" in coordinator.last_successful_sources
+
+
+def test_canonical_dedup_collapses_same_logical_document():
+    """Two evidence with different document_ids but same canonical_id → one output."""
+    # Both are Jira SIRIUS-195479 — different casing, same canonical_id = "jira:SIRIUS-195479"
+    high = Evidence(
+        id="live", document_id="SIRIUS-195479", title="t", text="x",
+        source="jira", origin=EvidenceOrigin.LIVE_CORPORATE, retrieval_score=0.9,
+    )
+    low = Evidence(
+        id="snapshot", document_id="sirius-195479", title="t", text="x",
+        source="jira", origin=EvidenceOrigin.LOCAL_SNAPSHOT, retrieval_score=0.5,
+    )
+    fused = RetrievalCoordinator().fuse([low, high])
+    assert len(fused) == 1
+    assert fused[0].id == "live"  # higher score wins
+    assert fused[0].retrieval_score == 0.9
+
+
+def test_canonical_dedup_keeps_different_documents():
+    """Different canonical_ids → both kept."""
+    a = Evidence(
+        id="a", document_id="SIRIUS-195479", title="t", text="x",
+        source="jira", origin=EvidenceOrigin.LIVE_CORPORATE, retrieval_score=0.9,
+    )
+    b = Evidence(
+        id="b", document_id="SIRIUS-195480", title="t", text="x",
+        source="jira", origin=EvidenceOrigin.LIVE_CORPORATE, retrieval_score=0.8,
+    )
+    fused = RetrievalCoordinator().fuse([a, b])
+    assert len(fused) == 2

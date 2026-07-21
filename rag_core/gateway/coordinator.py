@@ -180,7 +180,7 @@ class RetrievalCoordinator:
         )
 
     def fuse(self, evidence: Iterable[Evidence]) -> list[Evidence]:
-        best_by_document: dict[str, Evidence] = {}
+        best_by_canonical: dict[str, Evidence] = {}
         for item in evidence:
             if item.metadata.get("deprecated") or any(
                 not evidence_filter(item) for evidence_filter in self._filters
@@ -190,11 +190,12 @@ class RetrievalCoordinator:
             if item.reranker_score is not None:
                 final_score = 0.4 * item.retrieval_score + 0.6 * item.reranker_score
             scored = replace(item, final_score=round(final_score, 4))
-            current = best_by_document.get(scored.document_id)
+            dedup_key = scored.canonical_id or scored.document_id
+            current = best_by_canonical.get(dedup_key)
             if current is None or scored.final_score > current.final_score:
-                best_by_document[scored.document_id] = scored
+                best_by_canonical[dedup_key] = scored
         by_source: dict[str, list[Evidence]] = {}
-        for item in best_by_document.values():
+        for item in best_by_canonical.values():
             by_source.setdefault(item.source, []).append(item)
         for items in by_source.values():
             items.sort(key=lambda item: item.final_score, reverse=True)
