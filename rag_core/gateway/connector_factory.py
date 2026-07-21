@@ -128,8 +128,14 @@ def _build_source(
     if source.kind == "web-browser":
         return CamoufoxConnector()
     if source.kind == "lodestone":
+        endpoint = source.extra.get("url", "")
         token = source.extra.get("token", "")
-        return LodestoneConnector(token=token, source=name)
+        if not token:
+            try:
+                token = resolve_credential(source.credential_ref)
+            except KeyError:
+                token = ""
+        return LodestoneConnector(token=token, endpoint=endpoint, source=name)
     if source.kind == "zvec":
         base_url = source.extra.get("url", "http://127.0.0.1:8678")
         return ZVecHttpConnector(base_url=base_url)

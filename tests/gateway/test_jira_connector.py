@@ -62,11 +62,39 @@ async def test_search_live_merges_exact_issue_key_and_text_results():
     empty_response = httpx.Response(
         200,
         request=httpx.Request("GET", "https://jira.example.test/rest/api/2/issue/INT-6515/comment"),
-        json={"comments": []},
+        json={"comments": [], "total": 0},
     )
-    with patch.object(
-        httpx.AsyncClient, "get", new=AsyncMock(side_effect=[exact_response, text_response, empty_response, empty_response])
-    ) as get:
+    issue_detail = httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://jira.example.test/rest/api/2/issue/INT-6515"),
+        json={
+            "fields": {
+                "summary": "Exact",
+                "issuelinks": [
+                    {
+                        "type": {"name": "Связь"},
+                        "outwardIssue": {
+                            "key": "SIRIUS-189661",
+                            "fields": {"summary": "content-sync-plugin error"},
+                        },
+                    }
+                ],
+            },
+        },
+    )
+    linked_detail = httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://jira.example.test/rest/api/2/issue/SIRIUS-189661"),
+        json={
+            "fields": {
+                "summary": "content-sync-plugin error",
+                "description": "DB retried operation fix.",
+            },
+        },
+    )
+
+    side_effect = [exact_response, text_response, empty_response, issue_detail, linked_detail]
+    with patch.object(httpx.AsyncClient, "get", new=AsyncMock(side_effect=side_effect)) as get:
         result = await JiraConnector("https://jira.example.test", "secret").search_live(
             SearchRequest(query="INT-6515", topk=2)
         )
@@ -77,6 +105,38 @@ async def test_search_live_merges_exact_issue_key_and_text_results():
         'text~"INT-6515"',
     ]
     assert [evidence.document_id for evidence in result] == ["INT-6515", "INT-6516"]
+
+    # Enrichment metadata on exact match
+    exact = result[0]
+    enrichment = exact.metadata.get("enrichment", {})
+    assert enrichment["comments_total"] == 0
+    assert enrichment["comments_loaded"] == 0
+    assert enrichment["comments_status"] == "ok"
+    assert enrichment["linked_issues_loaded"] == 1
+    assert "SIRIUS-189661" in exact.text
+
+
+@pytest.mark.asyncio
+async def test_comments_error_diagnostics():
+    """When Jira returns 403 for comments, metadata captures the error."""
+    search_resp = httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://jira.example.test/rest/api/2/search"),
+        json={"issues": [{"key": "BUG-1", "fields": {"summary": "Broken"}}]},
+    )
+    with patch.object(httpx.AsyncClient, "get", new=AsyncMock(side_effect=[
+        search_resp,  # issueKey search
+        search_resp,  # text search
+        httpx.HTTPError("403 Forbidden"),  # comments fail
+    ])):
+        result = await JiraConnector("https://jira.example.test", "secret").search_live(
+            SearchRequest(query="BUG-1", topk=1)
+        )
+
+    assert len(result) == 1
+    enrichment = result[0].metadata.get("enrichment", {})
+    assert enrichment["comments_status"] == "failed"
+    assert "403" in enrichment.get("comments_error", "")
 
 
 @pytest.mark.asyncio

@@ -1,14 +1,12 @@
-"""Live Jira retrieval through the Jira REST API — full-content diagnostics edition.
+"""Live Jira retrieval — full-content diagnostics edition.
 
-Exactly what changed (per the SIRIUS-195479 regression analysis):
+What changed (SIRIUS-195479 regression fix):
 
-* Before: summary + description only. Comments, linked issues, and attachments were
-  missing from the indexed evidence.  Result: Auto-RAG could not answer questions
-  about OS versions, resolutions, or related tickets (all in comments).
-* After: exact-key hits fetch comments AND linked issues alongside the issue body.
-  The evidence text now contains the full comment thread; linked-issue keys and
-  summaries appear in metadata.  This closes the biggest gap found in the ЦБ РФ
-  investigation.
+* Exact-key hits fetch paginated comments (configurable cap) + linked issues
+  with their summaries/descriptions.
+* Error metadata: if comment/linked-issue enrichment fails, the evidence
+  carries ``enrichment_status`` so silence is never mistaken for completeness.
+* Comment count + loaded count are always recorded.
 """
 
 from __future__ import annotations
@@ -21,6 +19,12 @@ import httpx
 from rag_core.gateway.connector import SearchRequest
 from rag_core.gateway.models import Evidence, EvidenceOrigin, SyncBatch
 
+# ── Tunables ──────────────────────────────────────────────────────
+_MAX_COMMENTS = 50       # per page    → Jira default page size
+_MAX_COMMENT_PAGES = 10  # max pages   → 500 comments total
+_MAX_LINKED = 5          # linked issues whose content we fetch
+# ───────────────────────────────────────────────────────────────────
+
 
 class JiraConnector:
     retrieval_kind = "live"
@@ -29,6 +33,8 @@ class JiraConnector:
         self._base = base_url.rstrip("/")
         self._token = token
         self.source = source
+
+    # ── search_live ────────────────────────────────────────────────
 
     async def search_live(self, request: SearchRequest) -> list[Evidence]:
         issue_key = _extract_issue_key(request.query)
@@ -57,58 +63,120 @@ class JiraConnector:
         evidence_list: list[Evidence] = []
         for issue in issues[: request.topk]:
             key = str(issue["key"])
+
+            enrichment: dict[str, Any] = {
+                "comments_total": 0,
+                "comments_loaded": 0,
+                "comments_status": "ok",
+                "linked_issues_loaded": 0,
+                "linked_issues_status": "ok",
+            }
+
             comments_text = ""
-            linked: list[dict[str, str]] = []
+            linked_meta: list[dict[str, str]] = []
+            linked_content: list[dict[str, str]] = []
 
-            # ── Exact-key enrichment: pull comments + linked issues ──
             if issue_key and key == issue_key:
-                comments_text = await self._fetch_comments(key)
-                linked = await self._fetch_linked_issues(key)
+                comments_text, c_total, c_loaded, c_err = await self._fetch_comments(key)
+                enrichment["comments_total"] = c_total
+                enrichment["comments_loaded"] = c_loaded
+                if c_err:
+                    enrichment["comments_status"] = "failed"
+                    enrichment["comments_error"] = c_err
 
-            ev = _evidence(issue, self._base, self.source, comments_text, linked)
+                linked_meta, linked_content, lk_loaded, lk_err = await self._fetch_linked_issues(key)
+                enrichment["linked_issues_loaded"] = lk_loaded
+                if lk_err:
+                    enrichment["linked_issues_status"] = "failed"
+                    enrichment["linked_issues_error"] = lk_err
+
+            ev = _evidence(
+                issue, self._base, self.source,
+                comments_text, linked_meta, linked_content, enrichment,
+            )
             evidence_list.append(ev)
 
         return evidence_list
 
-    async def _fetch_comments(self, key: str) -> str:
-        """Pull the full comment thread for a single issue."""
-        try:
-            data = await self._get(f"/rest/api/2/issue/{key}/comment")
+    # ── comments (paginated) ───────────────────────────────────────
+
+    async def _fetch_comments(self, key: str) -> tuple[str, int, int, str]:
+        """Return (text, total, loaded, error_or_empty).  Paginated up to 10 pages."""
+        parts: list[str] = []
+        total = 0
+        loaded = 0
+        error = ""
+        for page in range(_MAX_COMMENT_PAGES):
+            try:
+                data = await self._get(
+                    f"/rest/api/2/issue/{key}/comment",
+                    params={"startAt": page * _MAX_COMMENTS, "maxResults": _MAX_COMMENTS},
+                )
+            except Exception as exc:
+                error = str(exc)[:200]
+                break
             comments = data.get("comments", [])
+            total = data.get("total", len(comments))
             if not comments:
-                return ""
-            parts: list[str] = []
-            for c in comments[:50]:  # guard against gigantic threads
+                break
+            for c in comments:
                 author = (c.get("author") or {}).get("displayName", "unknown")
                 created = c.get("created", "")
                 body = c.get("body", "")
                 if isinstance(body, dict):
                     body = body.get("content", str(body))
                 parts.append(f"[{created}] {author}: {body}")
-            return "\n\n".join(parts)
-        except Exception:
-            return ""
+                loaded += 1
+            if len(comments) < _MAX_COMMENTS:
+                break
+        return "\n\n".join(parts), total, loaded, error
 
-    async def _fetch_linked_issues(self, key: str) -> list[dict[str, str]]:
-        """Pull linked-issue references (blocked by, relates to, etc.)."""
+    # ── linked issues (keys + content of first N) ──────────────────
+
+    async def _fetch_linked_issues(
+        self, key: str,
+    ) -> tuple[list[dict[str, str]], list[dict[str, str]], int, str]:
+        """Return (meta_list, content_list, loaded_count, error)."""
+        meta: list[dict[str, str]] = []
+        content: list[dict[str, str]] = []
+        error = ""
         try:
             data = await self._get(f"/rest/api/2/issue/{key}")
             fields = data.get("fields") or {}
             links = fields.get("issuelinks") or []
-            result: list[dict[str, str]] = []
-            for link in links[:20]:
+            fetched = 0
+            for link in links:
                 link_type = (link.get("type") or {}).get("name", "relates to")
                 target = link.get("outwardIssue") or link.get("inwardIssue")
                 if target is None:
                     continue
-                result.append({
-                    "key": str(target.get("key", "")),
-                    "summary": str((target.get("fields") or {}).get("summary", "")),
-                    "type": str(link_type),
-                })
-            return result
-        except Exception:
-            return []
+                lk = str(target.get("key", ""))
+                ls = str((target.get("fields") or {}).get("summary", ""))
+                meta.append({"key": lk, "summary": ls, "type": str(link_type)})
+                if fetched < _MAX_LINKED:
+                    lk_desc = ""
+                    try:
+                        lk_data = await self._get(
+                            f"/rest/api/2/issue/{lk}",
+                            params={"fields": "summary,description"},
+                        )
+                        lk_fields = lk_data.get("fields") or {}
+                        lk_desc = lk_fields.get("description") or ""
+                        if isinstance(lk_desc, dict):
+                            lk_desc = lk_desc.get("content", str(lk_desc))
+                    except Exception:
+                        pass
+                    content.append({
+                        "key": lk,
+                        "summary": ls,
+                        "description": str(lk_desc)[:2000],
+                    })
+                    fetched += 1
+        except Exception as exc:
+            error = str(exc)[:200]
+        return meta, content, len(content), error
+
+    # ── health / sync / fetch ──────────────────────────────────────
 
     async def health(self) -> dict[str, object]:
         try:
@@ -136,6 +204,8 @@ class JiraConnector:
             return response.json()
 
 
+# ── helpers ────────────────────────────────────────────────────────
+
 def _escape_query(query: str) -> str:
     return query.replace("\\", "\\\\").replace('"', '\\"')
 
@@ -150,7 +220,9 @@ def _evidence(
     base_url: str,
     source: str,
     comments: str = "",
-    linked: list[dict[str, str]] | None = None,
+    linked_meta: list[dict[str, str]] | None = None,
+    linked_content: list[dict[str, str]] | None = None,
+    enrichment: dict[str, Any] | None = None,
 ) -> Evidence:
     fields = issue.get("fields") or {}
     key = str(issue["key"])
@@ -162,10 +234,20 @@ def _evidence(
     text = f"{summary}\n{description}"
     if comments:
         text += f"\n\n--- COMMENTS ---\n{comments}"
+    if linked_content:
+        parts = []
+        for lc in linked_content:
+            parts.append(f"[LINKED] {lc['key']}: {lc['summary']}\n{lc['description']}")
+        text += "\n\n--- LINKED ISSUES ---\n" + "\n\n".join(parts)
 
-    metadata: dict[str, Any] = {"updated": fields.get("updated")}
-    if linked:
-        metadata["linked_issues"] = linked
+    metadata: dict[str, Any] = {
+        "updated": fields.get("updated"),
+        "comments": comments[:500] if comments else "",
+    }
+    if linked_meta:
+        metadata["linked_issues"] = linked_meta
+    if enrichment:
+        metadata["enrichment"] = enrichment
 
     return Evidence(
         id=f"{source}:{key}",
