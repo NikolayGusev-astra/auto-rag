@@ -16,3 +16,9 @@ docs/plans/auto-rag-decisions-analysis.md
 memvid_capsules/
 routing_log.jsonl
 .pytest-tmp-*
+
+*.pyo
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
