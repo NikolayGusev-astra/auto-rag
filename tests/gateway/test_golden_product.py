@@ -87,21 +87,20 @@ async def test_int6515_jira_exact_key_retrieval():
 
 @pytest.mark.asyncio
 async def test_int6515_cross_source_dedup():
-    """Different casing in document_id → canonical_id normalizes to same key."""
-    # Same source, same logical doc, different casing
-    upper = _jira_evidence("INT-6515", "Ревизия проектных артефактов", score=0.9)
-    lower = Evidence(
-        id="jira:int-6515", document_id="int-6515",
-        title="Ревизия проектных артефактов", text="dummy",
-        source="jira", uri="https://jira.example.test/browse/int-6515",
-        origin=EvidenceOrigin.LIVE_CORPORATE, retrieval_score=0.5,
-    )
-    coordinator = RetrievalCoordinator({"jira": MockConnector([upper, lower])})
+    """Snapshot and live Jira both return INT-6515 → canonical dedup keeps one."""
+    # Cross-source: snapshot stores same Jira key → now normalizes to "jira:INT-6515"
+    live = MockConnector([
+        _jira_evidence("INT-6515", "Ревизия проектных артефактов", score=0.9),
+    ])
+    snapshot = MockConnector([
+        _snapshot_evidence("INT-6515", "Ревизия проектных артефактов", score=0.5),
+    ])
+    coordinator = RetrievalCoordinator({"jira": live, "local_snapshot": snapshot})
     results = await coordinator.search(SearchRequest(query="INT-6515"))
 
-    # canonical_id for both = "jira:INT-6515", fuse must collapse to 1
+    # Cross-source: both normalize to "jira:INT-6515", fuse must collapse to 1
     int6515_results = [r for r in results if "6515" in r.document_id]
-    assert len(int6515_results) == 1, f"canonical dedup failed, got {len(int6515_results)} INT-6515"
+    assert len(int6515_results) == 1, f"cross-source dedup failed, got {len(int6515_results)} INT-6515"
     assert int6515_results[0].retrieval_score >= 0.9  # boosted by exact_id_boost
 
 

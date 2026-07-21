@@ -1,8 +1,11 @@
 """Stable document identities shared by live and snapshot retrieval."""
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from typing import Any
+
+_JIRA_KEY = re.compile(r"^[A-Z]+-\d+$", re.IGNORECASE)
 
 
 def canonical_document_id(
@@ -23,4 +26,9 @@ def canonical_document_id(
         slug = metadata.get("slug")
         if isinstance(slug, str) and slug.strip():
             return f"wiki:{slug.strip().casefold()}"
+    # Cross-source: snapshot may store Jira/Confluence keys → normalize
+    if _JIRA_KEY.match(document_id.strip()):
+        return f"jira:{document_id.strip().upper()}"
+    if document_id.strip().isdigit() and len(document_id.strip()) >= 6:
+        return f"confluence:{document_id.strip()}"
     return f"{normalized_source}:{document_id.strip()}"
