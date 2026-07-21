@@ -46,6 +46,16 @@ async def handle_search(
         )
         enricher.persist_episode(episode)
 
+        # Auto-learn DCD routing from new episode
+        try:
+            from pathlib import Path as _Path
+            from rag_core.gateway.adaptive.dcd_learner import DcdLearner
+            routing_path = _Path.home() / ".config" / "auto-rag" / "routing.json"
+            learner = DcdLearner(enricher.path, routing_path)
+            learner.learn()
+        except Exception:
+            pass  # DCD learn is best-effort, never blocks retrieval
+
     return {
         "results": [asdict(result) for result in results],
         "trace": {
