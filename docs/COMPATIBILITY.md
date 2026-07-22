@@ -10,7 +10,7 @@
 | **SearXNG** | Any (for allowlisted web) | localhost:8888 | Optional — graceful skip |
 | **Jira** | DC 9.x with REST API | 9.12.30 | `JIRA_BASE_URL` + `JIRA_PAT` |
 | **Confluence** | DC 7.x+ with REST API | 7.x | `CONFLUENCE_BASE_URL` + `CONFLUENCE_PAT` |
-| **Hub** | Astra Automation Hub | hub.astra-automation.ru | `HUB_BASE_URL` + `HUB_TOKEN` |
+| **Hub** | Astra Automation Hub | hub.corp.example | `HUB_BASE_URL` + `HUB_TOKEN` |
 | **Lodestone** | MCP HTTP endpoint | — | `credential_ref` in gateway.toml |
 
 ## Extras

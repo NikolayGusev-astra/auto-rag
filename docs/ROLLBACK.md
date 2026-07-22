@@ -26,8 +26,15 @@ pytest -q
 The local snapshot (`knowledge_root`) is **not** versioned with the code.
 It lives in `~/.local/share/auto-rag` (or configured `knowledge_root`).
 
-- **Rollback snapshot:** delete `knowledge_root/` directory and re-run `sync`.
-- **Rollback index only:** `python -m rag_core.gateway sync --source local_snapshot --full`
+- **Rollback snapshot:** move away the current root and re-sync
+  ```bash
+  mv ~/.local/share/auto-rag ~/.local/share/auto-rag.failed-$(date +%s)
+  python -m rag_core.gateway sync --source local_snapshot
+  ```
+- **Rollback index only (full rebuild):**
+  ```bash
+  python -m rag_core.gateway sync --source local_snapshot
+  ```
 
 ## Configuration rollback
 
@@ -44,5 +51,4 @@ cp ~/.config/auto-rag/gateway.toml ~/.config/auto-rag/gateway.toml.bak
 - Snapshot is not atomically versioned per sync
 - Configuration changes are not logged
 
-These are addressed in ADR-007/008 (packaging and managed delivery) and are
-out of scope for the 10-user pilot.
+These are addressed in a separate ADR for packaging and managed delivery (out of scope for the 10-user pilot).

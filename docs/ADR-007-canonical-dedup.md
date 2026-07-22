@@ -1,6 +1,6 @@
 # ADR-007: Canonical Dedup in RetrievalCoordinator.fuse()
 
-**Status:** Proposed
+**Status:** Accepted — implemented in commit @90b463c
 **Date:** 2026-07-22
 **Extends:** ADR-006 (4.1 — Canonical Document Identity)
 

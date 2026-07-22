@@ -1,0 +1,30 @@
+{
+  "iterations": 20,
+  "fan_out_overhead_ms": 200.0,
+  "connectors": {
+    "fast": {
+      "configured_delay_ms": 10.0,
+      "p50_ms": 14.769,
+      "p95_ms": 15.284
+    },
+    "medium": {
+      "configured_delay_ms": 50.0,
+      "p50_ms": 61.81,
+      "p95_ms": 63.493
+    },
+    "slow": {
+      "configured_delay_ms": 200.0,
+      "p50_ms": 202.596,
+      "p95_ms": 204.231
+    },
+    "tail": {
+      "configured_delay_ms": 1000.0,
+      "p50_ms": 1007.29,
+      "p95_ms": 1015.551
+    }
+  },
+  "total_search_ms": {
+    "p50_ms": 1008.228,
+    "p95_ms": 1016.273
+  }
+}

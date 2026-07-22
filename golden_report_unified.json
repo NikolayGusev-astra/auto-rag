@@ -1,0 +1,254 @@
+{
+  "backend": "chroma",
+  "stats": {
+    "doc_count": 0,
+    "index_completeness": {
+      "embedding": 0.0
+    }
+  },
+  "total": 24,
+  "domain_accuracy": 0.9166666666666666,
+  "fact_recall": 0.0,
+  "results": [
+    {
+      "query": "\u043a\u0430\u043a \u043d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c postgresql streaming replication",
+      "expected_domain": "database",
+      "predicted_domain": "database",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 110.2,
+      "top_score": 0
+    },
+    {
+      "query": "rust ownership borrow checker",
+      "expected_domain": "software-dev",
+      "predicted_domain": "software-dev",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 77.1,
+      "top_score": 0
+    },
+    {
+      "query": "\u0448\u0440\u0443\u0441 ford explorer 2016 \u043f\u0430\u0440\u0442\u043d\u043e\u043c\u0435\u0440",
+      "expected_domain": "ford-club",
+      "predicted_domain": "ford-club",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 72.7,
+      "top_score": 0
+    },
+    {
+      "query": "nginx reverse proxy ssl letsencrypt",
+      "expected_domain": "linux-admin",
+      "predicted_domain": "security",
+      "domain_ok": false,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 72.8,
+      "top_score": 0
+    },
+    {
+      "query": "wireguard vpn config",
+      "expected_domain": "networking",
+      "predicted_domain": "networking",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 73.6,
+      "top_score": 0
+    },
+    {
+      "query": "systemd service unit timer",
+      "expected_domain": "linux-admin",
+      "predicted_domain": "linux-admin",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 98.8,
+      "top_score": 0
+    },
+    {
+      "query": "docker compose up production",
+      "expected_domain": "devops",
+      "predicted_domain": "devops",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 72.8,
+      "top_score": 0
+    },
+    {
+      "query": "kubernetes deployment helm chart",
+      "expected_domain": "devops",
+      "predicted_domain": "devops",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 80.2,
+      "top_score": 0
+    },
+    {
+      "query": "terraform plan apply",
+      "expected_domain": "devops",
+      "predicted_domain": "devops",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 76.5,
+      "top_score": 0
+    },
+    {
+      "query": "prometheus alert rule",
+      "expected_domain": "monitoring",
+      "predicted_domain": "monitoring",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 85.4,
+      "top_score": 0
+    },
+    {
+      "query": "zfs pool create raidz2",
+      "expected_domain": "storage",
+      "predicted_domain": "storage",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 81.6,
+      "top_score": 0
+    },
+    {
+      "query": "stalwart smtp dkim spf",
+      "expected_domain": "email",
+      "predicted_domain": "email",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 74.6,
+      "top_score": 0
+    },
+    {
+      "query": "linux kernel sysctl tuning",
+      "expected_domain": "kernel",
+      "predicted_domain": "kernel",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 72.8,
+      "top_score": 0
+    },
+    {
+      "query": "bash script find grep awk",
+      "expected_domain": "scripting",
+      "predicted_domain": "scripting",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 74.7,
+      "top_score": 0
+    },
+    {
+      "query": "adr architecture decision record",
+      "expected_domain": "docs",
+      "predicted_domain": "docs",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 76.1,
+      "top_score": 0
+    },
+    {
+      "query": "postgresql vacuum analyze autovacuum",
+      "expected_domain": "database",
+      "predicted_domain": "database",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 73.4,
+      "top_score": 0
+    },
+    {
+      "query": "xray reality vless config",
+      "expected_domain": "networking",
+      "predicted_domain": "software-dev",
+      "domain_ok": false,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 72.1,
+      "top_score": 0
+    },
+    {
+      "query": "proxmox lxc container backup restore",
+      "expected_domain": "virtualization",
+      "predicted_domain": "virtualization",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 74.2,
+      "top_score": 0
+    },
+    {
+      "query": "kvm gpu passthrough vfio iommu",
+      "expected_domain": "virtualization",
+      "predicted_domain": "virtualization",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 74.4,
+      "top_score": 0
+    },
+    {
+      "query": "zfs snapshot send receive incremental",
+      "expected_domain": "storage",
+      "predicted_domain": "storage",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 73.4,
+      "top_score": 0
+    },
+    {
+      "query": "postfix dovecot sieve filter",
+      "expected_domain": "email",
+      "predicted_domain": "email",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 93.5,
+      "top_score": 0
+    },
+    {
+      "query": "grafana dashboard panel variable templating",
+      "expected_domain": "monitoring",
+      "predicted_domain": "monitoring",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 76.8,
+      "top_score": 0
+    },
+    {
+      "query": "linux bridge vlan trunk access",
+      "expected_domain": "networking",
+      "predicted_domain": "networking",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 83.6,
+      "top_score": 0
+    },
+    {
+      "query": "systemd override drop-in service",
+      "expected_domain": "linux-admin",
+      "predicted_domain": "linux-admin",
+      "domain_ok": true,
+      "fact_ok": false,
+      "found_terms": [],
+      "latency_ms": 74.1,
+      "top_score": 0
+    }
+  ]
+}

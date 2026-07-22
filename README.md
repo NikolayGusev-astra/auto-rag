@@ -1,6 +1,6 @@
 # auto-rag
 
-Corporate-first knowledge gateway for AI agents. MCP transport, structured Evidence, 8 live connectors — Jira, Confluence, Lodestone, Allowlisted Web, Hub, ZVec, SearXNG, Local Snapshot. Runs locally, degrades offline, 437 tests.
+Corporate-first knowledge gateway for AI agents. MCP transport, structured Evidence, 8 live connectors — Jira, Confluence, Lodestone, Allowlisted Web, Hub, ZVec, SearXNG, Local Snapshot. Runs locally, degrades offline, 468 tests.
 
 ![Architecture](infographic/auto-rag-architecture.png)
 
@@ -11,7 +11,7 @@ Corporate-first knowledge gateway for AI agents. MCP transport, structured Evide
 | Run locally | `python -m rag_core.gateway.server --config gateway.toml` |
 | Operations | [Operations Guide](docs/OPERATIONS.md) |
 | Architecture | [ADR-006: Stabilization](docs/ADR-006-stabilization-before-expansion.md) |
-| Verify | `python -m pytest tests/ -q` → 437 passed |
+| Verify | `python -m pytest tests/ -q` → 468 passed |
 
 ## Architecture
 
@@ -120,7 +120,7 @@ python scripts/precommit-guard.py --fix      # clean + update .gitignore
 ## Tests
 
 ```bash
-python -m pytest tests/ -q     # 437 passed, 5 skipped, 1 xfailed
+python -m pytest tests/ -q     # 468 passed, 5 skipped, 1 xfailed
 ```
 
 Key suites: `test_jira_connector.py` (comments + linked + diagnostics), `test_confluence_connector.py` (PDF extraction + content_status), `test_lodestone_connector.py` (MCP + parsing), `test_allowlisted_web.py` (domain filter + internal skip), `test_canonical_identity.py` (dedup + boost, 10 tests), `test_doctor.py` (profiles, 6 tests), `test_phase7_factory.py` (credential_ref).
