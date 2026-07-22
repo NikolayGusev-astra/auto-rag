@@ -2,7 +2,7 @@
 
 > **Дата:** 20 июля 2026  
 > **ADR:** [ADR-004](ADR-004-local-workstation-rag.md) — локальный workstation RAG для одного инженера  
-> **Тесты:** 368 passed, 5 skipped, 1 xfailed (commit `92a78d7`)
+> **Тесты:** 468 passed, 5 skipped, 1 xfailed (commit `bf7a95f`)
 
 ## Обзор
 

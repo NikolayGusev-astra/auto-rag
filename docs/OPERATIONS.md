@@ -2,7 +2,7 @@
 
 > **Версия:** ADR-006 Stabilization (21 июля 2026)
 > **ADR:** [ADR-006](ADR-006-stabilization-before-expansion.md)
-> **Тесты:** 437 passed, 5 skipped, 1 xfailed (commit `d93cfab`)
+> **Тесты:** 468 passed, 5 skipped, 1 xfailed (commit `bf7a95f`)
 
 ## Быстрый старт — минимальный offline
 
@@ -150,7 +150,7 @@ python scripts/precommit-guard.py --fix  # авто-очистка + .gitignore
 3. Настроить env-переменные в Hermes MCP регистрации
 4. `hermes mcp add auto-rag ...`
 5. `hermes mcp test auto-rag` → `✓ Connected`
-6. `python -m pytest tests -q` → 437 passed
+6. `python -m pytest tests -q` → 468 passed
 
 ## Troubleshooting
 
